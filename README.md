@@ -25,7 +25,10 @@ Open `index.html` in a browser. The site is fully static and does not require a 
 Use this flow any time you edit files and want the live site updated:
 
 1. Save your file changes.
-2. Commit and push to `main`:
+2. Update the logs in `updates/` (required for every future change):
+   - Append a short summary in `updates/logs.md`
+   - Refresh `updates/commit-history.csv` and `updates/file-last-change.csv` when needed
+3. Commit and push to `main`:
 
 ```bash
 git add .
@@ -33,8 +36,14 @@ git commit -m "Describe what changed"
 git push origin main
 ```
 
-3. Wait for GitHub Pages to deploy automatically (usually under 2 minutes).
-4. Hard refresh the live site (or use an incognito tab) to confirm the latest UI/code is live.
+4. Wait for GitHub Pages to deploy automatically (usually under 2 minutes).
+5. Hard refresh the live site (or use an incognito tab) to confirm the latest UI/code is live.
+
+### Logging policy (required)
+
+- Every update/file change must be recorded in `updates/logs.md`.
+- Keep log entries concise and include date, what changed, and affected files/features.
+- If a commit is pushed, make sure logs are updated in the same commit whenever possible.
 
 If `git` is not recognized in your terminal on Windows, run Git with a full path:
 

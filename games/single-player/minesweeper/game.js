@@ -560,8 +560,8 @@ function applyAdminTimeOverride(seconds) {
 		}
 	}
 
-	roundStatusEl.textContent = 'Admin Override';
-	hintTextEl.textContent = `Admin set ${formatModeLabel(state.mode)} run to ${rounded}s.`;
+	roundStatusEl.textContent = 'Left click to reveal. Right click to flag.';
+	hintTextEl.textContent = ``;
 }
 
 function renderBoard() {

@@ -42,3 +42,4 @@ firebase-adminsdk*.json
 # Oversized local data snapshots (not suitable for GitHub)
 games/single-player/infinite-craft-clone/data/icgg-recipes-full.json
 games/two-player/infinite-craft-multiplayer/data/icgg-recipes-full.json
+updates/
