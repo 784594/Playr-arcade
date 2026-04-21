@@ -5,6 +5,9 @@
 	--board-surface: rgba(255, 255, 255, 0.08);
 	--board-shadow: 0 20px 60px rgba(0, 0, 0, 0.24);
 	--tile-gap: 12px;
+	--action-a: #7cf0c5;
+	--action-b: #7aa7ff;
+	--action-ink: #041018;
 }
 
 #gameRoot {
@@ -36,13 +39,13 @@
 	border: 0;
 	border-radius: 14px;
 	padding: 14px 18px;
-	background: linear-gradient(135deg, #f8b55b, #f67c5f);
-	color: #111827;
+	background: linear-gradient(135deg, var(--action-a), var(--action-b));
+	color: var(--action-ink);
 	font: inherit;
 	font-weight: 800;
 	letter-spacing: 0.02em;
 	cursor: pointer;
-	box-shadow: 0 12px 24px rgba(246, 124, 95, 0.25);
+	box-shadow: 0 12px 24px rgba(122, 167, 255, 0.3);
 	transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
 }
 
@@ -64,7 +67,7 @@
 
 .restart-button:hover {
 	transform: translateY(-1px);
-	box-shadow: 0 16px 28px rgba(246, 124, 95, 0.32);
+	box-shadow: 0 16px 28px rgba(124, 240, 197, 0.34);
 }
 
 .restart-button:active {
@@ -87,7 +90,7 @@
 }
 
 .game-shell:focus-visible {
-	box-shadow: 0 0 0 3px rgba(248, 181, 91, 0.65), var(--board-shadow);
+	box-shadow: 0 0 0 3px rgba(124, 240, 197, 0.65), var(--board-shadow);
 }
 
 .board-grid,
@@ -185,7 +188,7 @@
 	margin: 0 0 10px;
 	font-size: 1.6rem;
 	font-weight: 800;
-	color: #f8b55b;
+	color: #7cf0c5;
 	letter-spacing: -0.03em;
 }
 

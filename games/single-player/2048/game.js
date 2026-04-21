@@ -15,17 +15,17 @@
 	}
 
 	const tileColors = {
-		2: { bg: '#eee4da', fg: '#776e65' },
-		4: { bg: '#ede0c8', fg: '#776e65' },
-		8: { bg: '#f2b179', fg: '#f9f6f2' },
-		16: { bg: '#f59563', fg: '#f9f6f2' },
-		32: { bg: '#f67c5f', fg: '#f9f6f2' },
-		64: { bg: '#f65e3b', fg: '#f9f6f2' },
-		128: { bg: '#edcf72', fg: '#f9f6f2' },
-		256: { bg: '#edcc61', fg: '#f9f6f2' },
-		512: { bg: '#edc850', fg: '#f9f6f2' },
-		1024: { bg: '#edc53f', fg: '#f9f6f2' },
-		2048: { bg: '#edc22e', fg: '#f9f6f2' }
+		2: { bg: '#d7ecff', fg: '#14243d' },
+		4: { bg: '#bfe1ff', fg: '#10233f' },
+		8: { bg: '#8cd5ff', fg: '#0b1f35' },
+		16: { bg: '#72c6ff', fg: '#081c31' },
+		32: { bg: '#65b8ff', fg: '#07182b' },
+		64: { bg: '#66e3da', fg: '#05221f' },
+		128: { bg: '#56d6c9', fg: '#04201b' },
+		256: { bg: '#48c9bd', fg: '#031c18' },
+		512: { bg: '#4db8e8', fg: '#041b2b' },
+		1024: { bg: '#4a9ef2', fg: '#04192a' },
+		2048: { bg: '#7cf0c5', fg: '#03231b' }
 	};
 
 	const tileElements = new Map();
@@ -432,6 +432,14 @@
 	});
 	restartButton.addEventListener('click', restartGame);
 	overlayRestartButton.addEventListener('click', restartGame);
+	overlayElement.addEventListener('click', (event) => {
+		if (event.target === overlayRestartButton) {
+			restartGame();
+		}
+	});
+	overlayRestartButton.addEventListener('pointerdown', (event) => {
+		event.stopPropagation();
+	});
 	window.addEventListener('resize', render);
 
 	restartGame();

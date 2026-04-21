@@ -56,14 +56,20 @@ body {
 }
 
 .back-link {
-  color: var(--accent);
+  color: var(--muted);
   text-decoration: none;
-  font-size: 0.9rem;
-  transition: color 180ms ease;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14px;
+  transition: color 180ms ease, border-color 180ms ease;
 }
 
 .back-link:hover {
   color: var(--text);
+  border-color: rgba(124, 240, 197, 0.4);
 }
 
 .game-container {
@@ -276,6 +282,11 @@ body {
   gap: 16px;
   max-height: calc(100vh - 48px);
   overflow: auto;
+}
+
+.admin-sidebar[hidden],
+.admin-tools[hidden] {
+  display: none !important;
 }
 
 .admin-header {

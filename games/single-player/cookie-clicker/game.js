@@ -129,6 +129,7 @@ const gameState = {
   adminEnabled: false,
   adminSidebarOpen: false,
   adminScoreSnapshot: null,
+  ownerWarningsDisabled: false,
 };
 
 const dom = {
@@ -163,8 +164,14 @@ const dom = {
   adminAddCookiesBtn: document.getElementById('adminAddCookiesBtn'),
   adminResetScoresBtn: document.getElementById('adminResetScoresBtn'),
   adminRevertScoresBtn: document.getElementById('adminRevertScoresBtn'),
+  adminClearWarningsBtn: document.getElementById('adminClearWarningsBtn'),
+  adminToggleWarningsBtn: document.getElementById('adminToggleWarningsBtn'),
   adminInfo: document.getElementById('adminInfo'),
 };
+
+function shouldSkipWarningsForOwner() {
+  return Boolean(isOwnerAccount() && gameState.ownerWarningsDisabled);
+}
 
 function hasUpgrade(id) {
   return gameState.purchased.has(id);
@@ -340,7 +347,9 @@ function renderStats() {
   dom.warningCount.textContent = `Warnings: ${gameState.warnings}`;
 
   let leaderboardLabel = 'Clean';
-  if (gameState.warnings >= CHEAT_CONFIG.warningThreshold) {
+  if (shouldSkipWarningsForOwner()) {
+    leaderboardLabel = 'Warnings disabled (Owner)';
+  } else if (gameState.warnings >= CHEAT_CONFIG.warningThreshold) {
     leaderboardLabel = gameState.isLoggedIn ? 'Leaderboard banned' : 'Score invalid';
   } else if (gameState.warnings > 0) {
     leaderboardLabel = `Warning ${gameState.warnings}/${CHEAT_CONFIG.warningThreshold}`;
@@ -434,6 +443,10 @@ function evaluateClickPattern(now) {
 }
 
 function issueWarning(message) {
+  if (shouldSkipWarningsForOwner()) {
+    return;
+  }
+
   gameState.warnings += 1;
   if (gameState.warnings >= CHEAT_CONFIG.warningThreshold) {
     gameState.leaderboardInvalid = true;
@@ -713,6 +726,7 @@ function saveGame(isSystemSave) {
     leaderboardInvalid: gameState.leaderboardInvalid,
     leaderboardBanned: gameState.leaderboardBanned,
     rebirthCount: gameState.rebirthCount,
+    ownerWarningsDisabled: gameState.ownerWarningsDisabled,
     purchased: Array.from(gameState.purchased),
     activeTab: gameState.activeTab,
   };
@@ -747,6 +761,7 @@ function loadGame() {
     gameState.leaderboardInvalid = Boolean(data.leaderboardInvalid);
     gameState.leaderboardBanned = Boolean(data.leaderboardBanned);
     gameState.rebirthCount = Math.max(0, Math.min(Number(data.rebirthCount || 0), REBIRTH_CONFIG.maxRebirths));
+    gameState.ownerWarningsDisabled = Boolean(data.ownerWarningsDisabled);
     gameState.purchased = new Set(data.purchased || []);
     gameState.activeTab = data.activeTab || 'click-upgrades';
 
@@ -872,6 +887,18 @@ function bindEvents() {
     });
   }
 
+  if (dom.adminClearWarningsBtn) {
+    dom.adminClearWarningsBtn.addEventListener('click', () => {
+      clearAdminWarnings();
+    });
+  }
+
+  if (dom.adminToggleWarningsBtn) {
+    dom.adminToggleWarningsBtn.addEventListener('click', () => {
+      toggleOwnerWarningBypass();
+    });
+  }
+
   window.addEventListener('playr-auth-changed', () => {
     if (!isOwnerAccount()) {
       gameState.adminEnabled = false;
@@ -958,11 +985,18 @@ function refreshAdminControlsUi() {
 	if (dom.adminAddCookiesBtn) dom.adminAddCookiesBtn.disabled = !gameState.adminEnabled;
 	if (dom.adminResetScoresBtn) dom.adminResetScoresBtn.disabled = !gameState.adminEnabled;
 	if (dom.adminRevertScoresBtn) dom.adminRevertScoresBtn.disabled = !gameState.adminEnabled || !gameState.adminScoreSnapshot;
+	if (dom.adminClearWarningsBtn) dom.adminClearWarningsBtn.disabled = !gameState.adminEnabled;
+	if (dom.adminToggleWarningsBtn) {
+		dom.adminToggleWarningsBtn.disabled = !gameState.adminEnabled;
+		dom.adminToggleWarningsBtn.textContent = gameState.ownerWarningsDisabled ? 'Enable Warnings' : 'Disable Warnings';
+	}
   if (dom.adminInfo) {
     if (!isOwnerAccount()) {
       dom.adminInfo.textContent = 'Admin controls are restricted to the Owner account.';
     } else if (gameState.adminEnabled) {
-      dom.adminInfo.textContent = 'Admin enabled. Use the buttons above to adjust this run.';
+      dom.adminInfo.textContent = gameState.ownerWarningsDisabled
+        ? 'Admin enabled. Owner warning enforcement is currently disabled.'
+        : 'Admin enabled. Use the buttons above to adjust this run.';
     } else {
       dom.adminInfo.textContent = 'Admin is locked until you enable it as the Owner account.';
     }
@@ -986,6 +1020,7 @@ function captureAdminScoreSnapshotIfNeeded() {
 		warnings: gameState.warnings,
 		leaderboardInvalid: gameState.leaderboardInvalid,
 		leaderboardBanned: gameState.leaderboardBanned,
+    ownerWarningsDisabled: gameState.ownerWarningsDisabled,
     purchased: Array.from(gameState.purchased),
 	};
 }
@@ -1046,6 +1081,7 @@ function revertAdminScores() {
 	gameState.warnings = gameState.adminScoreSnapshot.warnings;
 	gameState.leaderboardInvalid = gameState.adminScoreSnapshot.leaderboardInvalid;
 	gameState.leaderboardBanned = gameState.adminScoreSnapshot.leaderboardBanned;
+	gameState.ownerWarningsDisabled = Boolean(gameState.adminScoreSnapshot.ownerWarningsDisabled);
 	gameState.purchased = new Set(gameState.adminScoreSnapshot.purchased || []);
 	gameState.adminScoreSnapshot = null;
 	renderTabState();
@@ -1054,6 +1090,32 @@ function revertAdminScores() {
 	renderRebirthUi();
 	saveGame(true);
 	refreshAdminControlsUi();
+}
+
+function clearAdminWarnings() {
+	if (!gameState.adminEnabled) return;
+	gameState.warnings = 0;
+	gameState.suspicionScore = 0;
+	gameState.lastSuspicionAt = 0;
+	gameState.leaderboardInvalid = false;
+	gameState.leaderboardBanned = false;
+	renderStats();
+	saveGame(true);
+}
+
+function toggleOwnerWarningBypass() {
+	if (!gameState.adminEnabled || !isOwnerAccount()) return;
+	gameState.ownerWarningsDisabled = !gameState.ownerWarningsDisabled;
+	if (gameState.ownerWarningsDisabled) {
+		gameState.warnings = 0;
+		gameState.suspicionScore = 0;
+		gameState.lastSuspicionAt = 0;
+		gameState.leaderboardInvalid = false;
+		gameState.leaderboardBanned = false;
+	}
+	renderStats();
+	refreshAdminControlsUi();
+	saveGame(true);
 }
 
 function init() {

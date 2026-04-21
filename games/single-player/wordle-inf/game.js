@@ -79,15 +79,33 @@
 	}
 
 	function isOwnerAccount() {
-		if (!window.PlayrAuth) return false;
-		if (typeof window.PlayrAuth.canAccessAdminControls === 'function') {
-			return Boolean(window.PlayrAuth.canAccessAdminControls());
+		try {
+			if (window.PlayrAuth?.isAdmin) {
+				return true;
+			}
+			if (typeof window.PlayrAuth?.canAccessAdminControls === 'function') {
+				if (window.PlayrAuth.canAccessAdminControls()) {
+					return true;
+				}
+			}
+			if (typeof window.PlayrAuth?.getCurrentUser === 'function') {
+				const user = window.PlayrAuth.getCurrentUser();
+				if (user?.isAdmin) return true;
+				if (String(user?.displayName || '').trim().toLowerCase() === 'owner') return true;
+			}
+		} catch {
+			// no-op
 		}
-		if (typeof window.PlayrAuth.getCurrentUser === 'function') {
-			const user = window.PlayrAuth.getCurrentUser();
-			return String(user?.displayName || '').trim().toLowerCase() === 'owner';
+
+		try {
+			const raw = localStorage.getItem('playrCurrentUser');
+			if (!raw) return false;
+			const parsed = JSON.parse(raw);
+			if (parsed?.isAdmin) return true;
+			return String(parsed?.displayName || '').trim().toLowerCase() === 'owner';
+		} catch {
+			return false;
 		}
-		return false;
 	}
 
 	function setStatus(text) {
@@ -273,6 +291,7 @@
 		const canShowAdmin = isOwnerAccount();
 		if (els.leftRailTitle) els.leftRailTitle.textContent = canShowAdmin ? 'Admin' : 'Wordle';
 		if (els.adminTools) els.adminTools.hidden = !canShowAdmin;
+		if (els.emptyPlaceholder) els.emptyPlaceholder.hidden = canShowAdmin;
 		if (!canShowAdmin) state.revealAdminWord = false;
 		if (els.revealWordBtn) {
 			els.revealWordBtn.textContent = state.revealAdminWord ? 'Hide Word' : 'Reveal Word';

@@ -26,9 +26,10 @@
 	const BOARD_COLS = 21;
 	const BOARD_ROWS = 21;
 	const TUNNEL_ROW = 10;
-	const START_LIVES = 3;
+	const START_LIVES = 5;
 	const POWER_DURATION = 6500;
 	const TRANSITION_MS = 1200;
+	const DEATH_ANIM_MS = 900;
 
 	const MAZE_LAYOUT = [
 		'#####################',
@@ -39,9 +40,9 @@
 		'#.....#...#...#.....#',
 		'#####.###.#.###.#####',
 		'#...#.....#.....#...#',
-		'#.#.#.###===###.#.#.#',
+		'#.#.......===.......#',
 		'#.#.#...hhhhh...#.#.#',
-		'.###.#..hhhhh..#.###.',
+		'.###....hhhhh....###.',
 		'#.#.#...hhhhh...#.#.#',
 		'#.#.#.###.#.###.#.#.#',
 		'#...#.....#.....#...#',
@@ -88,6 +89,7 @@
 		frightenedCombo: 0,
 		transitionType: null,
 		transitionMs: 0,
+		deathAnimMs: 0,
 		invulnerableMs: 0,
 		statusText: '',
 		statusTimer: 0,
@@ -144,7 +146,7 @@
 		}
 
 		if (ghost.state === 'frightened') {
-			return Math.max(156, 214 - state.level * 2);
+			return Math.max(240, 310 - state.level * 3);
 		}
 
 		if (ghost.state === 'house') {
@@ -314,6 +316,7 @@
 		state.frightenedCombo = 0;
 		state.transitionType = null;
 		state.transitionMs = 0;
+		state.deathAnimMs = 0;
 		applySpeeds();
 		state.pacman.cooldown = state.pacman.speedMs;
 		for (const ghost of state.ghosts) {
@@ -687,6 +690,7 @@
 		if (state.transitionType || state.gameOver) return;
 		state.transitionType = 'death';
 		state.transitionMs = TRANSITION_MS;
+		state.deathAnimMs = DEATH_ANIM_MS;
 		state.paused = true;
 		setStatus('Caught! Resetting the maze.', 0);
 		updateHud();
@@ -700,6 +704,7 @@
 
 		if (transition === 'death') {
 			state.lives -= 1;
+			state.deathAnimMs = 0;
 			if (state.lives <= 0) {
 				endGame();
 				return;
@@ -837,7 +842,13 @@
 	}
 
 	function eatGhost(ghost) {
-		ghost.state = 'eyes';
+		ghost.x = ghost.spawn.x;
+		ghost.y = ghost.spawn.y;
+		ghost.fromX = ghost.spawn.x;
+		ghost.fromY = ghost.spawn.y;
+		ghost.state = 'house';
+		ghost.released = false;
+		ghost.releaseDelay = 900;
 		ghost.dir = { x: 0, y: -1 };
 		ghost.cooldown = 0;
 		ghost.eatenCount += 1;
@@ -882,6 +893,10 @@
 
 		if (state.invulnerableMs > 0) {
 			state.invulnerableMs = Math.max(0, state.invulnerableMs - dt);
+		}
+
+		if (state.deathAnimMs > 0) {
+			state.deathAnimMs = Math.max(0, state.deathAnimMs - dt);
 		}
 
 		if (state.transitionMs > 0) {
@@ -1008,6 +1023,12 @@
 				ctx.restore();
 			}
 		}
+
+		ctx.save();
+		ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+		ctx.lineWidth = 0.08;
+		ctx.strokeRect(7.05, 8.05, 6.9, 4.9);
+		ctx.restore();
 	}
 
 	function drawPellet(x, y, power = false) {
@@ -1049,6 +1070,32 @@
 		const centerX = x + 0.5;
 		const centerY = y + 0.5;
 		const radius = 0.42;
+
+		if (state.transitionType === 'death' && state.deathAnimMs > 0) {
+			const progress = 1 - clamp(state.deathAnimMs / DEATH_ANIM_MS, 0, 1);
+			const ringRadius = radius * (0.6 + progress * 2.1);
+			const alpha = 1 - progress;
+			ctx.save();
+			ctx.strokeStyle = `rgba(255, 225, 76, ${Math.max(0, alpha)})`;
+			ctx.lineWidth = 0.08;
+			ctx.beginPath();
+			ctx.arc(centerX, centerY, ringRadius, 0, Math.PI * 2);
+			ctx.stroke();
+
+			ctx.fillStyle = `rgba(255, 225, 76, ${Math.max(0, 0.8 - progress)})`;
+			for (let i = 0; i < 10; i += 1) {
+				const angle = (Math.PI * 2 * i) / 10 + progress * 3.4;
+				const burst = radius * (0.35 + progress * 2.35);
+				const px = centerX + Math.cos(angle) * burst;
+				const py = centerY + Math.sin(angle) * burst;
+				ctx.beginPath();
+				ctx.arc(px, py, 0.03 + (1 - progress) * 0.02, 0, Math.PI * 2);
+				ctx.fill();
+			}
+			ctx.restore();
+			return;
+		}
+
 		const mouth = 0.18 + 0.14 * (0.5 + 0.5 * Math.sin(state.animTime / 70));
 		let base = 0;
 
