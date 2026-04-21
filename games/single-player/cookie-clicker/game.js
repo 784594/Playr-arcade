@@ -921,16 +921,9 @@ function startLoops() {
 
 function isOwnerAccount() {
 	try {
-    if (window.PlayrAuth?.isAdmin) {
-      return true;
-    }
-
 		if (window.PlayrAuth && typeof window.PlayrAuth.getCurrentUser === 'function') {
 			const user = window.PlayrAuth.getCurrentUser();
-      if (user?.isAdmin) {
-        return true;
-      }
-			if (String(user?.displayName || '').trim().toLowerCase() === 'owner') {
+			if (String(user?.identifier || '').trim().toLowerCase() === 'owner@playr.io') {
 				return true;
 			}
 		}
@@ -942,10 +935,7 @@ function isOwnerAccount() {
 		const raw = localStorage.getItem('playrCurrentUser');
 		if (!raw) return false;
 		const parsed = JSON.parse(raw);
-    if (parsed?.isAdmin) {
-      return true;
-    }
-		return String(parsed?.displayName || '').trim().toLowerCase() === 'owner';
+		return String(parsed?.identifier || '').trim().toLowerCase() === 'owner@playr.io';
 	} catch {
 		return false;
 	}
