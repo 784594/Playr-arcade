@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Snake module for PlayR." />
+  <title>Snake | PlayR</title>
+  <link rel="stylesheet" href="../../shared/game-shell.css" />
+  <link rel="stylesheet" href="game.css" />
+  <script defer src="../../shared/game-shell.js"></script>
+  <script defer src="../../shared/admin-shell.js"></script>
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <div class="page" id="gameRoot" data-game-title="Snake" data-metric="score" data-direction="desc" data-scope="global">
+    <div class="top">
+      <a class="back-link" href="../../../index.html">Back to hub</a>
+      <div class="board-meta">
+        <span class="tag">Type: single-player</span>
+        <span class="tag">Controls: Arrow keys or WASD</span>
+      </div>
+    </div>
+
+    <header class="header">
+      <p class="tag">PlayR Game Module</p>
+      <h1>Snake</h1>
+      <div class="meta">
+        <span class="tag">Leaderboard scope: global</span>
+        <span class="tag">Metric: highest score</span>
+        <span class="tag">Controls: arrow keys to move</span>
+      </div>
+      <p id="gameStatus">Loading Snake...</p>
+    </header>
+
+    <section class="round-strip" aria-live="polite">
+      <div>
+        <strong id="roundStatus">Menu</strong>
+      </div>
+      <div>
+        <span>Score</span>
+        <strong id="score">--</strong>
+      </div>
+      <div>
+        <span>Length</span>
+        <strong id="length">--</strong>
+      </div>
+    </section>
+
+    <section class="main-grid">
+      <aside class="panel">
+        <div id="inGamePanel" class="in-game-panel">
+          <section class="sidebar-card">
+            <h2>Stats</h2>
+            <p class="hint" id="currentMode" style="font-size: 12px; color: var(--muted); margin-bottom: 12px;">Menu: press Play, then choose your settings.</p>
+            <ul class="best-list live-stats">
+              <li><span>Food Eaten</span><strong id="liveScore">0</strong></li>
+              <li><span>Length</span><strong id="liveLength">3</strong></li>
+              <li><span>Time</span><strong id="liveTimer">0s</strong></li>
+            </ul>
+            <div class="actions">
+              <button class="action-btn" id="backMenuBtn" type="button" hidden>Back to Menu</button>
+            </div>
+          </section>
+
+          <section class="best-times sidebar-card">
+          <div class="best-times">
+            <h2>Best Local Scores</h2>
+            <ul class="best-list">
+              <li><span>Free Play</span><strong id="bestFreePlay">0</strong></li>
+              <li><span>Trophy Mode</span><strong id="bestTrophy">0</strong></li>
+            </ul>
+          </div>
+          </section>
+        </div>
+      </aside>
+
+      <article class="play-area">
+        <div class="board-top">
+          <div class="board-top-actions">
+            <span id="boardMeta" class="tag">17 x 17</span>
+            <button class="action-btn admin-sidebar-toggle" id="adminSidebarToggleBtn" type="button" hidden>Hide Admin</button>
+          </div>
+        </div>
+        <div class="play-stage">
+          <div class="board-wrap">
+            <div id="gameMenu" class="game-menu-overlay">
+              <div id="menuBackdrop" class="menu-backdrop" hidden></div>
+
+              <div id="menuButtons" class="menu-buttons">
+                <button class="menu-btn play-btn" id="playBtn" type="button">
+                  <span class="btn-label">Play</span>
+                </button>
+                <button class="menu-btn settings-btn" id="settingsBtn" type="button" aria-label="Open settings">⚙</button>
+              </div>
+
+              <div id="settingsPanel" class="game-settings" hidden>
+                <h3>Customize Your Game</h3>
+
+                <div class="setting-group">
+                  <label>Board Size</label>
+                  <div class="radio-grid">
+                    <label class="radio-label">
+                      <input type="radio" name="mapSize" value="small" />
+                      <span>Small (13x13)</span>
+                    </label>
+                    <label class="radio-label">
+                      <input type="radio" name="mapSize" value="normal" checked />
+                      <span>Normal (17x17)</span>
+                    </label>
+                    <label class="radio-label">
+                      <input type="radio" name="mapSize" value="large" />
+                      <span>Large (21x21)</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="setting-group">
+                  <label>Speed</label>
+                  <div class="radio-grid">
+                    <label class="radio-label">
+                      <input type="radio" name="gameSpeed" value="slow" />
+                      <span>Slow</span>
+                    </label>
+                    <label class="radio-label">
+                      <input type="radio" name="gameSpeed" value="medium" checked />
+                      <span>Medium</span>
+                    </label>
+                    <label class="radio-label">
+                      <input type="radio" name="gameSpeed" value="fast" />
+                      <span>Fast</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="setting-group">
+                  <label>Food Count</label>
+                  <div class="radio-grid">
+                    <label class="radio-label">
+                      <input type="radio" name="foodCount" value="1" checked />
+                      <span>1</span>
+                    </label>
+                    <label class="radio-label">
+                      <input type="radio" name="foodCount" value="3" />
+                      <span>3</span>
+                    </label>
+                    <label class="radio-label">
+                      <input type="radio" name="foodCount" value="5" />
+                      <span>5</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="setting-group">
+                  <label>Game Mode</label>
+                  <div class="radio-grid">
+                    <label class="radio-label">
+                      <input type="radio" name="gameMode" value="freeplay" checked />
+                      <span>Free Play</span>
+                    </label>
+                    <label class="radio-label">
+                      <input type="radio" name="gameMode" value="trophy" />
+                      <span>Trophy Mode</span>
+                    </label>
+                  </div>
+                </div>
+
+                <button class="menu-btn back-btn full-width" id="backSettingsBtn" type="button">Back</button>
+              </div>
+            </div>
+            <canvas id="snakeCanvas" class="snake-canvas" hidden width="400" height="250" aria-label="Snake game board"></canvas>
+            <div id="playAgainOverlay" class="play-again-overlay" hidden>
+              <button class="menu-btn play-btn" id="playAgainBtn" type="button">Play Again</button>
+              <button class="menu-btn settings-btn" id="playAgainSettingsBtn" type="button" aria-label="Open settings after game over">⚙</button>
+            </div>
+          </div>
+
+          <section class="admin-tools admin-sidebar" id="adminTools" hidden>
+            <h2>Admin Panel</h2>
+            <p class="hint">Owner-only controls. Reset and Revert are always available.</p>
+            <div class="admin-grid">
+              <button class="admin-btn" id="adminModeBtn" type="button">Enable Admin</button>
+              <button class="admin-btn" id="adminAddFoodBtn" type="button" disabled>Add Food</button>
+              <button class="admin-btn" id="adminClearBoardBtn" type="button" disabled>Clear Board</button>
+            </div>
+            <div class="admin-time">
+              <label for="adminSpeedInput">Set Speed (ms delay)</label>
+              <div class="admin-time-row">
+                <input id="adminSpeedInput" type="number" min="50" step="10" value="100" disabled />
+                <button class="admin-btn" id="adminApplySpeedBtn" type="button" disabled>Apply</button>
+              </div>
+            </div>
+            <div class="admin-time">
+              <label for="adminScoreInput">Set Score (food eaten)</label>
+              <div class="admin-time-row">
+                <input id="adminScoreInput" type="number" min="0" step="1" value="0" disabled />
+                <button class="admin-btn" id="adminApplyScoreBtn" type="button" disabled>Apply</button>
+              </div>
+            </div>
+            <div class="admin-grid">
+              <button class="admin-btn" id="adminResetScoresBtn" type="button" disabled>Reset</button>
+              <button class="admin-btn" id="adminRevertScoresBtn" type="button" disabled>Revert</button>
+            </div>
+            <p class="hint" id="adminInfo">Admin disabled. Add <code>?admin=1</code> to URL or press Ctrl+Shift+A to show this panel.</p>
+          </section>
+        </div>
+      </article>
+    </section>
+
+    <section class="leaderboard leaderboard-block" style="margin-top: 14px;">
+      <h2>Global Leaderboard Preview</h2>
+      <p class="leaderboard-note">Static sample now. Later this table will pull live global rankings from the leaderboard API.</p>
+      <table class="table" aria-label="Snake leaderboard preview">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Player</th>
+            <th>Mode</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboardPreviewBody">
+          <tr><td>#1</td><td>SnakeMaster</td><td>Normal</td><td>850</td></tr>
+          <tr><td>#2</td><td>FastRunner</td><td>Fast</td><td>720</td></tr>
+          <tr><td>#3</td><td>HardcoreKing</td><td>Hardcore</td><td>580</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+</body>
+</html>

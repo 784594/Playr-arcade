@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Absurd Trolley Problem fast-decision simulation for PlayR." />
+  <title>The Absurd Trolley Problem! | PlayR</title>
+  <link rel="stylesheet" href="../../shared/game-shell.css" />
+  <link rel="stylesheet" href="game.css" />
+  <script defer src="../../shared/game-shell.js"></script>
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <div class="trolley-shell" id="gameRoot" data-game-title="The Absurd Trolley Problem!" data-metric="n_a" data-direction="n_a" data-scope="none">
+    <header class="hud-row">
+      <div class="brand-spacer" aria-hidden="true"></div>
+      <div class="title-wrap">
+        <h1>The Absurd Trolley Problem!</h1>
+        <p id="levelLabel">Level 1: The Original</p>
+      </div>
+      <div class="hud-icons">
+        <a class="back-link" href="../../../index.html">Back to hub</a>
+        <span aria-hidden="true">absurd</span>
+        <button id="soundToggle" type="button" aria-label="Toggle sound">sound on</button>
+      </div>
+    </header>
+
+    <main class="game-viewport" aria-live="polite">
+      <section class="scene-area" aria-label="Trolley scene">
+        <svg class="scene-svg" viewBox="0 0 1200 440" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Trolley tracks and lever scene">
+          <path id="mainTopTrack" class="track main-top" d="M130 146 C 312 198, 540 272, 1034 388" />
+          <path id="mainBottomTrack" class="track main-bottom" d="M130 178 C 312 230, 540 304, 1034 420" />
+          <path id="divertTopTrack" class="track divert-top" d="M490 264 C 662 168, 804 128, 1070 164" />
+          <path id="divertBottomTrack" class="track divert-bottom" d="M490 296 C 670 202, 812 162, 1078 206" />
+          <circle class="switch-point" cx="492" cy="281" r="7"></circle>
+          <g id="trackMarksMain" class="track-marks"></g>
+          <g id="trackMarksDivert" class="track-marks"></g>
+          <path id="routeMain" class="route-guide" d="M130 162 C 312 214, 540 288, 1034 404" />
+          <path id="routeDivert" class="route-guide" d="M130 162 C 312 214, 476 266, 492 281 C 654 188, 800 147, 1074 185" />
+        </svg>
+
+        <div class="trolley" id="trolley" aria-hidden="true">
+          <div class="trolley-roof"></div>
+          <div class="trolley-body">
+            <span></span><span></span><span></span>
+          </div>
+          <div class="trolley-wheels"><i></i><i></i><i></i><i></i></div>
+        </div>
+
+        <div class="lever-person" id="leverFigure" aria-hidden="true">
+          <div class="head"></div>
+          <div class="torso"></div>
+          <div class="arm arm-left"></div>
+          <div class="arm arm-right"></div>
+          <div class="leg leg-left"></div>
+          <div class="leg leg-right"></div>
+          <div class="lever-base"></div>
+          <button id="leverVisual" class="lever-stick" type="button" tabindex="-1" aria-hidden="true"></button>
+        </div>
+
+        <div id="mainVictims" class="victims victims-main" aria-hidden="true"></div>
+        <div id="divertVictims" class="victims victims-divert" aria-hidden="true"></div>
+
+        <div id="splatMain" class="splat splat-main" aria-hidden="true">splat</div>
+        <div id="splatDivert" class="splat splat-divert" aria-hidden="true">splat</div>
+      </section>
+
+      <section class="prompt-area">
+        <p id="promptText" class="prompt-text"></p>
+        <div class="choice-row" id="choiceRow">
+          <button id="choiceDoNothing" class="choice-btn" type="button">Do nothing</button>
+          <button id="choicePullLever" class="choice-btn" type="button">Pull the lever</button>
+        </div>
+        <div class="timer-wrap" id="timerWrap" aria-live="polite">
+          <p>Decision timer: <strong id="timerSeconds">10</strong>s</p>
+          <div class="timer-track"><div id="timerFill"></div></div>
+        </div>
+      </section>
+    </main>
+
+    <footer id="resultBar" class="result-bar" hidden>
+      <div class="result-left">
+        <div id="resultPie" class="mini-pie" aria-hidden="true"></div>
+        <p id="resultText"></p>
+      </div>
+      <button id="nextBtn" class="next-btn" type="button">Next -></button>
+    </footer>
+  </div>
+</body>
+</html>

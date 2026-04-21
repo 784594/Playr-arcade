@@ -1,0 +1,356 @@
+.round-strip {
+	margin-top: 12px;
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 8px;
+}
+
+.round-strip div {
+	border: 1px solid rgba(255, 255, 255, 0.09);
+	border-radius: 12px;
+	background: rgba(7, 12, 22, 0.6);
+	padding: 10px 12px;
+}
+
+.round-strip span {
+	display: block;
+	color: var(--muted);
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	font-size: 0.68rem;
+	margin-bottom: 6px;
+}
+
+.round-strip strong {
+	font-size: 1.05rem;
+}
+
+.mode-list {
+	display: grid;
+	gap: 8px;
+}
+
+.mode-btn {
+	display: grid;
+	gap: 4px;
+	text-align: left;
+	padding: 12px 14px;
+	border-radius: 14px;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	background: rgba(255, 255, 255, 0.04);
+	color: var(--text);
+	cursor: pointer;
+	transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.mode-btn:hover,
+.mode-btn:focus-visible,
+.mode-btn.active {
+	border-color: rgba(124, 240, 197, 0.4);
+	background: rgba(124, 240, 197, 0.12);
+	transform: translateY(-1px);
+}
+
+.mode-btn span,
+.hint,
+.leaderboard-note {
+	color: var(--muted);
+	line-height: 1.65;
+}
+
+.actions {
+	display: grid;
+	gap: 8px;
+	margin-top: 14px;
+}
+
+.action-btn {
+	min-height: 42px;
+	border-radius: 999px;
+	border: 1px solid rgba(124, 240, 197, 0.36);
+	background: linear-gradient(135deg, rgba(124, 240, 197, 0.22), rgba(124, 240, 197, 0.08));
+	color: var(--text);
+	font-weight: 700;
+	padding: 0 16px;
+	cursor: pointer;
+	transition: transform 150ms ease, border-color 150ms ease;
+}
+
+.action-btn:hover,
+.action-btn:focus-visible {
+	transform: translateY(-1px);
+	border-color: rgba(124, 240, 197, 0.58);
+}
+
+.action-btn.secondary {
+	border-color: rgba(255, 255, 255, 0.2);
+	background: rgba(255, 255, 255, 0.06);
+}
+
+.best-times {
+	margin-top: 16px;
+}
+
+.best-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 8px;
+}
+
+.best-list li {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 10px;
+	padding: 9px 10px;
+}
+
+.best-list span {
+	color: var(--muted);
+}
+
+.play-area {
+	display: grid;
+	grid-template-rows: auto auto;
+	gap: 12px;
+	align-content: start;
+	min-height: 0;
+}
+
+.board-wrap {
+	position: relative;
+	width: min(100%, 660px);
+	margin: 0 auto;
+	padding: 12px;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 18px;
+	background: rgba(5, 9, 18, 0.6);
+}
+
+.sudoku-board {
+	--cell-size: clamp(34px, 6vw, 60px);
+	display: grid;
+	grid-template-columns: repeat(9, var(--cell-size));
+	grid-template-rows: repeat(9, var(--cell-size));
+	gap: 0;
+	width: fit-content;
+	margin: 0 auto;
+	border: 2px solid rgba(255, 255, 255, 0.6);
+	background: rgba(10, 17, 32, 0.95);
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.sudoku-cell {
+	position: relative;
+	width: var(--cell-size);
+	height: var(--cell-size);
+	border: 1px solid rgba(255, 255, 255, 0.18);
+	background: rgba(255, 255, 255, 0.02);
+	color: #ecf2ff;
+	font: 700 clamp(1rem, 2.6vw, 1.45rem) / 1 "Segoe UI", Tahoma, sans-serif;
+	cursor: pointer;
+	padding: 0;
+	transition: background 120ms ease, border-color 120ms ease;
+}
+
+.sudoku-cell:hover,
+.sudoku-cell:focus-visible {
+	background: rgba(124, 240, 197, 0.12);
+	border-color: rgba(124, 240, 197, 0.5);
+	z-index: 3;
+}
+
+.sudoku-cell.is-fixed {
+	background: rgba(255, 255, 255, 0.09);
+	color: #ffffff;
+	font-weight: 800;
+	cursor: default;
+}
+
+.sudoku-cell.is-selected {
+	background: rgba(124, 240, 197, 0.24);
+	border-color: rgba(124, 240, 197, 0.72);
+	z-index: 5;
+}
+
+.sudoku-cell.is-peer {
+	background: rgba(124, 240, 197, 0.08);
+}
+
+.sudoku-cell.is-matching {
+	background: rgba(74, 153, 255, 0.2);
+}
+
+.sudoku-cell.is-conflict {
+	background: rgba(255, 117, 143, 0.24);
+	color: #ffd4df;
+	border-color: rgba(255, 117, 143, 0.65);
+}
+
+.sudoku-cell.is-wrong {
+	animation: wrongPulse 220ms ease;
+}
+
+.sudoku-cell .value {
+	display: grid;
+	place-items: center;
+	width: 100%;
+	height: 100%;
+}
+
+.notes-grid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	grid-template-rows: repeat(3, 1fr);
+	gap: 1px;
+	width: 100%;
+	height: 100%;
+	padding: clamp(3px, 0.7vw, 5px);
+	color: #a8b8da;
+	font-size: clamp(0.44rem, 1.2vw, 0.66rem);
+	font-weight: 600;
+	line-height: 1;
+}
+
+.notes-grid span {
+	display: grid;
+	place-items: center;
+}
+
+.input-panel {
+	display: grid;
+	gap: 10px;
+	width: min(100%, 660px);
+	margin: 0 auto;
+}
+
+.numpad {
+	display: grid;
+	grid-template-columns: repeat(9, minmax(0, 1fr));
+	gap: 8px;
+}
+
+.num-btn {
+	min-height: 40px;
+	border-radius: 10px;
+	border: 1px solid rgba(255, 255, 255, 0.18);
+	background: rgba(255, 255, 255, 0.05);
+	color: var(--text);
+	font-weight: 800;
+	cursor: pointer;
+}
+
+.num-btn:hover,
+.num-btn:focus-visible,
+.num-btn.active {
+	border-color: rgba(124, 240, 197, 0.45);
+	background: rgba(124, 240, 197, 0.14);
+}
+
+.input-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+.board-overlay {
+	position: absolute;
+	inset: 12px;
+	display: grid;
+	place-items: center;
+	background: rgba(2, 8, 18, 0.64);
+	backdrop-filter: blur(4px);
+	border-radius: 14px;
+	z-index: 8;
+}
+
+.board-overlay[hidden] {
+	display: none;
+}
+
+.overlay-card {
+	width: min(100%, 380px);
+	padding: 20px;
+	border-radius: 18px;
+	border: 1px solid rgba(124, 240, 197, 0.24);
+	background: linear-gradient(180deg, rgba(19, 31, 53, 0.98), rgba(10, 15, 27, 0.96));
+	box-shadow: 0 20px 48px rgba(0, 0, 0, 0.4);
+	text-align: center;
+}
+
+.overlay-kicker {
+	margin: 0 0 6px;
+	color: var(--accent);
+	text-transform: uppercase;
+	letter-spacing: 0.14em;
+	font-size: 0.7rem;
+}
+
+.overlay-card h2 {
+	margin: 0 0 10px;
+}
+
+.overlay-card p {
+	margin: 0;
+	color: var(--muted);
+	line-height: 1.65;
+}
+
+.overlay-actions {
+	display: flex;
+	justify-content: center;
+	gap: 8px;
+	margin-top: 14px;
+	flex-wrap: wrap;
+}
+
+.sudoku-cell.box-top {
+	border-top-width: 2px;
+}
+
+.sudoku-cell.box-left {
+	border-left-width: 2px;
+}
+
+.sudoku-cell.box-right {
+	border-right-width: 2px;
+}
+
+.sudoku-cell.box-bottom {
+	border-bottom-width: 2px;
+}
+
+@keyframes wrongPulse {
+	0% {
+		transform: scale(1);
+	}
+	50% {
+		transform: scale(0.93);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+
+@media (max-width: 900px) {
+	.round-strip {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.numpad {
+		grid-template-columns: repeat(5, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 520px) {
+	.round-strip {
+		grid-template-columns: 1fr;
+	}
+
+	.numpad {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+}

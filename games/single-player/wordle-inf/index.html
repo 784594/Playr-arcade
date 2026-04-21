@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Wordle Infinite module for PlayR." />
+  <title>Wordle Infinite | PlayR</title>
+  <link rel="stylesheet" href="../../shared/game-shell.css" />
+  <link rel="stylesheet" href="game.css" />
+  <script defer src="../../shared/game-shell.js"></script>
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <div class="page" id="gameRoot" data-game-title="Wordle Infinite" data-metric="none" data-direction="asc" data-scope="single-player">
+    <div class="top">
+      <a class="back-link" href="../../../index.html">Back to hub</a>
+      <div class="board-meta">
+        <span class="tag">Type: single-player</span>
+        <span class="tag">Controls: Keyboard</span>
+      </div>
+    </div>
+
+    <header class="header">
+      <p class="tag">PlayR Word Puzzle</p>
+      <h1>Wordle Infinite</h1>
+      <div class="meta">
+        <span class="tag">Infinite rounds</span>
+        <span class="tag">Five-letter words</span>
+        <span class="tag">Keyboard input</span>
+      </div>
+      <p id="gameStatus">Loading Wordle Infinite...</p>
+    </header>
+
+    <section class="wordle-layout">
+      <aside class="panel wordle-rail wordle-stats-rail" id="leftRail">
+        <h2 id="leftRailTitle">Wordle</h2>
+        <div class="admin-section" id="adminTools" hidden>
+          <p class="hint">Owner only.</p>
+          <div class="admin-word-card">
+            <span>Current word</span>
+            <strong id="adminWordValue">Hidden</strong>
+          </div>
+          <button id="revealWordBtn" class="action-btn" type="button">Reveal Word</button>
+        </div>
+        <div class="stats-section" id="statsSection" hidden>
+          <p class="hint">Stats coming soon.</p>
+        </div>
+        <div class="empty-stat-card" id="emptyPlaceholder">
+          <span>Space reserved</span>
+          <strong>--</strong>
+        </div>
+      </aside>
+
+      <article class="play-area wordle-play">
+        <div class="wordle-top-row">
+          <div>
+            <h2>Wordle Infinite</h2>
+          </div>
+          <button id="nextWordBtn" class="action-btn secondary" type="button" hidden>Next Word</button>
+        </div>
+
+        <section class="board-shell">
+          <div id="board" class="wordle-board" aria-label="Wordle board"></div>
+        </section>
+
+        <section class="keyboard-shell" aria-label="Wordle keyboard">
+          <div id="keyboard" class="wordle-keyboard"></div>
+        </section>
+      </article>
+
+      <div id="gameEndModal" class="game-end-modal" hidden>
+        <div class="modal-content">
+          <h2 id="modalTitle">Word Found!</h2>
+          <p id="modalMessage">You guessed it in 3 tries!</p>
+          <div class="modal-actions">
+            <button id="playAgainBtn" class="action-btn" type="button">Play Again</button>
+            <button id="definitionBtn" class="action-btn secondary" type="button">Definition</button>
+          </div>
+          <p id="definitionText" class="hint definition-text" hidden></p>
+        </div>
+      </div>
+
+      <div id="invalidWordNotice" class="invalid-word-notice" hidden>
+        Not in word list
+      </div>
+    </section>
+  </div>
+</body>
+</html>

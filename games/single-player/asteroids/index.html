@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Pixel Asteroids - a crisp retro space shooter with modern arcade polish." />
+  <title>Asteroids | Playr</title>
+  <link rel="stylesheet" href="../../shared/game-shell.css" />
+  <link rel="stylesheet" href="game.css" />
+  <script defer src="../../shared/game-shell.js"></script>
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <div class="game-shell" id="gameRoot" data-game-title="Asteroids" data-metric="score" data-direction="desc" data-scope="global">
+    <header class="game-header">
+      <a class="back-link" href="../../../index.html">Back to hub</a>
+      <div class="hero-copy">
+        <p class="eyebrow">Pixel arcade / ship combat</p>
+        <h1>Asteroids</h1>
+        <p class="game-tagline">Classic drift, split rocks, and one more run than you planned.</p>
+      </div>
+      <div class="header-metadata">
+        <span class="chip">Controls: Arrows / WASD</span>
+        <span class="chip">Fire: Space</span>
+        <span class="chip">Hyperspace: Shift</span>
+      </div>
+      <p id="gameStatus" class="status-pill">Loading asteroid field...</p>
+    </header>
+
+    <main class="game-layout">
+      <section class="game-board-card">
+        <div class="hud-row">
+          <div class="hud-stat">
+            <span>Score</span>
+            <strong id="scoreValue">00000</strong>
+          </div>
+          <div class="hud-stat">
+            <span>Best</span>
+            <strong id="bestValue">00000</strong>
+          </div>
+          <div class="hud-stat">
+            <span>Wave</span>
+            <strong id="waveValue">01</strong>
+          </div>
+          <div class="hud-stat lives-stat">
+            <span>Lives</span>
+            <div id="livesValue" class="lives-row" aria-label="Lives remaining"></div>
+          </div>
+        </div>
+
+        <div class="board-frame">
+          <canvas id="gameCanvas" width="800" height="600" aria-label="Asteroids game board"></canvas>
+          <div class="overlay" id="overlay" aria-live="polite">
+            <div class="overlay-card">
+              <p class="overlay-kicker" id="overlayKicker">Ready</p>
+              <h2 id="overlayTitle">Launch sequence armed</h2>
+              <p id="overlayText">Destroy the wave, survive the drift, and chase the next high score.</p>
+              <div class="overlay-actions">
+                <button class="primary-btn" type="button" id="startButton">Start</button>
+                <button class="ghost-btn" type="button" id="restartButton">Restart</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mobile-controls" aria-label="Touch controls">
+          <button type="button" class="control-btn" data-action="left">Turn Left</button>
+          <button type="button" class="control-btn" data-action="thrust">Thrust</button>
+          <button type="button" class="control-btn" data-action="right">Turn Right</button>
+          <button type="button" class="control-btn fire" data-action="fire">Fire</button>
+          <button type="button" class="control-btn" data-action="hyperspace">Hyperspace</button>
+          <button type="button" class="control-btn" data-action="pause">Pause</button>
+        </div>
+      </section>
+
+      <aside class="side-panel">
+        <section class="info-card">
+          <h2>How It Plays</h2>
+          <p>The feel stays faithful: inertia matters, shots are limited, rocks split, and the field wraps forever.</p>
+        </section>
+
+        <section class="info-card">
+          <h2>Rules</h2>
+          <ul>
+            <li>Large asteroids split into medium and small fragments.</li>
+            <li>Clearing a wave spawns a denser new field.</li>
+            <li>Hit the ship and you lose a life after a short grace period.</li>
+            <li>Hyperspace is safe-ish, not safe.</li>
+          </ul>
+        </section>
+
+        <section class="info-card">
+          <h2>Controls</h2>
+          <ul>
+            <li>Rotate: Arrow Left / Arrow Right or A / D</li>
+            <li>Thrust: Arrow Up or W</li>
+            <li>Fire: Space or Enter</li>
+            <li>Pause: P or Escape</li>
+            <li>Hyperspace: Shift or Mobile button</li>
+          </ul>
+        </section>
+      </aside>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Jump over cacti, survive as speed ramps up, and set your best local distance in Dino Run Clone." />
+  <title>Dino Run Clone | PlayR</title>
+  <link rel="stylesheet" href="../../shared/game-shell.css" />
+  <link rel="stylesheet" href="game.css" />
+  <script defer src="../../shared/game-shell.js"></script>
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <div class="page" id="gameRoot" data-game-title="Dino Run Clone" data-metric="distance" data-direction="desc" data-scope="global">
+    <div class="top">
+      <a class="back-link" href="../../../index.html">Back to hub</a>
+      <div class="board-meta">
+        <span class="tag">Type: single-player</span>
+        <span class="tag">Controls: jump + duck</span>
+      </div>
+    </div>
+
+    <header class="header">
+      <p class="tag">PlayR Game Module</p>
+      <h1>Dino Run Clone</h1>
+      <div class="meta">
+        <span class="tag">Leaderboard scope: global</span>
+        <span class="tag">Metric: highest distance</span>
+        <span class="tag">Direction: desc (higher is better)</span>
+      </div>
+      <p id="gameStatus">Loading Dino Run...</p>
+    </header>
+
+    <section class="round-strip" aria-live="polite">
+      <div>
+        <span>Run State</span>
+        <strong id="runState">Ready</strong>
+      </div>
+      <div>
+        <span>Distance</span>
+        <strong id="distanceStat">0m</strong>
+      </div>
+      <div>
+        <span>Speed</span>
+        <strong id="speedStat">1.00x</strong>
+      </div>
+    </section>
+
+    <section class="main-grid">
+      <aside class="panel">
+        <section class="sidebar-card">
+          <h2>Controls</h2>
+          <ul class="compact-list">
+            <li>Jump: Space, Arrow Up, W, click/tap Jump</li>
+            <li>Duck: Arrow Down, S, hold Duck button</li>
+            <li>Start: Enter or Start Run button</li>
+            <li>Restart: R or Play Again button</li>
+          </ul>
+          <div class="actions">
+            <button class="action-btn" id="startBtn" type="button">Start Run</button>
+            <button class="action-btn secondary" id="restartBtn" type="button">Play Again</button>
+          </div>
+        </section>
+
+        <section class="sidebar-card">
+          <h2>Run Stats</h2>
+          <ul class="best-list">
+            <li><span>Current Distance</span><strong id="currentDistance">0m</strong></li>
+            <li><span>Best Distance</span><strong id="bestDistance">0m</strong></li>
+            <li><span>Obstacle Speed</span><strong id="currentSpeed">1.00x</strong></li>
+          </ul>
+        </section>
+
+        <section class="sidebar-card">
+          <h2>Best Local Runs</h2>
+          <ol class="run-list" id="bestRunsList">
+            <li>0m</li>
+            <li>0m</li>
+            <li>0m</li>
+            <li>0m</li>
+            <li>0m</li>
+          </ol>
+        </section>
+      </aside>
+
+      <article class="play-area">
+        <div class="board-top">
+          <span class="tag" id="boardMeta">Tap or press jump to start</span>
+        </div>
+        <div class="play-stage">
+          <div class="board-wrap">
+            <canvas id="dinoCanvas" class="dino-canvas" width="960" height="360" aria-label="Dino Run game board"></canvas>
+            <div class="overlay" id="overlayPanel">
+              <h2 id="overlayTitle">Dino Run</h2>
+              <p id="overlayText">Jump over obstacles and survive as the pace increases.</p>
+              <div class="overlay-actions">
+                <button class="action-btn" id="overlayStartBtn" type="button">Start Run</button>
+              </div>
+            </div>
+          </div>
+          <div class="touch-controls">
+            <button class="action-btn jump-btn" id="jumpBtn" type="button">Jump</button>
+            <button class="action-btn secondary duck-btn" id="duckBtn" type="button">Duck</button>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="leaderboard" style="margin-top: 14px;">
+      <h2>Leaderboard Preview (Local)</h2>
+      <p class="leaderboard-note">This table reflects your top five local runs on this browser.</p>
+      <table class="table" aria-label="Dino Run Clone local leaderboard preview">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Runner</th>
+            <th>Distance</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboardPreviewBody">
+          <tr><td>#1</td><td>You</td><td>0m</td></tr>
+          <tr><td>#2</td><td>You</td><td>0m</td></tr>
+          <tr><td>#3</td><td>You</td><td>0m</td></tr>
+          <tr><td>#4</td><td>You</td><td>0m</td></tr>
+          <tr><td>#5</td><td>You</td><td>0m</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+</body>
+</html>

@@ -1,0 +1,230 @@
+:root {
+	--sky-top: #7cc6ff;
+	--sky-mid: #b7ecff;
+	--sky-low: #e9fbff;
+	--ink: #0f2540;
+	--pipe: #43bb74;
+	--pipe-dark: #22814c;
+	--ground: #b87938;
+	--ground-dark: #8f5225;
+}
+
+.header {
+	background:
+		radial-gradient(circle at top right, rgba(255, 255, 255, 0.22), transparent 28%),
+		linear-gradient(180deg, rgba(17, 42, 80, 0.86), rgba(8, 18, 38, 0.94));
+	border-color: rgba(255, 255, 255, 0.14);
+	box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+}
+
+.header h1 {
+	text-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.main-grid {
+	align-items: start;
+}
+
+.panel,
+.play-stage {
+	animation: fade-in 420ms ease-out both;
+}
+
+.panel {
+	display: grid;
+	gap: 12px;
+	align-content: start;
+}
+
+.sidebar-card {
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 18px;
+	padding: 14px;
+	background:
+		linear-gradient(180deg, rgba(20, 32, 52, 0.86), rgba(10, 15, 26, 0.9)),
+		radial-gradient(circle at top, rgba(124, 240, 197, 0.08), transparent 58%);
+	box-shadow: 0 14px 28px rgba(0, 0, 0, 0.18);
+}
+
+.sidebar-card h2 {
+	margin-bottom: 12px;
+}
+
+.compact-list {
+	margin: 0;
+	padding-left: 18px;
+	display: grid;
+	gap: 8px;
+	color: var(--muted);
+	line-height: 1.55;
+}
+
+.round-strip {
+	margin-top: 12px;
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 8px;
+}
+
+.round-strip div {
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 14px;
+	background: linear-gradient(180deg, rgba(13, 22, 38, 0.92), rgba(7, 12, 22, 0.86));
+	padding: 10px 12px;
+}
+
+.round-strip span {
+	display: block;
+	color: var(--muted);
+	text-transform: uppercase;
+	letter-spacing: 0.11em;
+	font-size: 0.68rem;
+	margin-bottom: 6px;
+}
+
+.round-strip strong {
+	font-size: 1.08rem;
+}
+
+.play-stage {
+	display: grid;
+	gap: 12px;
+}
+
+.board-top {
+	margin-bottom: 2px;
+}
+
+.board-wrap {
+	position: relative;
+	border: 1px solid rgba(124, 180, 255, 0.16);
+	border-radius: 22px;
+	padding: 14px;
+	background:
+		linear-gradient(180deg, rgba(12, 21, 39, 0.74), rgba(7, 12, 20, 0.86)),
+		radial-gradient(circle at 20% 10%, rgba(124, 240, 197, 0.14), transparent 30%),
+		radial-gradient(circle at 80% 18%, rgba(140, 190, 255, 0.18), transparent 34%);
+	box-shadow: 0 26px 52px rgba(0, 0, 0, 0.3);
+}
+
+.flappy-canvas {
+	display: block;
+	width: 100%;
+	height: auto;
+	max-height: min(66vh, 620px);
+	border-radius: 16px;
+	background: linear-gradient(180deg, var(--sky-top), var(--sky-mid) 44%, var(--sky-low) 100%);
+	border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.overlay {
+	position: absolute;
+	inset: 14px;
+	border-radius: 16px;
+	display: grid;
+	place-items: center;
+	align-content: center;
+	gap: 10px;
+	text-align: center;
+	background: rgba(7, 15, 26, 0.56);
+	backdrop-filter: blur(4px);
+	padding: 16px;
+}
+
+.overlay[hidden] {
+	display: none;
+}
+
+.overlay h2 {
+	margin: 0;
+	font-size: clamp(1.4rem, 2.6vw, 2rem);
+}
+
+.overlay p {
+	margin: 0;
+	max-width: 26rem;
+	color: var(--muted);
+}
+
+.overlay-actions {
+	width: min(260px, 100%);
+}
+
+.overlay-actions .action-btn {
+	width: 100%;
+}
+
+.touch-controls {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+.jump-btn {
+	min-width: 140px;
+}
+
+.action-btn,
+.action-btn.secondary {
+	transition: transform 150ms ease, border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+}
+
+.action-btn:hover,
+.action-btn:focus-visible,
+.action-btn.secondary:hover,
+.action-btn.secondary:focus-visible {
+	transform: translateY(-1px);
+	box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+}
+
+.best-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 8px;
+}
+
+.best-list li {
+	display: flex;
+	justify-content: space-between;
+	gap: 10px;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 12px;
+	padding: 10px 12px;
+	background: rgba(255, 255, 255, 0.03);
+}
+
+.best-list span {
+	color: var(--muted);
+}
+
+@keyframes fade-in {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@media (max-width: 900px) {
+	.touch-controls {
+		justify-content: stretch;
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.jump-btn,
+	.touch-controls .secondary {
+		width: 100%;
+	}
+}
+
+@media (max-width: 680px) {
+	.round-strip {
+		grid-template-columns: 1fr;
+	}
+}

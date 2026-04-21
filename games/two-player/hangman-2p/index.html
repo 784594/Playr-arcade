@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Multiplayer Hangman with a lobby, room codes, categorized words, and 9-life rounds." />
+  <title>Hangman Multiplayer | PlayR</title>
+  <link rel="stylesheet" href="../../shared/game-shell.css" />
+  <link rel="stylesheet" href="game.css" />
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script defer src="../../shared/game-shell.js"></script>
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <div class="page" id="gameRoot" data-game-title="Hangman Multiplayer" data-metric="win_rate" data-direction="desc" data-scope="global">
+    <div class="top">
+      <a class="back-link" href="../../../index.html">Back to hub</a>
+      <div class="board-meta">
+        <span class="tag">Type: multiplayer</span>
+        <span class="tag">Lobby: create / join</span>
+        <span class="tag">Players: 5 + owner</span>
+      </div>
+    </div>
+
+    <header class="header">
+      <p class="tag">PlayR Multiplayer Module</p>
+      <h1>Hangman Multiplayer</h1>
+      <div class="meta">
+        <span class="tag">9 lives total</span>
+        <span class="tag">Category clues</span>
+        <span class="tag">Classic hangman rules</span>
+      </div>
+      <p id="gameStatus">Connecting to room service...</p>
+    </header>
+
+    <section class="main-grid hangman-layout">
+      <aside class="panel lobby-panel">
+        <h2>Lobby</h2>
+
+        <section id="gatePanel" class="lobby-card">
+          <p class="eyebrow">Create or join a room</p>
+          <p class="hint">Rooms support up to 5 players, plus the owner account.</p>
+          <div class="lobby-actions">
+            <button id="createRoomBtn" class="action-btn" type="button">Create a Game</button>
+            <button id="joinFlowBtn" class="action-btn secondary" type="button">Join a Game</button>
+          </div>
+
+          <div id="joinFlow" class="join-flow" hidden>
+            <label class="field" for="joinRoomInput">
+              <span>Room Code</span>
+              <input id="joinRoomInput" class="room-input" type="text" maxlength="24" placeholder="Enter room code" />
+            </label>
+            <div class="join-flow-actions">
+              <button id="joinRoomBtn" class="action-btn" type="button">Join Room</button>
+              <button id="backToLobbyBtn" class="action-btn secondary" type="button">Back</button>
+            </div>
+            <p id="roomGateError" class="gate-error" hidden></p>
+          </div>
+        </section>
+
+        <section id="roomInfoPanel" class="room-card" hidden>
+          <div class="room-card-header">
+            <div>
+              <p class="eyebrow">Current Room</p>
+              <h3 id="roomCodeLabel">------</h3>
+            </div>
+            <button id="leaveRoomBtn" class="action-btn secondary" type="button">Leave</button>
+          </div>
+
+          <div class="room-stats">
+            <div>
+              <span>Players</span>
+              <strong id="playerCountLabel">0/5</strong>
+            </div>
+            <div>
+              <span>Host</span>
+              <strong id="hostLabel">--</strong>
+            </div>
+            <div>
+              <span>Round</span>
+              <strong id="roundLabel">1</strong>
+            </div>
+          </div>
+
+          <label class="field" for="categorySelect">
+            <span>Category</span>
+            <select id="categorySelect" class="room-input"></select>
+          </label>
+
+          <div class="room-buttons">
+            <button id="startRoundBtn" class="action-btn" type="button">Start Round</button>
+            <button id="copyRoomCodeBtn" class="action-btn secondary" type="button">Copy Code</button>
+            <button id="copyInviteBtn" class="action-btn secondary" type="button">Copy Invite</button>
+          </div>
+
+          <p id="roomHint" class="hint">Create a room to begin.</p>
+
+          <div class="player-list-wrap">
+            <h4>Players</h4>
+            <div id="playerList" class="player-list"></div>
+          </div>
+        </section>
+      </aside>
+
+      <article class="play-area hangman-stage">
+        <div class="stage-header">
+          <div>
+            <p class="eyebrow">Topic</p>
+            <h2 id="categoryLabel">Waiting for a room</h2>
+          </div>
+          <div class="life-meter">
+            <span id="lifeLabel">9 lives left</span>
+            <span id="wrongCountLabel">0 wrong guesses</span>
+          </div>
+        </div>
+
+        <div class="hangman-board">
+          <section class="gallows-card">
+            <div class="gallows-scene" aria-label="Hangman scaffold">
+              <div class="gallows gallows-post"></div>
+              <div class="gallows gallows-beam"></div>
+              <div class="gallows gallows-rope"></div>
+              <div class="hangman-part head" data-part="head"></div>
+              <div class="hangman-part eye left-eye" data-part="left-eye"></div>
+              <div class="hangman-part eye right-eye" data-part="right-eye"></div>
+              <div class="hangman-part mouth" data-part="mouth"></div>
+              <div class="hangman-part body" data-part="body"></div>
+              <div class="hangman-part arm left-arm" data-part="left-arm"></div>
+              <div class="hangman-part arm right-arm" data-part="right-arm"></div>
+              <div class="hangman-part leg left-leg" data-part="left-leg"></div>
+              <div class="hangman-part leg right-leg" data-part="right-leg"></div>
+            </div>
+            <div id="lifeDots" class="life-dots" aria-hidden="true"></div>
+          </section>
+
+          <section class="guess-card">
+            <div id="wordDisplay" class="word-display" aria-label="Secret word"></div>
+
+            <div class="guess-row">
+              <input id="guessInput" class="room-input" type="text" maxlength="32" placeholder="Guess a letter or the full word" autocomplete="off" />
+              <button id="guessBtn" class="action-btn" type="button">Guess</button>
+            </div>
+
+            <div class="guess-meta">
+              <div>
+                <h3>Guessed Letters</h3>
+                <div id="guessedLetters" class="chip-row"></div>
+              </div>
+              <div>
+                <h3>Misses</h3>
+                <div id="wrongLetters" class="chip-row missed"></div>
+              </div>
+            </div>
+
+            <div>
+              <h3>Keyboard</h3>
+              <div id="letterKeyboard" class="letter-keyboard"></div>
+            </div>
+
+            <p id="roundMessage" class="hint">Create or join a room to begin.</p>
+          </section>
+        </div>
+      </article>
+    </section>
+  </div>
+</body>
+</html>

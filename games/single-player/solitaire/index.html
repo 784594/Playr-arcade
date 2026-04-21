@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Classic Klondike Solitaire with multiple play modes for PlayR." />
+  <title>Solitaire | PlayR</title>
+  <link rel="stylesheet" href="../../shared/game-shell.css" />
+  <link rel="stylesheet" href="game.css" />
+  <script defer src="../../shared/game-shell.js"></script>
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <div class="page" id="gameRoot" data-game-title="Solitaire" data-metric="completion_time_seconds" data-direction="asc" data-scope="global">
+    <div class="top">
+      <a class="back-link" href="../../../index.html">Back to hub</a>
+      <div class="board-meta">
+        <span class="tag">Type: single-player</span>
+        <span class="tag">Controls: Mouse/Touch</span>
+      </div>
+    </div>
+
+    <header class="header">
+      <p class="tag">PlayR Game Module</p>
+      <h1>Solitaire</h1>
+      <div class="meta">
+        <span class="tag">Leaderboard scope: global</span>
+        <span class="tag">Metric: completion_time_seconds</span>
+        <span class="tag">Direction: asc</span>
+      </div>
+      <p id="gameStatus"></p>
+    </header>
+
+    <section class="main-grid">
+      <aside class="panel">
+        <h2>Session</h2>
+        <ul class="session-list">
+          <li><span>Mode</span><strong id="modeValue">Draw 1</strong></li>
+          <li><span>Timer</span><strong id="timerValue">0.000s</strong></li>
+          <li><span>Moves</span><strong id="movesValue">0</strong></li>
+          <li><span>Score</span><strong id="scoreValue">0</strong></li>
+          <li><span>Status</span><strong id="statusValue">Choose a mode to start</strong></li>
+        </ul>
+
+        <h2>Actions</h2>
+        <div class="button-row">
+          <button class="board-btn board-btn-primary" id="newGameBtn" type="button">New Game</button>
+          <button class="board-btn" id="restartBtn" type="button">Restart</button>
+          <button class="board-btn" id="undoBtn" type="button">Undo</button>
+        </div>
+
+        <h2>Leaderboard (Fastest Wins)</h2>
+        <table class="table slim-table" aria-label="Solitaire leaderboard preview">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Player</th>
+              <th>Mode</th>
+              <th>Time (s)</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardPreviewBody">
+            <tr><td>#1</td><td>AtlasOne</td><td>Draw 1</td><td>--</td></tr>
+            <tr><td>#2</td><td>ArcRunner</td><td>Draw 3</td><td>--</td></tr>
+            <tr><td>#3</td><td>NeonFox</td><td>Vegas</td><td>--</td></tr>
+          </tbody>
+        </table>
+
+        <p class="hint">
+          Drag cards with mouse or touch. Tap or double-click cards to auto-send to foundations when legal.
+          Time is measured in milliseconds and shown on the leaderboard rounded to the nearest second.
+        </p>
+      </aside>
+
+      <article class="play-area">
+        <div class="solitaire-stage" id="solitaireStage">
+          <div class="top-row">
+            <div class="draw-piles">
+              <div class="pile stock" id="stockPile" data-zone="stock" role="button" tabindex="0" aria-label="Stock pile"></div>
+              <div class="pile waste" id="wastePile" data-zone="waste" aria-label="Waste pile"></div>
+            </div>
+
+            <div class="foundations" id="foundations">
+              <div class="pile foundation" data-zone="foundation" data-foundation="H" aria-label="Hearts foundation"></div>
+              <div class="pile foundation" data-zone="foundation" data-foundation="D" aria-label="Diamonds foundation"></div>
+              <div class="pile foundation" data-zone="foundation" data-foundation="C" aria-label="Clubs foundation"></div>
+              <div class="pile foundation" data-zone="foundation" data-foundation="S" aria-label="Spades foundation"></div>
+            </div>
+          </div>
+
+          <div class="tableau" id="tableau"></div>
+
+          <div class="board-overlay" id="boardOverlay">
+            <div class="overlay-card">
+              <p class="overlay-kicker" id="overlayKicker">Choose Mode</p>
+              <h2 id="overlayTitle">Solitaire</h2>
+              <p id="overlayText">Pick a mode, then start your run.</p>
+
+              <div class="mode-picks" id="modePicks">
+                <button class="mode-btn active" type="button" data-mode="draw1">Draw 1</button>
+                <button class="mode-btn" type="button" data-mode="draw3">Draw 3</button>
+                <button class="mode-btn" type="button" data-mode="vegas">Vegas</button>
+              </div>
+
+              <div class="overlay-actions">
+                <button class="board-btn board-btn-primary" id="startBtn" type="button">Start</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="dragLayer" class="drag-layer" aria-hidden="true"></div>
+        </div>
+      </article>
+    </section>
+  </div>
+</body>
+</html>

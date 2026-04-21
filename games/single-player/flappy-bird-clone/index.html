@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Play Flappy Bird in PlayR. Tap, click, or press Space to keep the bird in the air and thread the pipes." />
+  <title>Flappy Bird Clone | PlayR</title>
+  <link rel="stylesheet" href="../../shared/game-shell.css" />
+  <link rel="stylesheet" href="game.css" />
+  <script defer src="../../shared/game-shell.js"></script>
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <div class="page" id="gameRoot" data-game-title="Flappy Bird Clone" data-metric="score" data-direction="desc" data-scope="global">
+    <div class="top">
+      <a class="back-link" href="../../../index.html">Back to hub</a>
+      <div class="board-meta">
+        <span class="tag">Type: single-player</span>
+        <span class="tag">Controls: Space/Mouse</span>
+      </div>
+    </div>
+
+    <header class="header">
+      <p class="tag">PlayR Game Module</p>
+      <h1>Flappy Bird Clone</h1>
+      <div class="meta">
+        <span class="tag">Leaderboard scope: global</span>
+      </div>
+      <p id="gameStatus">Loading Flappy Bird...</p>
+    </header>
+
+    <section class="round-strip" aria-live="polite">
+      <div>
+        <span>Run State</span>
+        <strong id="runState">Ready</strong>
+      </div>
+      <div>
+        <span>Difficulty</span>
+        <strong id="difficultyStat">Normal</strong>
+      </div>
+      <div>
+        <span>Distance</span>
+        <strong id="distanceStat">0m</strong>
+      </div>
+      <div>
+        <span>Score</span>
+        <strong id="scoreStat">0</strong>
+      </div>
+      <div>
+        <span>Best</span>
+        <strong id="bestStat">0</strong>
+      </div>
+      <div>
+        <span>Speed</span>
+        <strong id="speedStat">1.0x</strong>
+      </div>
+    </section>
+
+    <section class="main-grid">
+      <aside class="panel">
+        <section class="sidebar-card">
+          <h2>How To Play</h2>
+          <ul class="compact-list">
+            <li>Tap, click, or press Space to flap upward.</li>
+            <li>Thread the gaps and avoid the pipes, ground, and ceiling.</li>
+            <li>The pace rises as your score climbs, so the rhythm tightens quickly.</li>
+            <li>Press Enter or restart after a crash to try again.</li>
+          </ul>
+        </section>
+
+        <section class="sidebar-card">
+          <h2>Controls</h2>
+          <ul class="compact-list">
+            <li>Flap: Space, Enter, Arrow Up, W, click, or tap</li>
+            <li>Restart: R or the Restart / Play Again button</li>
+          </ul>
+        </section>
+
+        <section class="sidebar-card">
+          <h2>Best Runs</h2>
+          <ul class="best-list" id="bestRunsList">
+            <li><span>Run 1</span><strong>0 pts</strong></li>
+            <li><span>Run 2</span><strong>0 pts</strong></li>
+            <li><span>Run 3</span><strong>0 pts</strong></li>
+            <li><span>Run 4</span><strong>0 pts</strong></li>
+            <li><span>Run 5</span><strong>0 pts</strong></li>
+          </ul>
+        </section>
+      </aside>
+
+      <article class="play-area play-stage">
+        <div class="board-top">
+          <span class="tag">Global leaderboard score: highest points</span>
+        </div>
+
+        <div class="board-wrap">
+          <canvas id="flappyCanvas" class="flappy-canvas" width="960" height="560" aria-label="Flappy Bird play field"></canvas>
+
+          <div class="overlay" id="overlayPanel">
+            <h2 id="overlayTitle">Flappy Bird</h2>
+            <p id="overlayText">Tap, click, or press Space to start. Keep the bird in the air and survive as long as you can.</p>
+            <div class="overlay-actions">
+              <button class="action-btn" id="overlayStartBtn" type="button">Start Game</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="touch-controls">
+          <button class="action-btn jump-btn" id="flapBtn" type="button">Flap</button>
+          <button class="action-btn secondary" id="restartBtn" type="button">Restart</button>
+        </div>
+      </article>
+    </section>
+
+    <section class="leaderboard" style="margin-top: 14px;">
+      <h2>Leaderboard Preview</h2>
+      <p class="leaderboard-note">This table shows a local preview until scores are submitted to the global board.</p>
+      <table class="table" aria-label="Flappy Bird Clone leaderboard preview">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Player</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>#1</td><td>You</td><td>0</td></tr>
+          <tr><td>#2</td><td>You</td><td>0</td></tr>
+          <tr><td>#3</td><td>You</td><td>0</td></tr>
+          <tr><td>#4</td><td>You</td><td>0</td></tr>
+          <tr><td>#5</td><td>You</td><td>0</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+</body>
+</html>

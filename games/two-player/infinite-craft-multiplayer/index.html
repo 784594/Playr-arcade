@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Shared Infinite Craft rooms with live cursors, owner lobby controls, and collaborative crafting." />
+  <title>Infinite Craft Multiplayer | PlayR</title>
+  <link rel="stylesheet" href="../../shared/game-shell.css" />
+  <link rel="stylesheet" href="game.css" />
+  <script defer src="../../shared/game-shell.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <div class="page" id="gameRoot" data-game-title="Infinite Craft Multiplayer" data-metric="none" data-direction="asc" data-scope="global">
+    <div class="top">
+      <a class="back-link" href="../../../index.html">Back to hub</a>
+    </div>
+    <p id="gameStatus"></p>
+    <section class="craft-layout" aria-label="Infinite Craft play area">
+      <article class="play-area craft-surface-panel">
+        <div class="craft-counter" id="uniqueCounter" aria-live="polite">Unique Crafted: 0</div>
+        <div id="achievementToast" class="achievement-toast" aria-live="polite" hidden></div>
+        <section id="roomCenterPanel" class="room-center-panel panel-card" aria-label="Room controls">
+          <div class="room-panel-header">
+            <strong>Room</strong>
+            <span id="roomStatus">Offline</span>
+          </div>
+          <div id="roomDefaultFlow" class="room-flow-default">
+            <p class="hint" id="roomHint">Create or join a shared workplane.</p>
+            <div class="room-panel-row room-panel-actions">
+              <button id="createRoomBtn" class="toolbar-btn" type="button">Create Room</button>
+              <button id="copyRoomInviteBtn" class="toolbar-btn" type="button" hidden>Copy Invite</button>
+              <button id="joinFlowBtn" class="toolbar-btn" type="button">Join a Room</button>
+            </div>
+            <div class="room-panel-row room-panel-single-action">
+              <button id="ownerLobbyBtn" class="toolbar-btn" type="button">Owner Lobby</button>
+            </div>
+            <p class="hint" id="roomCodeDisplay">No room yet.</p>
+          </div>
+          <div id="joinRoomFlow" class="room-flow-join" hidden>
+            <div class="room-panel-row room-panel-join">
+              <input id="joinRoomInput" class="room-input room-panel-input" type="text" placeholder="Room code" autocomplete="off" />
+              <button id="joinRoomBtn" class="toolbar-btn" type="button">Join</button>
+            </div>
+            <div class="room-panel-row room-panel-single-action">
+              <button id="joinFlowBackBtn" class="toolbar-btn" type="button">Back</button>
+            </div>
+          </div>
+        </section>
+        <div id="roomCodeChip" class="room-code-chip" hidden>
+          <span class="room-code-chip-label">Room</span>
+          <strong id="roomCodeChipValue">-</strong>
+          <button id="copyRoomChipBtn" class="toolbar-btn room-chip-copy" type="button">Copy</button>
+        </div>
+        <div id="workspace" class="craft-workspace" aria-label="Crafting workspace"></div>
+        <div id="workspaceOverlay" class="workspace-overlay-layer" aria-hidden="true"></div>
+      </article>
+
+      <aside class="panel inventory-panel" id="inventoryPanel">
+        <div class="sidebar-head">
+          <h1 class="sidebar-title">Infinite<br />Craft</h1>
+          <p class="sidebar-items">Items <span id="itemCount">4</span></p>
+        </div>
+        <div id="elementsPanel" class="elements-panel" hidden>
+          <div class="inventory-search-wrap">
+            <input id="inventorySearch" class="room-input inventory-search" type="text" placeholder="Search items..." autocomplete="off" />
+          </div>
+
+          <div id="starterQuick" class="starter-quick" aria-label="Starter elements"></div>
+
+          <button class="tip-button" id="tipBanner" type="button" disabled>
+            ← Drag elements to craft
+          </button>
+
+          <div class="inventory-spacer" aria-hidden="true"></div>
+
+          <div class="inventory-toolbar" aria-label="Inventory controls">
+            <button type="button" class="toolbar-btn is-active">Discoveries</button>
+            <button type="button" class="toolbar-btn">Time</button>
+            <button type="button" class="toolbar-btn">↓</button>
+            <button id="clearWorkspaceBtn" class="toolbar-btn" type="button" title="Clear board">🗑</button>
+          </div>
+
+          <div id="inventoryList" class="inventory-list" aria-live="polite"></div>
+        </div>
+
+        <section id="adminPanel" class="admin-panel" hidden>
+          <div class="admin-panel-header">
+            <div>
+              <p class="admin-kicker">Owner only</p>
+              <h2>Block Admin</h2>
+            </div>
+            <p class="hint">Ctrl+A</p>
+          </div>
+
+          <input id="adminSearch" class="room-input admin-search" type="search" placeholder="Search all blocks..." autocomplete="off" />
+          <div id="adminBlockList" class="admin-block-list" aria-live="polite"></div>
+        </section>
+
+        <section id="ownerLobbyPanel" class="owner-lobby-panel" hidden>
+          <div class="owner-lobby-header">
+            <div>
+              <p class="admin-kicker">Owner Lobby</p>
+              <h2>Live Rooms</h2>
+            </div>
+            <button id="refreshRoomsBtn" class="toolbar-btn" type="button">Refresh</button>
+          </div>
+          <div class="owner-lobby-grid">
+            <section class="owner-room-column">
+              <h3>Current Rooms</h3>
+              <div id="ownerRoomList" class="owner-room-list" aria-live="polite"></div>
+            </section>
+
+            <section class="owner-room-detail">
+              <h3 id="selectedRoomTitle">Select a room</h3>
+              <p id="selectedRoomMeta" class="hint">Pick a room to spectate or join.</p>
+              <div id="selectedRoomPlayers" class="owner-room-detail-list"></div>
+              <div class="owner-lobby-actions-row">
+                <button id="spectateRoomBtn" class="toolbar-btn" type="button" disabled>Spectate</button>
+                <button id="joinRoomFromLobbyBtn" class="toolbar-btn" type="button" disabled>Join</button>
+              </div>
+              <p id="selectedUserName" class="hint">No user selected.</p>
+              <p id="ownerActionStatus" class="hint">Ready.</p>
+            </section>
+          </div>
+        </section>
+      </aside>
+    </section>
+  </div>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="2048 module scaffold for PlayR." />
+  <title>2048 | PlayR</title>
+  <link rel="stylesheet" href="../../shared/game-shell.css" />
+  <link rel="stylesheet" href="game.css" />
+  <script defer src="../../shared/game-shell.js"></script>
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <div class="page" id="gameRoot" data-game-title="2048" data-metric="highest_tile" data-direction="desc" data-scope="global">
+    <div class="top">
+      <a class="back-link" href="../../../index.html">Back to hub</a>
+      <div class="board-meta">
+        <span class="tag">Type: single-player</span>
+        <span class="tag">Controls: Arrow keys / WASD / swipe</span>
+      </div>
+    </div>
+
+    <header class="header">
+      <p class="tag">PlayR Game Module</p>
+      <h1>2048</h1>
+      <div class="meta">
+        <span class="tag">Leaderboard scope: global</span>
+        <span class="tag">Controls: Arrow keys / WASD / swipe</span>
+      </div>
+      <p id="gameStatus" aria-live="polite">Score: 0</p>
+    </header>
+
+    <section class="main-grid">
+      <aside class="panel">
+        <h2>How to play</h2>
+        <ul>
+          <li>Use arrow keys or WASD to slide tiles.</li>
+          <li>Swipe on mobile or touch devices.</li>
+          <li>Tiles with the same value merge once per move.</li>
+          <li>Reach 2048 or keep going for a higher tile.</li>
+        </ul>
+        <button class="restart-button" id="restartButton" type="button">Restart</button>
+      </aside>
+
+      <article class="play-area">
+        <div class="game-shell" id="gameBoard" aria-label="2048 game board" role="application" tabindex="0">
+          <div class="board-grid" aria-hidden="true">
+            <span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span>
+          </div>
+          <div class="tiles" id="tilesLayer"></div>
+          <div class="overlay hidden" id="overlay">
+            <div class="overlay-card">
+              <p class="overlay-label" id="overlayLabel">You lost</p>
+              <p class="overlay-score" id="overlayScore">Final score: 0</p>
+              <p class="overlay-text" id="overlayText">You can restart and try for a higher score.</p>
+              <button class="restart-button" id="overlayRestartButton" type="button">Play again</button>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="leaderboard" style="margin-top: 14px;">
+      <h2>Leaderboard Preview</h2>
+      <table class="table" aria-label="2048 leaderboard preview">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Player</th>
+            <th>highest_tile</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>#1</td><td>AtlasOne</td><td>--</td></tr>
+          <tr><td>#2</td><td>ArcRunner</td><td>--</td></tr>
+          <tr><td>#3</td><td>NeonFox</td><td>--</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+</body>
+</html>

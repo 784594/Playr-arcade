@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Click Speed Test - Timed CPS challenge with leaderboard." />
+  <title>Click Speed Test | Playr</title>
+  <link rel="stylesheet" href="../../../shared/game-shell.css" />
+  <link rel="stylesheet" href="game.css" />
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <div class="game-shell">
+    <header class="game-header">
+      <a href="../../.." class="back-link">← Back to Playr</a>
+      <h1>Click Speed Test</h1>
+      <p class="game-tagline">Five timed tests. Highest valid CPS wins.</p>
+    </header>
+
+    <main class="game-container">
+      <section class="test-layout">
+        <section class="test-panel">
+          <div class="timer-setup" id="timerSetup" aria-live="polite">
+            <h2>Choose Your Test</h2>
+            <div class="duration-buttons" role="group" aria-label="Click speed tests">
+              <button class="duration-btn" type="button" data-duration="1">1 second test</button>
+              <button class="duration-btn" type="button" data-duration="5">5 second test</button>
+              <button class="duration-btn" type="button" data-duration="10">10 second test</button>
+              <button class="duration-btn" type="button" data-duration="30">30 second test</button>
+              <button class="duration-btn" type="button" data-duration="60">1 minute test</button>
+            </div>
+            <p class="hint" id="runStatus">Pick a test, then click the large target as fast as possible.</p>
+          </div>
+
+          <div class="test-active" id="testActive" hidden>
+            <div class="test-timer">
+              <div class="timer-display">
+                <span id="timeRemaining">0.00</span>
+                <span class="timer-label">s</span>
+              </div>
+              <button class="button secondary" type="button" id="quitBtn">Quit Test</button>
+            </div>
+
+            <div class="click-area" id="clickArea" role="button" tabindex="0" aria-label="Click target">
+              <p id="clickPrompt">Click as fast as you can!</p>
+            </div>
+
+            <div class="live-stats">
+              <div class="clicks-counter">
+                <strong id="clickCount">0</strong>
+                <span>clicks</span>
+              </div>
+              <div class="clicks-counter">
+                <strong id="liveCps">0.00</strong>
+                <span>live CPS</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="test-results" id="testResults" hidden>
+            <h2>Your Results</h2>
+            <div class="results-grid">
+              <div class="result-item">
+                <span class="result-label">Total Clicks</span>
+                <strong id="resultClicks">0</strong>
+              </div>
+              <div class="result-item">
+                <span class="result-label">Duration</span>
+                <strong id="resultDuration">10s</strong>
+              </div>
+              <div class="result-item">
+                <span class="result-label">Clicks/Second</span>
+                <strong id="resultCPS">0.0</strong>
+              </div>
+            </div>
+            <p class="tier-message" id="tierMessage">Tier: -</p>
+            <p class="validation-message" id="validationMessage" aria-live="polite"></p>
+
+            <div class="test-actions">
+              <button class="button primary" type="button" id="retryBtn">Try Again</button>
+              <button class="button secondary" type="button" id="resetValidationBtn">Reset Validation</button>
+              <button class="button secondary" type="button" id="homeBtn">Back to Games</button>
+            </div>
+          </div>
+
+          <section class="admin-tools" id="adminTools" hidden>
+            <h3>Admin Custom Scores</h3>
+            <p class="hint" id="adminStatus">Owner only. Add custom leaderboard entries here.</p>
+            <div class="admin-grid">
+              <label for="adminNameInput">Name</label>
+              <input id="adminNameInput" type="text" maxlength="24" placeholder="Owner" />
+
+              <label for="adminCpsInput">CPS</label>
+              <input id="adminCpsInput" type="number" min="0" max="99.99" step="0.01" placeholder="12.34" />
+
+              <label for="adminClicksInput">Clicks</label>
+              <input id="adminClicksInput" type="number" min="0" step="1" placeholder="123" />
+
+              <label for="adminDurationInput">Duration (s)</label>
+              <input id="adminDurationInput" type="number" min="1" max="60" step="1" placeholder="10" />
+
+              <label for="adminNoteInput">Note</label>
+              <input id="adminNoteInput" type="text" maxlength="48" placeholder="Admin custom score" />
+            </div>
+            <div class="test-actions">
+              <button class="button primary" type="button" id="adminInjectBtn">Inject Score</button>
+              <button class="button secondary" type="button" id="adminResetBtn">Reset Leaderboard</button>
+              <button class="button secondary" type="button" id="adminRevertBtn">Revert Leaderboard</button>
+            </div>
+          </section>
+        </section>
+
+        <aside class="leaderboard-panel">
+          <h2>Highest CPS Leaderboard</h2>
+          <p class="hint">Only validated runs are saved.</p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Player</th>
+                  <th>CPS</th>
+                  <th>Test</th>
+                  <th>Clicks</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboardBody"></tbody>
+            </table>
+          </div>
+        </aside>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

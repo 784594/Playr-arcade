@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Air Hockey module scaffold for PlayR." />
+  <title>Air Hockey | PlayR</title>
+  <link rel="stylesheet" href="../../shared/game-shell.css" />
+  <link rel="stylesheet" href="game.css" />
+  <script defer src="../../shared/game-shell.js"></script>
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <div class="page" id="gameRoot" data-game-title="Air Hockey" data-metric="n_a" data-direction="n_a" data-scope="none">
+    <div class="top">
+      <a class="back-link" href="../../../index.html">Back to hub</a>
+      <div class="board-meta">
+        <span class="tag">Type: two-player</span>
+        <span class="tag">Controls: Mouse vs Keyboard</span>
+      </div>
+    </div>
+
+    <header class="header">
+      <p class="tag">PlayR Game Module</p>
+      <h1>Air Hockey</h1>
+      <div class="meta">
+        <span class="tag">Leaderboard scope: none</span>
+        <span class="tag">Metric: n_a</span>
+        <span class="tag">Direction: n_a</span>
+      </div>
+      <p id="gameStatus">Loading scaffold...</p>
+    </header>
+
+    <section class="main-grid">
+      <aside class="panel">
+        <h2>Build Checklist</h2>
+        <ul>
+          <li>Implement game state and rule engine.</li>
+          <li>Add full UI flow for inputs and rounds.</li>
+          <li>Wire score submit + fetch for global rankings.</li>
+          <li>Add anti-cheat validations for submissions.</li>
+        </ul>
+      </aside>
+
+      <article class="play-area">
+        <h2>Game Surface</h2>
+      </article>
+    </section>
+
+    <section class="leaderboard" style="margin-top: 14px;">
+      <h2>Leaderboard Preview</h2>
+      <table class="table" aria-label="Air Hockey leaderboard preview">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Player</th>
+            <th>n_a</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>#1</td><td>AtlasOne</td><td>--</td></tr>
+          <tr><td>#2</td><td>ArcRunner</td><td>--</td></tr>
+          <tr><td>#3</td><td>NeonFox</td><td>--</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+</body>
+</html>

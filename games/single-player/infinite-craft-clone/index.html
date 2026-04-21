@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Element crafting sandbox with infinite generated combinations." />
+  <title>Infinite Craft | PlayR</title>
+  <link rel="stylesheet" href="../../shared/game-shell.css" />
+  <link rel="stylesheet" href="game.css" />
+  <script defer src="../../shared/game-shell.js"></script>
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <div class="page" id="gameRoot" data-game-title="Infinite Craft" data-metric="none" data-direction="asc" data-scope="single-player">
+    <div class="top">
+      <a class="back-link" href="../../../index.html">← Back to hub</a>
+    </div>
+
+    <section class="craft-layout" aria-label="Infinite Craft play area">
+      <article class="play-area craft-surface-panel">
+        <div class="craft-counter" id="uniqueCounter" aria-live="polite">Unique Crafted: 0</div>
+        <div id="workspace" class="craft-workspace" aria-label="Crafting workspace"></div>
+      </article>
+
+      <aside class="panel inventory-panel" id="inventoryPanel">
+        <div class="sidebar-head">
+          <h1 class="sidebar-title">Infinite<br />Craft</h1>
+          <p class="sidebar-items">Items <span id="itemCount">4</span></p>
+        </div>
+
+        <div class="inventory-search-row">
+          <input id="inventorySearch" class="room-input inventory-search" type="text" placeholder="Search items..." autocomplete="off" />
+          <button id="clearWorkspaceBtn" class="toolbar-btn trash-btn" type="button" title="Clear board">🗑</button>
+        </div>
+
+        <div id="starterQuick" class="starter-quick" aria-label="Starter elements"></div>
+
+        <button class="tip-button" id="tipBanner" type="button" disabled>
+          ← Drag elements to craft
+        </button>
+
+        <div id="inventoryList" class="inventory-list" aria-live="polite"></div>
+      </aside>
+    </section>
+  </div>
+</body>
+</html>

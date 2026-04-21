@@ -1,0 +1,338 @@
+{
+  "version": 1,
+  "updatedAt": "2026-04-20",
+  "notes": "Global leaderboard metric and direction are game-specific by design.",
+  "singlePlayer": [
+    {
+      "slug": "snake",
+      "title": "Snake",
+      "controls": "Arrow keys",
+      "leaderboard": { "scope": "global", "metric": "score", "direction": "desc" }
+    },
+    {
+      "slug": "2048",
+      "title": "2048",
+      "controls": "Arrow keys",
+      "leaderboard": { "scope": "global", "metric": "highest_tile", "direction": "desc" }
+    },
+    {
+      "slug": "minesweeper",
+      "title": "Minesweeper",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "time_seconds", "direction": "asc", "segments": ["easy", "medium", "hard"] }
+    },
+    {
+      "slug": "infinite-craft-clone",
+      "title": "Infinite Craft",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "none", "metric": "n_a", "direction": "n_a", "reason": "Single-player sandbox mode" }
+    },
+    {
+      "slug": "the-password-game",
+      "title": "The Password Game",
+      "controls": "Keyboard",
+      "leaderboard": { "scope": "global", "metric": "highest_rule_stage", "direction": "desc" }
+    },
+    {
+      "slug": "tetris",
+      "title": "Tetris",
+      "controls": "Arrow keys",
+      "leaderboard": { "scope": "global", "metric": "score", "direction": "desc" }
+    },
+    {
+      "slug": "dino-run-clone",
+      "title": "Dino Run Clone",
+      "controls": "Space/Arrow",
+      "leaderboard": { "scope": "global", "metric": "distance", "direction": "desc" }
+    },
+    {
+      "slug": "pac-man",
+      "title": "Pac-Man",
+      "controls": "Arrow keys",
+      "leaderboard": { "scope": "global", "metric": "score", "direction": "desc" }
+    },
+    {
+      "slug": "sudoku",
+      "title": "Sudoku",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "completion_time_seconds", "direction": "asc", "segments": ["easy", "medium", "hard", "expert"] }
+    },
+    {
+      "slug": "wordle-inf",
+      "title": "Wordle Infinite",
+      "controls": "Keyboard"
+    },
+    {
+      "slug": "flappy-bird-clone",
+      "title": "Flappy Bird Clone",
+      "controls": "Space/Mouse",
+      "leaderboard": { "scope": "global", "metric": "score", "direction": "desc" }
+    },
+    {
+      "slug": "doodle-jump-clone",
+      "title": "Doodle Jump Clone",
+      "controls": "Arrow keys",
+      "leaderboard": { "scope": "global", "metric": "height", "direction": "desc" }
+    },
+    {
+      "slug": "breakout",
+      "title": "Breakout",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "score", "direction": "desc" }
+    },
+    {
+      "slug": "asteroids",
+      "title": "Asteroids",
+      "controls": "Arrow keys",
+      "leaderboard": { "scope": "global", "metric": "score", "direction": "desc" }
+    },
+    {
+      "slug": "frogger",
+      "title": "Frogger",
+      "controls": "Arrow keys",
+      "leaderboard": { "scope": "global", "metric": "survival_time_seconds", "direction": "desc" }
+    },
+    {
+      "slug": "solitaire",
+      "title": "Solitaire",
+      "controls": "Mouse/Touch",
+      "leaderboard": { "scope": "global", "metric": "completion_time_seconds", "direction": "asc" }
+    },
+    {
+      "slug": "space-invaders",
+      "title": "Space Invaders",
+      "controls": "Arrow keys",
+      "leaderboard": { "scope": "global", "metric": "score", "direction": "desc" }
+    },
+    {
+      "slug": "simon-says",
+      "title": "Simon Says",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "max_sequence", "direction": "desc" }
+    },
+    {
+      "slug": "little-alchemy-clone",
+      "title": "Little Alchemy Clone",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "discovery_count", "direction": "desc" }
+    },
+    {
+      "slug": "draw-a-perfect-circle",
+      "title": "Draw a Perfect Circle",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "accuracy_percent", "direction": "desc" }
+    },
+    {
+      "slug": "spend-bill-gates-money",
+      "title": "Spend Bill Gates' Money",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "cart_value", "direction": "desc" }
+    },
+    {
+      "slug": "the-deep-sea",
+      "title": "The Deep Sea",
+      "controls": "Mouse Scroll",
+      "leaderboard": { "scope": "global", "metric": "max_depth", "direction": "desc" }
+    },
+    {
+      "slug": "geometry-dash-clone",
+      "title": "Geometry Dash Clone",
+      "controls": "Mouse Click",
+      "leaderboard": { "scope": "global", "metric": "completion_percent", "direction": "desc" }
+    },
+    {
+      "slug": "cookie-clicker-clone",
+      "title": "Cookie Clicker Clone",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "cookies_per_second", "direction": "desc" }
+    },
+    {
+      "slug": "tower-builder",
+      "title": "Tower Builder",
+      "controls": "Mouse Click",
+      "leaderboard": { "scope": "global", "metric": "tower_height", "direction": "desc" }
+    },
+    {
+      "slug": "memory-match",
+      "title": "Memory Match",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "fewest_moves", "direction": "asc" }
+    },
+    {
+      "slug": "hextris",
+      "title": "Hextris",
+      "controls": "Arrow keys",
+      "leaderboard": { "scope": "global", "metric": "survival_time_seconds", "direction": "desc" }
+    },
+    {
+      "slug": "burrito-bison-clone",
+      "title": "Burrito Bison Clone",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "distance", "direction": "desc" }
+    },
+    {
+      "slug": "click-speed-test",
+      "title": "Click Speed Test",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "cps", "direction": "desc", "segments": ["1s", "5s", "10s"] }
+    },
+    {
+      "slug": "type-test",
+      "title": "Type Test",
+      "controls": "Keyboard",
+      "leaderboard": { "scope": "global", "metric": "wpm", "direction": "desc", "segments": ["standard", "burst", "accuracy", "consistency", "weak-key"] }
+    },
+    {
+      "slug": "typing-test",
+      "title": "Typing Test",
+      "controls": "Keyboard",
+      "leaderboard": { "scope": "global", "metric": "wpm", "direction": "desc", "segments": ["standard", "accuracy", "burst", "weak-key", "consistency", "reaction"] }
+    },
+    {
+      "slug": "aim-training-arena",
+      "title": "Aim Training Arena",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "aim_score", "direction": "desc", "segments": ["reaction", "flick", "tracking", "precision", "switching", "advanced"] }
+    },
+    {
+      "slug": "slide-puzzle",
+      "title": "Slide Puzzle",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "completion_time_seconds", "direction": "asc" }
+    },
+    {
+      "slug": "absurd-trolley-problem",
+      "title": "The Absurd Trolley Problem!",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "none", "metric": "n_a", "direction": "n_a", "reason": "Narrative choice game" }
+    }
+  ],
+  "twoPlayer": [
+    {
+      "slug": "battleship",
+      "title": "Battleship",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "elo_rating", "direction": "desc" }
+    },
+    {
+      "slug": "connect-4",
+      "title": "Connect 4",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "elo_rating", "direction": "desc" }
+    },
+    {
+      "slug": "chess",
+      "title": "Chess",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "elo_rating", "direction": "desc" }
+    },
+    {
+      "slug": "checkers",
+      "title": "Checkers",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "elo_rating", "direction": "desc" }
+    },
+    {
+      "slug": "tic-tac-toe",
+      "title": "Tic-Tac-Toe",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "win_rate", "direction": "desc" }
+    },
+    {
+      "slug": "infinite-craft-multiplayer",
+      "title": "Infinite Craft Multiplayer",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "none", "metric": "n_a", "direction": "n_a", "reason": "Collaborative sandbox mode" }
+    },
+    {
+      "slug": "pong",
+      "title": "Pong",
+      "controls": "Up/Down vs W/S",
+      "leaderboard": { "scope": "global", "metric": "elo_rating", "direction": "desc" }
+    },
+    {
+      "slug": "tank-trouble-clone",
+      "title": "Tank Trouble Clone",
+      "controls": "Keyboard",
+      "leaderboard": { "scope": "global", "metric": "win_streak", "direction": "desc" }
+    },
+    {
+      "slug": "slither-io-clone",
+      "title": "Slither.io Clone",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "max_length", "direction": "desc" }
+    },
+    {
+      "slug": "fireboy-watergirl-clone",
+      "title": "Fireboy & Watergirl Clone",
+      "controls": "Arrows + WASD",
+      "leaderboard": { "scope": "global", "metric": "completion_time_seconds", "direction": "asc" }
+    },
+    {
+      "slug": "hangman-2p",
+      "title": "Hangman Multiplayer",
+      "controls": "Keyboard",
+      "leaderboard": { "scope": "global", "metric": "win_rate", "direction": "desc" }
+    },
+    {
+      "slug": "8-ball-pool",
+      "title": "8-Ball Pool",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "elo_rating", "direction": "desc" }
+    },
+    {
+      "slug": "air-hockey",
+      "title": "Air Hockey",
+      "controls": "Mouse vs Keyboard",
+      "leaderboard": { "scope": "none", "metric": "n_a", "direction": "n_a", "reason": "Primarily local head-to-head" }
+    },
+    {
+      "slug": "rock-paper-scissors",
+      "title": "Rock Paper Scissors",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "win_streak", "direction": "desc" }
+    },
+    {
+      "slug": "trivia-quiz",
+      "title": "Trivia Quiz",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "score", "direction": "desc" }
+    },
+    {
+      "slug": "dots-and-boxes",
+      "title": "Dots and Boxes",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "win_rate", "direction": "desc" }
+    },
+    {
+      "slug": "ludo",
+      "title": "Ludo",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "elo_rating", "direction": "desc" }
+    },
+    {
+      "slug": "uno-clone",
+      "title": "Uno Clone",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "win_rate", "direction": "desc" }
+    },
+    {
+      "slug": "tug-of-war",
+      "title": "Tug of War",
+      "controls": "A vs L",
+      "leaderboard": { "scope": "global", "metric": "fastest_win_seconds", "direction": "asc" }
+    },
+    {
+      "slug": "mancala",
+      "title": "Mancala",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "elo_rating", "direction": "desc" }
+    },
+    {
+      "slug": "penalty-shootout",
+      "title": "Penalty Shootout",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "streak", "direction": "desc" }
+    }
+  ]
+}

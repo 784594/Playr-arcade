@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Minesweeper module scaffold for PlayR." />
+  <title>Minesweeper | PlayR</title>
+  <link rel="stylesheet" href="../../shared/game-shell.css" />
+  <link rel="stylesheet" href="game.css" />
+  <script defer src="../../shared/game-shell.js"></script>
+  <script defer src="../../shared/admin-shell.js"></script>
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <div class="page" id="gameRoot" data-game-title="Minesweeper" data-metric="time_seconds" data-direction="asc" data-scope="global">
+    <div class="top">
+      <a class="back-link" href="../../../index.html">Back to hub</a>
+      <div class="board-meta">
+        <span class="tag">Type: single-player</span>
+        <span class="tag">Controls: Mouse</span>
+      </div>
+    </div>
+
+    <header class="header">
+      <p class="tag">PlayR Game Module</p>
+      <h1>Minesweeper</h1>
+      <div class="meta">
+        <span class="tag">Leaderboard scope: global</span>
+        <span class="tag">Metric: fastest clear</span>
+        <span class="tag">First click is always safe</span>
+      </div>
+      <p id="gameStatus">Loading Minesweeper...</p>
+    </header>
+
+    <section class="round-strip" aria-live="polite">
+      <div>
+        <strong id="roundStatus">Ready</strong>
+      </div>
+      <div>
+        <span>Mines Left</span>
+        <strong id="minesLeft">10</strong>
+      </div>
+      <div>
+        <span>Time</span>
+        <strong id="timer">0s</strong>
+      </div>
+    </section>
+
+    <section class="main-grid">
+      <aside class="panel">
+        <h2>Modes</h2>
+        <div class="mode-list" role="radiogroup" aria-label="Minesweeper difficulty">
+          <button class="mode-btn active" type="button" data-mode="easy">
+            <strong>Easy</strong>
+            <span>9 x 9 · 10 mines</span>
+          </button>
+          <button class="mode-btn" type="button" data-mode="medium">
+            <strong>Medium</strong>
+            <span>16 x 16 · 40 mines</span>
+          </button>
+          <button class="mode-btn" type="button" data-mode="hard">
+            <strong>Hard</strong>
+            <span>22 x 22 · 99 mines</span>
+          </button>
+        </div>
+
+        <p class="hint" id="hintText">Left click to reveal. Right click to flag. If flags around a number match it, click that number to chord-open nearby cells.</p>
+
+        <div class="actions">
+          <button class="action-btn" id="newBoardBtn" type="button">New Board</button>
+        </div>
+
+        <div class="best-times">
+          <h2>Best Local Times</h2>
+          <ul class="best-list">
+            <li><span>Easy</span><strong id="bestEasy">--</strong></li>
+            <li><span>Medium</span><strong id="bestMedium">--</strong></li>
+            <li><span>Hard</span><strong id="bestHard">--</strong></li>
+          </ul>
+        </div>
+      </aside>
+
+      <article class="play-area">
+        <div class="board-top">
+          <div class="board-top-actions">
+            <span id="boardMeta" class="tag">9 x 9</span>
+            <button class="action-btn admin-sidebar-toggle" id="adminSidebarToggleBtn" type="button" hidden>Hide Admin</button>
+          </div>
+        </div>
+        <div class="play-stage">
+          <div class="board-wrap">
+            <div id="mineBoard" class="mine-board" aria-label="Minesweeper board"></div>
+            <button id="playAgainOverlay" class="play-again-overlay" type="button" hidden>Play Again</button>
+          </div>
+          <section class="admin-tools admin-sidebar" id="adminTools" hidden>
+            <h2>Admin Panel</h2>
+            <p class="hint">Owner-only controls. Reset and Revert are always available.</p>
+            <div class="admin-grid">
+              <button class="admin-btn" id="adminModeBtn" type="button">Enable Admin</button>
+              <button class="admin-btn" id="adminMineEditBtn" type="button" disabled>Edit Mines: Off</button>
+              <button class="admin-btn" id="adminClearMinesBtn" type="button" disabled>Clear Mines</button>
+            </div>
+            <div class="admin-time">
+              <label for="adminTimeInput">Set Time (seconds)</label>
+              <div class="admin-time-row">
+                <input id="adminTimeInput" type="number" min="0" step="1" value="0" disabled />
+                <button class="admin-btn" id="adminApplyTimeBtn" type="button" disabled>Apply</button>
+              </div>
+            </div>
+            <div class="admin-grid">
+              <button class="admin-btn" id="adminResetScoresBtn" type="button" disabled>Reset</button>
+              <button class="admin-btn" id="adminRevertScoresBtn" type="button" disabled>Revert</button>
+            </div>
+            <p class="hint" id="adminInfo">Admin disabled. Add <code>?admin=1</code> to URL or press Ctrl+Shift+A to show this panel.</p>
+          </section>
+        </div>
+      </article>
+    </section>
+
+    <section class="leaderboard leaderboard-block" style="margin-top: 14px;">
+      <h2>Global Leaderboard Preview</h2>
+      <p class="leaderboard-note">Static sample now. Later this table will pull live global rankings from the leaderboard API.</p>
+      <table class="table" aria-label="Minesweeper leaderboard preview">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Player</th>
+            <th>Mode</th>
+            <th>Time (s)</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboardPreviewBody">
+          <tr><td>#1</td><td>AtlasOne</td><td>Easy</td><td>34</td></tr>
+          <tr><td>#2</td><td>ArcRunner</td><td>Medium</td><td>96</td></tr>
+          <tr><td>#3</td><td>NeonFox</td><td>Hard</td><td>184</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+</body>
+</html>

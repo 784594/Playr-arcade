@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Cookie Clicker - Click, upgrade, and build your cookie empire." />
+  <title>Cookie Clicker | Playr</title>
+  <link rel="stylesheet" href="../../../shared/game-shell.css" />
+  <link rel="stylesheet" href="game.css" />
+  <script defer src="../../../shared/game-shell.js"></script>
+  <script defer src="../../../shared/admin-shell.js"></script>
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <div class="game-shell">
+    <header class="game-header">
+      <a href="../../.." class="back-link">← Back to Playr</a>
+      <h1>Cookie Clicker</h1>
+      <p class="game-tagline">Click your way to cookie supremacy.</p>
+    </header>
+
+    <main class="game-container">
+      <div class="cookie-grid">
+        <div class="cookie-panel">
+          <div class="stats-overview">
+            <div class="stat-item">
+              <span class="stat-label">Cookies Clicked</span>
+              <strong id="cookieCount">0</strong>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Per Click</span>
+              <strong id="cpcDisplay">1</strong>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Per Second</span>
+              <strong id="cpsDisplay">0</strong>
+            </div>
+          </div>
+
+          <div class="session-status">
+            <div class="status-pill" id="warningCount">Warnings: 0</div>
+            <div class="status-pill" id="leaderboardStatus">Leaderboard: Clean</div>
+            <div class="status-pill" id="rebirthStatus">Rebirth: 0/3 (+0%)</div>
+          </div>
+
+          <div id="cookieClickerArea" class="cookie-clicker">
+            <button id="cookieBtn" class="cookie-button" type="button" aria-label="Click the cookie">
+              <img id="cookieImage" class="cookie-image" src="../../../images/craiyon_213911_image.png" alt="Cookie">
+              <span id="cookieFallback" class="cookie-fallback" hidden></span>
+            </button>
+            <div id="crumbsContainer" class="crumbs-container"></div>
+            <div id="popupContainer" class="popup-container" aria-hidden="true"></div>
+          </div>
+
+          <div class="game-actions">
+            <button class="button primary" type="button" id="saveBtn">Save Progress</button>
+            <button class="button secondary" type="button" id="resetBtn">Reset Game</button>
+            <button class="button secondary" type="button" id="rebirthBtn">Rebirth Locked</button>
+            <button class="button secondary" type="button" id="adminSidebarToggleBtn" hidden>Show Admin</button>
+          </div>
+
+          <section class="admin-tools admin-sidebar" id="adminTools" hidden>
+            <h2>Admin Panel</h2>
+            <p class="hint">Owner-only controls. Reset and Revert are always available.</p>
+            <div class="admin-grid">
+              <button class="admin-btn" id="adminModeBtn" type="button">Enable Admin</button>
+            </div>
+            <div class="admin-time">
+              <label for="adminCookieInput">Add Cookies</label>
+              <div class="admin-time-row">
+                <input id="adminCookieInput" type="number" min="0" step="100000" value="0" disabled />
+                <button class="admin-btn" id="adminAddCookiesBtn" type="button" disabled>Add</button>
+              </div>
+            </div>
+            <div class="admin-grid">
+              <button class="admin-btn" id="adminResetScoresBtn" type="button" disabled>Reset</button>
+              <button class="admin-btn" id="adminRevertScoresBtn" type="button" disabled>Revert</button>
+            </div>
+            <p class="hint" id="adminInfo">Admin disabled. Add <code>?admin=1</code> to URL or press Ctrl+Shift+A to show this panel.</p>
+          </section>
+        </div>
+
+        <aside class="upgrades-panel">
+          <div class="upgrades-tabs">
+            <button class="tab-btn active" type="button" data-tab="click-upgrades">Finger</button>
+            <button class="tab-btn" type="button" data-tab="auto-clickers">Auto</button>
+            <button class="tab-btn" type="button" data-tab="speed-upgrades">Speed</button>
+            <button class="tab-btn" type="button" data-tab="hybrid-upgrades">Hybrid</button>
+            <button class="tab-btn" type="button" data-tab="god-tier">God-Tier</button>
+            <button class="tab-btn" type="button" data-tab="endgame">Endgame</button>
+          </div>
+
+          <div id="upgradesContainer" class="upgrades-list"></div>
+        </aside>
+      </div>
+    </main>
+
+    <div id="warningOverlay" class="warning-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="warningTitle">
+      <div class="warning-modal">
+        <h2 id="warningTitle">Warning</h2>
+        <p id="warningMessage"></p>
+        <div class="warning-actions">
+          <button id="warningCancelBtn" class="button secondary" type="button" hidden>Cancel</button>
+          <button id="warningOkBtn" class="button primary" type="button">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="rebirthCutsceneOverlay" class="rebirth-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="rebirthCutsceneTitle">
+      <div class="rebirth-modal">
+        <h2 id="rebirthCutsceneTitle">REBIRTH</h2>
+        <div class="rebirth-rings" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <p id="rebirthCutsceneText">Reality tears open... your cookie empire collapses into stardust.</p>
+        <button id="rebirthCutsceneOkBtn" class="button primary" type="button" hidden>OK</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

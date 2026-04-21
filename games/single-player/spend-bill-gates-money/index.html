@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>💸 Spend Bill Gates' Money</title>
+  <link rel="stylesheet" href="spend-bill-gates.css">
+</head>
+<body>
+  <div class="game-container">
+    <div id="startGamePanel" class="start-game-panel">
+      <div class="start-card">
+        <h2>Ready to Spend?</h2>
+        <p>Press start to begin the market simulation.</p>
+        <div class="start-actions">
+          <button id="helpButton" class="help-btn" type="button" aria-label="Show help">?</button>
+          <button id="startGameButton" class="button primary" type="button">Start Game</button>
+        </div>
+        <p id="helpMessage" class="help-message" hidden>
+          Target run length is around 8 minutes, but strong choices can finish earlier. Stocks refresh every 10 seconds. Each stock can be bought once every 30 seconds, and shares must be held for 10 seconds before selling.
+        </p>
+      </div>
+    </div>
+
+    <header class="game-header">
+      <h1>💸 Spend Bill Gates' Money</h1>
+      <p class="tagline">Manage the world's largest fortune or destroy it trying.</p>
+    </header>
+
+    <div class="stats-bar">
+      <div class="stat-item">
+        <label>💰 Cash on Hand</label>
+        <span class="stat-value" id="cashDisplay">$100,000,000,000</span>
+      </div>
+      <div class="stat-item">
+        <label>📊 Net Worth</label>
+        <span class="stat-value" id="netWorthDisplay">$100,000,000,000</span>
+      </div>
+      <div class="stat-item">
+        <label>🏆 Score</label>
+        <span class="stat-value" id="scoreDisplay">$0</span>
+      </div>
+      <div class="stat-item">
+        <label>💸 Daily Income</label>
+        <span class="stat-value income-positive" id="incomeDisplay">$50,000,000</span>
+      </div>
+      <div class="stat-item">
+        <label>⏱️ Day</label>
+        <span class="stat-value" id="dayDisplay">1</span>
+      </div>
+    </div>
+
+    <div class="main-content">
+      <section class="purchases-section">
+        <h2>🛒 Purchases</h2>
+        <div id="purchaseCategoriesContainer" class="categories-list"></div>
+      </section>
+
+      <aside class="sidebar">
+        <section class="investments-section">
+          <h2>📈 Stock Market</h2>
+          <div class="market-controls">
+            <div id="stockRefreshCounter" class="refresh-counter">Refresh in 10s</div>
+          </div>
+          <div id="stocksContainer" class="stocks-list"></div>
+        </section>
+      </aside>
+    </div>
+
+    <div class="assets-status-section">
+      <section class="assets-section">
+        <h2>🏠 Active Assets</h2>
+        <div id="assetsContainer" class="assets-list">
+          <p class="empty-state">No assets owned yet.</p>
+        </div>
+      </section>
+
+      <section class="debt-section">
+        <h2>📉 Financial Status</h2>
+        <div class="debt-tracker">
+          <p><strong>Debt:</strong> <span id="debtDisplay" class="debt-amount">$0</span></p>
+          <p><strong>Status:</strong> <span id="financialStatus" class="status-good">Excellent</span></p>
+        </div>
+      </section>
+    </div>
+
+    <details class="debug-panel">
+      <summary>🔧 Debug Info</summary>
+      <div id="debugContent"></div>
+    </details>
+
+    <div id="gameMessageOverlay" class="game-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="gameMessageTitle">
+      <div class="game-modal-card">
+        <h3 id="gameMessageTitle">Notice</h3>
+        <p id="gameMessageText"></p>
+        <button id="gameMessageClose" class="button primary" type="button">OK</button>
+      </div>
+    </div>
+
+    <div id="charityCutsceneOverlay" class="game-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="charityCutsceneTitle">
+      <div class="charity-cutscene-card">
+        <h3 id="charityCutsceneTitle">Charity Event Reel</h3>
+        <p class="charity-cutscene-subtitle">Rolling your fate...</p>
+        <div class="charity-reel-window" aria-hidden="true">
+          <div id="charityReelRoll" class="charity-reel-roll"></div>
+          <div class="charity-reel-pointer">▶</div>
+        </div>
+        <p id="charityCutsceneStatus" class="charity-cutscene-status">Spinning...</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="spend-bill-gates.js"></script>
+</body>
+</html>

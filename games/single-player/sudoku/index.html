@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Play Sudoku in PlayR with four difficulty tiers and fastest-time tracking." />
+  <title>Sudoku | PlayR</title>
+  <link rel="stylesheet" href="../../shared/game-shell.css" />
+  <link rel="stylesheet" href="game.css" />
+  <script defer src="../../shared/game-shell.js"></script>
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <div class="page" id="gameRoot" data-game-title="Sudoku" data-metric="completion_time_seconds" data-direction="asc" data-scope="global">
+    <div class="top">
+      <a class="back-link" href="../../../index.html">Back to hub</a>
+      <div class="board-meta">
+        <span class="tag">Type: single-player</span>
+        <span class="tag">Controls: Mouse</span>
+      </div>
+    </div>
+
+    <header class="header">
+      <p class="tag">PlayR Game Module</p>
+      <h1>Sudoku</h1>
+      <div class="meta">
+        <span class="tag">Leaderboard scope: global</span>
+        <span class="tag">Metric: completion_time_seconds</span>
+        <span class="tag">Direction: asc</span>
+      </div>
+      <p id="gameStatus">Loading Sudoku...</p>
+    </header>
+
+    <section class="round-strip" aria-live="polite">
+      <div>
+        <span>Status</span>
+        <strong id="roundStatus">Ready</strong>
+      </div>
+      <div>
+        <span>Difficulty</span>
+        <strong id="activeDifficulty">Easy</strong>
+      </div>
+      <div>
+        <span>Time</span>
+        <strong id="timerValue">0:00</strong>
+      </div>
+      <div>
+        <span>Filled</span>
+        <strong id="filledValue">0 / 81</strong>
+      </div>
+    </section>
+
+    <section class="main-grid">
+      <aside class="panel">
+        <h2>Difficulty</h2>
+        <div class="mode-list" role="radiogroup" aria-label="Sudoku difficulty">
+          <button class="mode-btn active" type="button" data-difficulty="easy">
+            <strong>Easy</strong>
+            <span>45 blanks</span>
+          </button>
+          <button class="mode-btn" type="button" data-difficulty="medium">
+            <strong>Medium</strong>
+            <span>49 blanks</span>
+          </button>
+          <button class="mode-btn" type="button" data-difficulty="hard">
+            <strong>Hard</strong>
+            <span>53 blanks</span>
+          </button>
+          <button class="mode-btn" type="button" data-difficulty="expert">
+            <strong>Expert</strong>
+            <span>57 blanks</span>
+          </button>
+        </div>
+
+        <div class="actions">
+          <button class="action-btn" id="newPuzzleBtn" type="button">New Puzzle</button>
+          <button class="action-btn" id="notesToggleBtn" type="button" aria-pressed="false">Notes: Off</button>
+          <button class="action-btn" id="hintBtn" type="button">Hint</button>
+          <button class="action-btn" id="checkBtn" type="button">Check Grid</button>
+        </div>
+
+        <div class="best-times">
+          <h2>Best Local Times</h2>
+          <ul class="best-list">
+            <li><span>Easy</span><strong id="bestEasy">--</strong></li>
+            <li><span>Medium</span><strong id="bestMedium">--</strong></li>
+            <li><span>Hard</span><strong id="bestHard">--</strong></li>
+            <li><span>Expert</span><strong id="bestExpert">--</strong></li>
+          </ul>
+        </div>
+
+        <p class="hint" id="hintText">Select a cell, enter 1-9, and clear rows, columns, and boxes without duplicates. Notes mode lets you pencil in candidates.</p>
+      </aside>
+
+      <article class="play-area">
+        <div class="board-wrap">
+          <div id="sudokuBoard" class="sudoku-board" role="grid" aria-label="Sudoku board"></div>
+          <div id="boardOverlay" class="board-overlay" hidden>
+            <div class="overlay-card">
+              <p class="overlay-kicker" id="overlayKicker">Complete</p>
+              <h2 id="overlayTitle">Puzzle Solved</h2>
+              <p id="overlayText">Great work.</p>
+              <div class="overlay-actions">
+                <button class="action-btn" id="playAgainBtn" type="button">Play Again</button>
+                <button class="action-btn" id="overlayCheckBtn" type="button">Review Grid</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="input-panel" aria-label="Sudoku inputs">
+          <div class="numpad" id="numpad"></div>
+          <div class="input-actions">
+            <button class="action-btn secondary" type="button" id="eraseBtn">Erase</button>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="leaderboard" style="margin-top: 14px;">
+      <h2>Leaderboard Preview</h2>
+      <p class="leaderboard-note">Local preview of fastest completion times for each segment.</p>
+      <table class="table" aria-label="Sudoku leaderboard preview">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Player</th>
+            <th>Mode</th>
+            <th>completion_time_seconds</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboardPreviewBody">
+          <tr><td>#1</td><td>Player</td><td>Easy</td><td>--</td></tr>
+          <tr><td>#2</td><td>Player</td><td>Medium</td><td>--</td></tr>
+          <tr><td>#3</td><td>Player</td><td>Hard</td><td>--</td></tr>
+          <tr><td>#4</td><td>Player</td><td>Expert</td><td>--</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+</body>
+</html>

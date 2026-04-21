@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Pac-Man for PlayR." />
+  <title>Pac-Man | PlayR</title>
+  <link rel="stylesheet" href="../../shared/game-shell.css" />
+  <link rel="stylesheet" href="game.css" />
+  <script defer src="../../shared/game-shell.js"></script>
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <div class="page" id="gameRoot" data-game-title="Pac-Man" data-metric="score" data-direction="desc" data-scope="global">
+    <div class="top">
+      <a class="back-link" href="../../../index.html">Back to hub</a>
+      <div class="board-meta">
+        <span class="tag">Type: single-player</span>
+        <span class="tag">Controls: Arrow keys, WASD, touch pad</span>
+      </div>
+    </div>
+
+    <header class="header">
+      <p class="tag">PlayR Game Module</p>
+      <h1>Pac-Man</h1>
+      <div class="meta">
+        <span class="tag">Leaderboard scope: global</span>
+        <span class="tag">Metric: score</span>
+        <span class="tag">Direction: desc</span>
+      </div>
+      <p id="gameStatus">Loading Pac-Man...</p>
+    </header>
+
+    <section class="round-strip" aria-live="polite">
+      <div>
+        <span>Score</span>
+        <strong id="score">0</strong>
+      </div>
+      <div>
+        <span>Lives</span>
+        <strong id="lives">3</strong>
+      </div>
+      <div>
+        <span>Level</span>
+        <strong id="level">1</strong>
+      </div>
+      <div>
+        <span>Best</span>
+        <strong id="bestScore">0</strong>
+      </div>
+    </section>
+
+    <section class="main-grid">
+      <aside class="panel">
+        <section class="sidebar-card">
+          <h2>How To Play</h2>
+          <ul>
+            <li>Eat every pellet to clear the maze.</li>
+            <li>Power pellets turn ghosts blue and vulnerable.</li>
+            <li>Chain ghost catches for bigger points.</li>
+            <li>Clear the board to advance a level.</li>
+          </ul>
+        </section>
+
+        <section class="sidebar-card stats-card">
+          <h2>Run Stats</h2>
+          <ul class="best-list">
+            <li><span>Current Score</span><strong id="sideScore">0</strong></li>
+            <li><span>Best Score</span><strong id="sideBest">0</strong></li>
+            <li><span>Status</span><strong id="sideState">Ready</strong></li>
+          </ul>
+        </section>
+      </aside>
+
+      <article class="play-area">
+        <div class="board-top">
+          <div class="board-top-copy">
+            <h2>Maze Run</h2>
+            <p class="hint">Classic movement, chase patterns, frightened ghosts, and level clears.</p>
+          </div>
+          <div class="board-top-actions">
+            <span id="boardMeta" class="tag">21 x 21 maze</span>
+            <button class="action-btn" id="startButton" type="button">Start</button>
+            <button class="action-btn secondary-btn" id="pauseButton" type="button" disabled>Pause</button>
+            <button class="action-btn secondary-btn" id="restartButton" type="button">Restart</button>
+          </div>
+        </div>
+
+        <div class="play-stage">
+          <div class="board-wrap">
+            <div id="menuOverlay" class="menu-overlay">
+              <div class="menu-card">
+                <p class="tag">Retro rules</p>
+                <h3 id="menuTitle">Press Start</h3>
+                <p id="menuText">
+                  Use the arrow keys or WASD to move. Eat every pellet, grab power pellets, and keep the ghosts off your trail.
+                </p>
+                <div class="menu-actions">
+                  <button class="action-btn menu-action" id="menuActionButton" type="button">Start Run</button>
+                </div>
+              </div>
+            </div>
+
+            <canvas id="pacmanCanvas" class="pacman-canvas" width="504" height="504" aria-label="Pac-Man game board"></canvas>
+          </div>
+
+          <section class="controls-card">
+            <h2>Touch Pad</h2>
+            <div class="control-pad" aria-label="Directional controls">
+              <button class="dir-btn up" type="button" data-direction="up" aria-label="Move up">▲</button>
+              <button class="dir-btn left" type="button" data-direction="left" aria-label="Move left">◀</button>
+              <button class="dir-btn pause-center" id="padPauseButton" type="button">Pause</button>
+              <button class="dir-btn right" type="button" data-direction="right" aria-label="Move right">▶</button>
+              <button class="dir-btn down" type="button" data-direction="down" aria-label="Move down">▼</button>
+            </div>
+            <p class="hint">Tap a direction to queue the move. The pause button is safe to use mid-run.</p>
+          </section>
+        </div>
+      </article>
+    </section>
+
+    <section class="leaderboard" style="margin-top: 14px;">
+      <h2>Leaderboard Preview</h2>
+      <p class="leaderboard-note">Static sample for now. The real leaderboard wiring can reuse the score metric from this module.</p>
+      <table class="table" aria-label="Pac-Man leaderboard preview">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Player</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>#1</td><td>DotEater</td><td>18450</td></tr>
+          <tr><td>#2</td><td>NeonMaze</td><td>13200</td></tr>
+          <tr><td>#3</td><td>GhostSlip</td><td>10420</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+</body>
+</html>

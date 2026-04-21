@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="PlayR module index for all scaffolded game files." />
+  <title>Game Modules | PlayR</title>
+  <style>
+    :root {
+      --bg: #081022;
+      --panel: rgba(15, 24, 44, 0.92);
+      --line: rgba(255, 255, 255, 0.12);
+      --text: #ecf2ff;
+      --muted: #a6b1cf;
+      --accent: #7cf0c5;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background: radial-gradient(circle at top right, rgba(124, 240, 197, 0.18), transparent 34%),
+        linear-gradient(160deg, #081022 0%, #0c1732 45%, #060a15 100%);
+      font-family: "Segoe UI", Tahoma, sans-serif;
+    }
+
+    .page {
+      width: min(calc(100% - 26px), 1160px);
+      margin: 0 auto;
+      padding: 24px 0 40px;
+    }
+
+    .top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .back {
+      color: var(--muted);
+      text-decoration: none;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 14px;
+    }
+
+    .back:hover,
+    .back:focus-visible {
+      color: var(--text);
+      border-color: rgba(124, 240, 197, 0.4);
+    }
+
+    .hero {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 22px;
+      margin-bottom: 14px;
+    }
+
+    .hero h1 { margin: 8px 0 10px; }
+
+    .hero p { margin: 0; color: var(--muted); line-height: 1.7; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 18px;
+    }
+
+    .card h2 { margin: 0 0 12px; }
+
+    ul {
+      margin: 0;
+      padding-left: 0;
+      list-style: none;
+      display: grid;
+      gap: 8px;
+    }
+
+    li a {
+      color: var(--text);
+      text-decoration: none;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      display: block;
+      padding: 10px 12px;
+    }
+
+    li a span { color: var(--muted); font-size: 0.85rem; }
+
+    li a:hover,
+    li a:focus-visible {
+      border-color: rgba(124, 240, 197, 0.4);
+      transform: translateX(2px);
+    }
+
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="top">
+      <a class="back" href="../index.html">Back to hub</a>
+      <span>52 scaffolded game modules</span>
+    </div>
+
+    <section class="hero">
+      <h1>Game Module Index</h1>
+      <p>Each entry points to an isolated game module with its own HTML, CSS, and JS files so we can build full gameplay internals per title.</p>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h2>Single Player (32)</h2>
+        <ul>
+          <li><a href="single-player/snake/index.html">Snake <span>(Arrow keys)</span></a></li>
+          <li><a href="single-player/2048/index.html">2048 <span>(Arrow keys)</span></a></li>
+          <li><a href="single-player/minesweeper/index.html">Minesweeper <span>(Mouse)</span></a></li>
+          <li><a href="single-player/infinite-craft-clone/index.html">Infinite Craft <span>(Mouse)</span></a></li>
+          <li><a href="single-player/the-password-game/index.html">The Password Game <span>(Keyboard)</span></a></li>
+          <li><a href="single-player/tetris/index.html">Tetris <span>(Arrow keys)</span></a></li>
+          <li><a href="single-player/dino-run-clone/index.html">Dino Run Clone <span>(Space/Arrow)</span></a></li>
+          <li><a href="single-player/pac-man/index.html">Pac-Man <span>(Arrow keys)</span></a></li>
+          <li><a href="single-player/sudoku/index.html">Sudoku <span>(Mouse)</span></a></li>
+          <li><a href="single-player/wordle-inf/index.html">Wordle Infinite <span>(Keyboard)</span></a></li>
+          <li><a href="single-player/flappy-bird-clone/index.html">Flappy Bird Clone <span>(Space/Mouse)</span></a></li>
+          <li><a href="single-player/doodle-jump-clone/index.html">Doodle Jump Clone <span>(Arrow keys)</span></a></li>
+          <li><a href="single-player/breakout/index.html">Breakout <span>(Mouse)</span></a></li>
+          <li><a href="single-player/asteroids/index.html">Asteroids <span>(Arrow keys)</span></a></li>
+          <li><a href="single-player/frogger/index.html">Frogger <span>(Arrow keys)</span></a></li>
+          <li><a href="single-player/solitaire/index.html">Solitaire <span>(Mouse)</span></a></li>
+          <li><a href="single-player/space-invaders/index.html">Space Invaders <span>(Arrow keys)</span></a></li>
+          <li><a href="single-player/simon-says/index.html">Simon Says <span>(Mouse)</span></a></li>
+          <li><a href="single-player/little-alchemy-clone/index.html">Little Alchemy Clone <span>(Mouse)</span></a></li>
+          <li><a href="single-player/draw-a-perfect-circle/index.html">Draw a Perfect Circle <span>(Mouse)</span></a></li>
+          <li><a href="single-player/spend-bill-gates-money/index.html">Spend Bill Gates' Money <span>(Mouse)</span></a></li>
+          <li><a href="single-player/the-deep-sea/index.html">The Deep Sea <span>(Mouse Scroll)</span></a></li>
+          <li><a href="single-player/geometry-dash-clone/index.html">Geometry Dash Clone <span>(Mouse Click)</span></a></li>
+          <li><a href="single-player/cookie-clicker-clone/index.html">Cookie Clicker Clone <span>(Mouse)</span></a></li>
+          <li><a href="single-player/tower-builder/index.html">Tower Builder <span>(Mouse Click)</span></a></li>
+          <li><a href="single-player/memory-match/index.html">Memory Match <span>(Mouse)</span></a></li>
+          <li><a href="single-player/hextris/index.html">Hextris <span>(Arrow keys)</span></a></li>
+          <li><a href="single-player/burrito-bison-clone/index.html">Burrito Bison Clone <span>(Mouse)</span></a></li>
+          <li><a href="single-player/click-speed-test/index.html">Click Speed Test <span>(Mouse)</span></a></li>
+          <li><a href="single-player/typing-test/index.html">Typing Test <span>(Keyboard)</span></a></li>
+          <li><a href="single-player/slide-puzzle/index.html">Slide Puzzle <span>(Mouse)</span></a></li>
+          <li><a href="single-player/absurd-trolley-problem/index.html">The Absurd Trolley Problem! <span>(Mouse)</span></a></li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <h2>2-Player (20)</h2>
+        <ul>
+          <li><a href="two-player/battleship/index.html">Battleship <span>(Mouse)</span></a></li>
+          <li><a href="two-player/connect-4/index.html">Connect 4 <span>(Mouse)</span></a></li>
+          <li><a href="two-player/chess/index.html">Chess <span>(Mouse)</span></a></li>
+          <li><a href="two-player/checkers/index.html">Checkers <span>(Mouse)</span></a></li>
+          <li><a href="two-player/tic-tac-toe/index.html">Tic-Tac-Toe <span>(Mouse)</span></a></li>
+          <li><a href="two-player/pong/index.html">Pong <span>(Up/Down vs W/S)</span></a></li>
+          <li><a href="two-player/tank-trouble-clone/index.html">Tank Trouble Clone <span>(Keyboard)</span></a></li>
+          <li><a href="two-player/slither-io-clone/index.html">Slither.io Clone <span>(Mouse)</span></a></li>
+          <li><a href="two-player/fireboy-watergirl-clone/index.html">Fireboy & Watergirl Clone <span>(Arrows + WASD)</span></a></li>
+          <li><a href="two-player/hangman-2p/index.html">Hangman Multiplayer <span>(Keyboard)</span></a></li>
+          <li><a href="two-player/8-ball-pool/index.html">8-Ball Pool <span>(Mouse)</span></a></li>
+          <li><a href="two-player/air-hockey/index.html">Air Hockey <span>(Mouse vs Keyboard)</span></a></li>
+          <li><a href="two-player/rock-paper-scissors/index.html">Rock Paper Scissors <span>(Mouse)</span></a></li>
+          <li><a href="two-player/trivia-quiz/index.html">Trivia Quiz <span>(Mouse)</span></a></li>
+          <li><a href="two-player/dots-and-boxes/index.html">Dots and Boxes <span>(Mouse)</span></a></li>
+          <li><a href="two-player/ludo/index.html">Ludo <span>(Mouse)</span></a></li>
+          <li><a href="two-player/uno-clone/index.html">Uno Clone <span>(Mouse)</span></a></li>
+          <li><a href="two-player/tug-of-war/index.html">Tug of War <span>(A vs L)</span></a></li>
+          <li><a href="two-player/mancala/index.html">Mancala <span>(Mouse)</span></a></li>
+          <li><a href="two-player/penalty-shootout/index.html">Penalty Shootout <span>(Mouse)</span></a></li>
+        </ul>
+      </article>
+    </section>
+  </div>
+</body>
+</html>

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Classic-style Tetris for PlayR." />
+  <title>Tetris | PlayR</title>
+  <link rel="stylesheet" href="../../shared/game-shell.css" />
+  <link rel="stylesheet" href="game.css" />
+  <script defer src="../../shared/game-shell.js"></script>
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <div class="page" id="gameRoot" data-game-title="Tetris" data-metric="score" data-direction="desc" data-scope="global">
+    <div class="top">
+      <a class="back-link" href="../../../index.html">Back to hub</a>
+      <div class="board-meta">
+        <span class="tag">Type: single-player</span>
+        <span class="tag">Controls: Arrow keys / WASD / Space</span>
+      </div>
+    </div>
+
+    <header class="header">
+      <p class="tag">PlayR Game Module</p>
+      <h1>Tetris</h1>
+      <div class="meta">
+        <span class="tag">Leaderboard scope: global</span>
+        <span class="tag">Metric: score</span>
+        <span class="tag">Direction: desc</span>
+      </div>
+    </header>
+
+    <section class="main-grid">
+      <article class="play-area">
+        <div class="tetris-layout">
+          <div class="board-shell">
+            <div class="board-topline">
+              <div class="board-stats">
+                <span class="tag">Score <strong id="scoreValue">0</strong></span>
+                <span class="tag">Lines <strong id="linesValue">0</strong></span>
+                <span class="tag">Level <strong id="levelValue">1</strong></span>
+              </div>
+              <div class="board-actions">
+                <button class="board-btn" id="pauseButton" type="button">Pause</button>
+                <button class="board-btn board-btn-primary" id="restartButton" type="button">Restart</button>
+              </div>
+            </div>
+
+            <div class="board-stage">
+              <canvas id="gameCanvas" class="game-canvas" width="320" height="640" aria-label="Tetris board" role="img"></canvas>
+              <div class="board-overlay" id="boardOverlay">
+                <div class="overlay-card">
+                  <p class="overlay-kicker" id="overlayKicker">Ready</p>
+                  <h2 id="overlayTitle">Tetris</h2>
+                  <p id="overlayText">Stack clean lines, use hold when needed, and chase the next tetrimino.</p>
+                  <div class="overlay-actions">
+                    <button class="board-btn board-btn-primary" id="startButton" type="button">Start</button>
+                    <button class="board-btn" id="overlayRestartButton" type="button">Restart</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <aside class="side-rail">
+            <section class="panel mini-panel">
+              <h2>Next</h2>
+              <div class="next-stack" id="nextStack"></div>
+            </section>
+
+            <section class="panel mini-panel">
+              <h2>Controls</h2>
+              <ul class="control-list">
+                <li><span>Move</span><strong>Arrow keys / A D</strong></li>
+                <li><span>Rotate</span><strong>R / Up / X, Z</strong></li>
+                <li><span>Drop</span><strong>Down</strong></li>
+                <li><span>Hard drop</span><strong>Space</strong></li>
+                <li><span>Hold</span><strong>C / Shift</strong></li>
+                <li><span>Pause</span><strong>P</strong></li>
+              </ul>
+            </section>
+          </aside>
+        </div>
+      </article>
+
+      <aside class="panel session-panel">
+        <h2>Session</h2>
+        <ul class="session-list">
+          <li><span>Best score</span><strong id="bestScoreValue">0</strong></li>
+          <li><span>Clear target</span><strong>4 lines for a Tetris</strong></li>
+          <li><span>Rule set</span><strong>Classic-inspired SRS</strong></li>
+          <li><span>Status</span><strong id="statusValue">Ready</strong></li>
+        </ul>
+        <p class="hint-copy">The board uses a clean arcade layout while keeping the core Tetris flow intact: queue, ghost, hard drop, and score-based progression.</p>
+      </aside>
+    </section>
+  </div>
+</body>
+</html>

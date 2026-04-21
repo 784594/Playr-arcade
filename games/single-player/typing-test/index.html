@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Typing Test - Speed, accuracy, weak-key, and reaction training." />
+  <title>Typing Test | PlayR</title>
+  <link rel="stylesheet" href="../../shared/game-shell.css" />
+  <link rel="stylesheet" href="game.css" />
+  <script defer src="game.js"></script>
+</head>
+<body class="typing-body">
+  <div class="page typing-page" id="gameRoot" data-game-title="Typing Test" data-metric="wpm" data-direction="desc" data-scope="global">
+    <div class="top">
+      <a class="back-link" href="../../../index.html">Back to hub</a>
+      <div class="board-meta">
+        <span class="tag">Type: single-player</span>
+        <span class="tag">Controls: Keyboard</span>
+        <span class="tag">Leaderboard: WPM</span>
+      </div>
+    </div>
+
+    <header class="header typing-header">
+      <p class="tag">PlayR Input Trainer</p>
+      <h1>Typing Test</h1>
+      <p class="hero-copy">
+        Build speed without sacrificing accuracy. Train standard WPM, burst output, weak keys, consistency, and reaction typing in one focused module.
+      </p>
+      <div class="hero-metrics" aria-label="Live headline stats">
+        <div>
+          <span>Live WPM</span>
+          <strong id="headlineWpm">0.00</strong>
+        </div>
+        <div>
+          <span>Accuracy</span>
+          <strong id="headlineAccuracy">100.00%</strong>
+        </div>
+        <div>
+          <span>Raw speed</span>
+          <strong id="headlineRawWpm">0.00</strong>
+        </div>
+        <div>
+          <span>Mode</span>
+          <strong id="headlineMode">Standard</strong>
+        </div>
+      </div>
+      <p id="gameStatus">Choose a mode, then start the session.</p>
+    </header>
+
+    <section class="main-grid">
+      <aside class="panel settings-panel">
+        <div>
+          <h2>Modes</h2>
+          <div class="mode-grid" role="radiogroup" aria-label="Typing modes">
+            <button class="mode-btn active" type="button" data-mode="standard">
+              <strong>Standard</strong>
+              <span>Balanced WPM + accuracy</span>
+            </button>
+            <button class="mode-btn" type="button" data-mode="accuracy">
+              <strong>Accuracy</strong>
+              <span>Perfect correction flow</span>
+            </button>
+            <button class="mode-btn" type="button" data-mode="burst">
+              <strong>Burst</strong>
+              <span>10-15s max speed</span>
+            </button>
+            <button class="mode-btn" type="button" data-mode="weak-key">
+              <strong>Weak Key</strong>
+              <span>Adaptive repair training</span>
+            </button>
+            <button class="mode-btn" type="button" data-mode="consistency">
+              <strong>Consistency</strong>
+              <span>Stable pacing over spikes</span>
+            </button>
+            <button class="mode-btn" type="button" data-mode="reaction">
+              <strong>Reaction</strong>
+              <span>Words appear as targets</span>
+            </button>
+            <button class="mode-btn disabled" type="button" disabled>
+              <strong>Race</strong>
+              <span>Ghost racing coming later</span>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <h2>Duration</h2>
+          <div class="chip-grid" role="group" aria-label="Typing test duration">
+            <button class="chip-btn" type="button" data-duration="10">10s</button>
+            <button class="chip-btn active" type="button" data-duration="15">15s</button>
+            <button class="chip-btn" type="button" data-duration="30">30s</button>
+            <button class="chip-btn" type="button" data-duration="60">60s</button>
+            <button class="chip-btn" type="button" data-duration="120">120s</button>
+          </div>
+        </div>
+
+        <div>
+          <h2>Source</h2>
+          <div class="chip-grid" role="group" aria-label="Typing source">
+            <button class="chip-btn active" type="button" data-source="words">Words</button>
+            <button class="chip-btn" type="button" data-source="sentences">Sentences</button>
+          </div>
+        </div>
+
+        <div>
+          <h2>Difficulty</h2>
+          <div class="chip-grid" role="group" aria-label="Typing difficulty">
+            <button class="chip-btn active" type="button" data-difficulty="common">Common</button>
+            <button class="chip-btn" type="button" data-difficulty="mixed">Mixed</button>
+            <button class="chip-btn" type="button" data-difficulty="hard">Hard</button>
+            <button class="chip-btn" type="button" data-difficulty="expert">Expert</button>
+          </div>
+        </div>
+
+        <div>
+          <h2>Challenge Rules</h2>
+          <div class="toggle-list" role="group" aria-label="Typing rules">
+            <button class="toggle-btn" type="button" data-toggle="punctuation" aria-pressed="false">Punctuation</button>
+            <button class="toggle-btn" type="button" data-toggle="numbers" aria-pressed="false">Numbers</button>
+            <button class="toggle-btn" type="button" data-toggle="caseSensitive" aria-pressed="false">Case sensitive</button>
+          </div>
+        </div>
+
+        <div class="action-stack">
+          <button class="button primary" type="button" id="startBtn">Start Session</button>
+          <button class="button secondary" type="button" id="replayBtn">Replay Last Run</button>
+          <button class="button secondary" type="button" id="resetStatsBtn">Reset Training Stats</button>
+        </div>
+
+        <p class="hint" id="modeHint">Standard mode balances speed and clean input. Use weak key mode to retrain problem letters.</p>
+        <div class="summary-box">
+          <p class="summary-label">Weak key focus</p>
+          <p class="summary-value" id="weakKeySummary">No weak keys detected yet.</p>
+        </div>
+      </aside>
+
+      <section class="stage-panel">
+        <div class="stage-header">
+          <div>
+            <p class="panel-label">Typing surface</p>
+            <h2 id="stageTitle">Ready to start</h2>
+          </div>
+          <div class="stage-tags">
+            <span class="tag" id="liveModeTag">Standard</span>
+            <span class="tag" id="liveDurationTag">15s</span>
+            <span class="tag" id="liveSourceTag">Words</span>
+          </div>
+        </div>
+
+        <div class="typing-stage" id="typingStage">
+          <div class="target-halo"></div>
+          <div class="target-copy">
+            <p class="target-label" id="targetLabel">Focus target</p>
+            <div class="target-stream" id="targetStream" aria-live="polite"></div>
+            <div class="reaction-target" id="reactionTarget" hidden>
+              <span class="reaction-badge">Reaction target</span>
+              <strong id="reactionWord">Ready</strong>
+              <p id="reactionPrompt">Words will appear suddenly. Type the target before it disappears.</p>
+            </div>
+          </div>
+          <input id="typingInput" class="typing-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Typing input" />
+        </div>
+
+        <div class="live-grid" aria-label="Live typing stats">
+          <article class="stat-card"><span>WPM</span><strong id="liveWpm">0.00</strong></article>
+          <article class="stat-card"><span>Accuracy</span><strong id="liveAccuracy">100.00%</strong></article>
+          <article class="stat-card"><span>Raw WPM</span><strong id="liveRawWpm">0.00</strong></article>
+          <article class="stat-card"><span>Errors</span><strong id="liveErrors">0</strong></article>
+          <article class="stat-card"><span>Backspaces</span><strong id="liveBackspaces">0</strong></article>
+          <article class="stat-card"><span>Combo</span><strong id="liveCombo">0</strong></article>
+        </div>
+
+        <div class="progress-shell">
+          <div class="progress-row">
+            <span>Session progress</span>
+            <strong id="progressLabel">0%</strong>
+          </div>
+          <div class="progress-track" aria-hidden="true">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <p class="panel-label">Consistency view</p>
+              <h3>Speed over time</h3>
+            </div>
+            <p id="chartSummary">Build a steadier pace to raise the consistency score.</p>
+          </div>
+          <div class="pace-chart" id="paceChart" aria-label="WPM consistency chart"></div>
+        </div>
+
+        <section class="results-card" id="resultsCard" hidden>
+          <div class="results-head">
+            <div>
+              <p class="panel-label">Run complete</p>
+              <h3 id="resultsTitle">Your results</h3>
+            </div>
+            <p id="resultsBadge">Clean run</p>
+          </div>
+          <div class="results-grid">
+            <div class="result-item"><span>WPM</span><strong id="resultWpm">0.00</strong></div>
+            <div class="result-item"><span>Accuracy</span><strong id="resultAccuracy">0.00%</strong></div>
+            <div class="result-item"><span>Raw WPM</span><strong id="resultRawWpm">0.00</strong></div>
+            <div class="result-item"><span>Errors</span><strong id="resultErrors">0</strong></div>
+            <div class="result-item"><span>Consistency</span><strong id="resultConsistency">0.0</strong></div>
+            <div class="result-item"><span>Best streak</span><strong id="resultStreak">0</strong></div>
+          </div>
+          <p class="result-note" id="resultNote"></p>
+          <div class="results-actions">
+            <button class="button primary" type="button" id="runAgainBtn">Replay instantly</button>
+            <button class="button secondary" type="button" id="practiceBtn">Practice weak keys</button>
+            <button class="button secondary" type="button" id="shareStatsBtn">Copy summary</button>
+          </div>
+        </section>
+      </section>
+
+      <aside class="panel insight-panel">
+        <div>
+          <h2>Training Focus</h2>
+          <p class="hint" id="insightCopy">No session yet. Start a run to surface your weak letters and pacing patterns.</p>
+        </div>
+
+        <div class="insight-card">
+          <p class="summary-label">Weak keys</p>
+          <ul class="weak-list" id="weakKeyList"></ul>
+        </div>
+
+        <div class="insight-card">
+          <p class="summary-label">Personal bests</p>
+          <ul class="best-list" id="bestList"></ul>
+        </div>
+
+        <div class="insight-card">
+          <p class="summary-label">Session tips</p>
+          <ul class="tip-list">
+            <li>Use standard mode to compare speed and control.</li>
+            <li>Switch to accuracy mode when your error count starts drifting.</li>
+            <li>Weak key mode weights letters you miss most often.</li>
+            <li>Reaction mode teaches word recognition under pressure.</li>
+          </ul>
+        </div>
+      </aside>
+    </section>
+
+    <section class="leaderboard leaderboard-block">
+      <div class="leaderboard-head">
+        <div>
+          <h2>Local WPM Leaderboard</h2>
+          <p class="leaderboard-note">Saved in-browser by run quality. Speed, accuracy, and consistency all matter.</p>
+        </div>
+        <span class="tag">Top 100 local runs</span>
+      </div>
+      <div class="table-wrap">
+        <table class="table" aria-label="Typing test leaderboard preview">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Player</th>
+              <th>WPM</th>
+              <th>Accuracy</th>
+              <th>Mode</th>
+              <th>Duration</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

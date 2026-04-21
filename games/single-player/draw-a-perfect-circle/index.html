@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Draw one circle in a single stroke and see how close you get to perfection." />
+  <title>Draw a Perfect Circle | PlayR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../shared/game-shell.css" />
+  <link rel="stylesheet" href="game.css" />
+  <script defer src="../../shared/game-shell.js"></script>
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <div class="page circle-page" id="gameRoot" data-game-title="Draw a Perfect Circle" data-metric="accuracy_percent" data-direction="desc" data-scope="global">
+    <div class="top">
+      <a class="back-link" href="../../../index.html">Back to hub</a>
+      <div class="board-meta">
+        <span class="tag">Type: single-player</span>
+        <span class="tag">Controls: mouse or touch</span>
+      </div>
+    </div>
+
+    <header class="header hero">
+      <p class="eyebrow">PlayR Precision Challenge</p>
+      <h1>Draw a Perfect Circle</h1>
+      <p class="hero-copy">Press, draw one full loop, and release. Your score blends shape consistency, closure, and how completely you trace the full 360 degrees.</p>
+      <p class="status-line" id="gameStatus">Press and hold inside the board to start.</p>
+    </header>
+
+    <section class="main-grid circle-layout">
+      <article class="play-area circle-play-area">
+        <div class="circle-stage" id="circleStage" aria-label="Circle drawing board">
+          <canvas id="circleCanvas" aria-label="Draw a perfect circle" role="img"></canvas>
+          <div class="overlay-note" id="overlayNote">Draw one circle in one stroke</div>
+          <div class="result-badge" id="resultBadge" hidden>
+            <span class="result-badge-label">Accuracy</span>
+            <strong id="resultBadgeValue">0.00%</strong>
+          </div>
+        </div>
+      </article>
+
+      <aside class="panel circle-panel">
+        <h2>Run Metrics</h2>
+
+        <div class="score-large">
+          <span>Last score</span>
+          <strong id="accuracyValue">--</strong>
+        </div>
+
+        <div class="run-stats-grid">
+          <p><span>Roundness</span><strong id="roundnessValue">--</strong></p>
+          <p><span>Closure</span><strong id="closureValue">--</strong></p>
+          <p><span>Coverage</span><strong id="coverageValue">--</strong></p>
+          <p><span>Deviation</span><strong id="deviationValue">--</strong></p>
+          <p><span>Draw time</span><strong id="timeValue">--</strong></p>
+          <p><span>Points</span><strong id="pointsValue">--</strong></p>
+        </div>
+
+        <div class="actions">
+          <button id="retryBtn" class="action-btn action-btn-primary" type="button">Try again</button>
+        </div>
+
+        <h3>Top local runs</h3>
+        <table class="table compact-table" aria-label="Top local circle runs">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Player</th>
+              <th>Accuracy</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardRows">
+            <tr><td colspan="4">No runs saved yet.</td></tr>
+          </tbody>
+        </table>
+      </aside>
+    </section>
+  </div>
+</body>
+</html>

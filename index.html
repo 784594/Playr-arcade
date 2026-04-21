@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="PlayR is an unblocked competitive arcade with leaderboard-driven games." />
+  <title>PlayR</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar">
+      <a class="brand" href="#home" aria-label="PlayR home">
+        <span class="brand-mark">
+          <img class="brand-logo" src="images/background-removed-background-removed.png" alt="PlayR logo" />
+        </span>
+        <span class="brand-copy">
+          <strong>PlayR</strong>
+          <small>Unblocked Competitive Arcade</small>
+        </span>
+      </a>
+      <div class="topbar-controls">
+        <nav class="topnav" id="libraryTabs" aria-label="Game categories">
+          <button class="chip-button active" type="button" data-library-tab="all">All Games</button>
+          <button class="chip-button" type="button" data-library-tab="single-player">1P Games</button>
+          <button class="chip-button" type="button" data-library-tab="multiplayer">Multiplayer</button>
+          <button class="chip-button" type="button" data-library-tab="competitive">Competitive</button>
+          <button class="chip-button" type="button" data-library-tab="leaderboard">Leaderboard</button>
+        </nav>
+        <button class="chip-button support-tab-button" type="button" id="supportBtn">Support Me</button>
+        <button class="button secondary login-button" type="button" id="loginBtn">Log in</button>
+      </div>
+    </header>
+
+    <main id="home">
+      <section class="hero">
+        <aside class="hero-panel">
+          <div class="panel-card panel-glow" id="featuredGameCard" role="button" tabindex="0" aria-label="Open featured game">
+            <p class="panel-label">Featured game</p>
+            <h2 id="featuredTitle">Snake</h2>
+            <p id="featuredSummary">Classic arcade tension with modern visuals, smooth input, and a global best-run leaderboard.</p>
+            <div class="mini-grid">
+              <div>
+                <span>Control style</span>
+                <strong id="featuredControls">Arrow keys</strong>
+              </div>
+              <div>
+                <span>Leaderboard</span>
+                <strong id="featuredMetric">Highest score</strong>
+              </div>
+              <div>
+                <span>Rotation</span>
+                <strong id="featuredRotation">Random pick</strong>
+              </div>
+              <div>
+                <span>Status</span>
+                <strong id="featuredStatus">Ready to build</strong>
+              </div>
+              <div>
+                <span>Mode</span>
+                <strong id="featuredMode">Single player</strong>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="section" id="games">
+        <div class="section-heading">
+          <h2 class="library-heading">GAME LIBRARY</h2>
+        </div>
+
+        <div class="library-controls" aria-label="Game library controls">
+          <div class="search-shell" id="librarySearchShell">
+            <input id="gameSearch" class="game-search" type="search" placeholder="Search games" aria-label="Search games" />
+          </div>
+          <div class="signal-filters" id="signalFilters" aria-label="Discovery filters">
+            <button class="chip-button soft active" type="button" data-signal-filter="all">All</button>
+            <button class="chip-button soft" type="button" data-signal-filter="trending">Trending</button>
+            <button class="chip-button soft" type="button" data-signal-filter="new">New</button>
+            <button class="chip-button soft" type="button" data-signal-filter="top-players">Top Players</button>
+            <button class="chip-button soft" type="button" data-signal-filter="leaderboard">Leaderboard</button>
+          </div>
+        </div>
+
+        <p class="filter-summary" id="filterSummary">Showing all games.</p>
+        <div class="game-grid" id="gameGrid"></div>
+      </section>
+
+      <section class="section publishing-section" id="publishing">
+        <div class="section-heading compact">
+          <div>
+            <p class="eyebrow">Publishing preview</p>
+            <h2>Launch-day features we can wire up later.</h2>
+          </div>
+          <p>
+            These are the future site layers for featured rotation, scheduled leaderboards, supporter perks, and donation flows.
+          </p>
+        </div>
+        <div class="publishing-grid" id="publishingGrid" aria-label="Publishing feature preview"></div>
+      </section>
+
+      <section class="section support-section" id="support" hidden>
+        <div class="section-heading compact">
+          <div>
+            <p class="eyebrow">Support</p>
+            <h2>About PlayR</h2>
+          </div>
+          <p>
+            PlayR is a focused arcade hub for competitive browser games, daily featured picks, and future donation support.
+          </p>
+        </div>
+        <div class="support-card panel-card">
+          <p>
+            The donation button will live here once payments are connected. This section replaces the older about block and keeps the homepage shorter.
+          </p>
+          <div class="mine-actions">
+            <button class="button primary" type="button" id="donateBtn">Donate</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="section split-layout" id="leaderboards" hidden>
+        <div class="section-heading compact">
+          <div>
+            <p class="eyebrow">Global leaderboards</p>
+            <h2>Every game has its own ranking style.</h2>
+          </div>
+          <p>
+            Some games rank by score, others by time, accuracy, or puzzle depth. The data model is built to support the
+            right metric for each game instead of forcing one universal format.
+          </p>
+        </div>
+        <div class="leaderboard-filters" id="leaderboardRangeFilters" aria-label="Leaderboard range filters">
+          <button class="chip-button active" type="button" data-range="daily">Daily</button>
+          <button class="chip-button" type="button" data-range="all-time">All-time</button>
+          <button class="chip-button" type="button" data-range="your-stats">Your stats</button>
+          <button class="chip-button" type="button" data-range="donation">Donation leaderboard</button>
+        </div>
+        <p class="leaderboard-about" id="leaderboardAbout">
+          Daily snapshots, all-time records, and your personal stats now follow account login state.
+        </p>
+        <div class="leaderboard-shell">
+          <div class="leaderboard-card panel-card" id="leaderboardCard"></div>
+        </div>
+      </section>
+    </main>
+
+    <div class="auth-overlay" id="authOverlay" hidden>
+      <section class="auth-modal panel-card" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+        <div class="auth-modal-header">
+          <div>
+            <h3 id="authTitle">Sign up now to unlock multiplayer and Leaderboard Eligibility!</h3>
+          </div>
+          <button class="chip-button" type="button" id="authCloseBtn">Later</button>
+        </div>
+
+        <p class="auth-description" id="authDescription">
+          Use your login name and password. Warning: account recovery is disabled right now, so save your password safely.
+        </p>
+
+        <div class="auth-form" id="authFormSection">
+          <label class="auth-label" for="authIdentifierInput">Create a Login Name</label>
+          <input id="authIdentifierInput" class="auth-input" type="text" placeholder="Your login name" autocomplete="username" />
+
+          <label class="auth-label" for="authPinInput">Create A Password</label>
+          <div class="auth-password-row">
+            <input id="authPinInput" class="auth-input" type="password" placeholder="At least 6 characters" autocomplete="current-password" />
+            <button
+              class="auth-password-toggle"
+              type="button"
+              id="authPinToggleBtn"
+              aria-label="Show password"
+              aria-pressed="false"
+              title="Show or hide password"
+            >&#128065;</button>
+          </div>
+
+          <button class="button primary" type="button" id="authContinueBtn">Create Account</button>
+          <button class="button secondary" type="button" id="authModeToggleBtn">Already have an account?</button>
+        </div>
+        <p class="auth-status" id="authStatus"></p>
+      </section>
+    </div>
+
+    <div class="claim-overlay" id="claimOverlay" hidden>
+      <section class="claim-modal panel-card" role="dialog" aria-modal="true" aria-labelledby="claimTitle">
+        <p id="claimTitle" class="claim-message">Hey! You just earned a spot on the leaderboard! Log in or Sign up now to claim it!</p>
+        <div class="claim-actions">
+          <button class="button primary" type="button" id="claimLoginBtn">Log in</button>
+          <button class="button secondary" type="button" id="claimSignupBtn">Sign up</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="system-overlay" id="systemOverlay" hidden>
+      <section class="system-modal panel-card" role="dialog" aria-modal="true" aria-labelledby="systemTitle">
+        <div class="system-modal-header">
+          <div>
+            <p class="eyebrow">PlayR message</p>
+            <h3 id="systemTitle">Confirm action</h3>
+          </div>
+        </div>
+        <p class="system-message" id="systemMessage"></p>
+        <div class="system-actions">
+          <button class="button secondary" type="button" id="systemCancelBtn">Cancel</button>
+          <button class="button primary" type="button" id="systemConfirmBtn">OK</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="settings-overlay" id="settingsOverlay" hidden>
+      <section class="settings-modal panel-card" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+        <div class="settings-modal-header">
+          <div>
+            <p class="eyebrow">Account settings</p>
+            <h3 id="settingsTitle">Account</h3>
+          </div>
+          <button class="chip-button" type="button" id="settingsCloseBtn">Close</button>
+        </div>
+
+        <div class="settings-grid">
+          <section class="settings-card">
+            <h4>Account</h4>
+
+            <label class="auth-label" for="settingsDisplayInput">Change display name</label>
+            <input id="settingsDisplayInput" class="auth-input" type="text" maxlength="24" placeholder="New display name" />
+            <button class="button secondary" type="button" id="settingsUpdateDisplayBtn">Update display name</button>
+
+            <label class="auth-label" for="settingsCurrentPasswordInput">Current password</label>
+            <input id="settingsCurrentPasswordInput" class="auth-input" type="password" placeholder="Required password changes" />
+
+            <label class="auth-label" for="settingsNewPasswordInput">New password</label>
+            <input id="settingsNewPasswordInput" class="auth-input" type="password" placeholder="At least 6 characters" />
+            <button class="button secondary" type="button" id="settingsUpdatePasswordBtn">Update password</button>
+            <p class="settings-warning">Warning: account recovery and forgot password are disabled. If you forget your password, you may lose access to this account.</p>
+
+            <label class="settings-checkbox-row" for="settingsShowPasswordsToggle">
+              <input id="settingsShowPasswordsToggle" type="checkbox" />
+              <span>Show password fields</span>
+            </label>
+
+            <button class="button secondary" type="button" id="settingsLogoutBtn">Log out</button>
+          </section>
+
+          <section class="settings-card" id="adminSettingsCard" hidden>
+            <h4>Admin abuse panel</h4>
+            <p class="settings-warning">Owner only. These controls can inject impossible leaderboard entries for testing or admin override.</p>
+
+            <label class="auth-label" for="adminGameSelect">Game</label>
+            <select id="adminGameSelect" class="auth-input"></select>
+
+            <label class="auth-label" for="adminRankInput">Rank position</label>
+            <input id="adminRankInput" class="auth-input" type="number" min="1" max="100" value="1" />
+
+            <label class="auth-label" for="adminPlayerInput">Player name</label>
+            <input id="adminPlayerInput" class="auth-input" type="text" maxlength="24" placeholder="Owner" />
+
+            <label class="auth-label" for="adminValueInput">Score value</label>
+            <input id="adminValueInput" class="auth-input" type="text" placeholder="1s, inf, 999999999" />
+
+            <label class="auth-label" for="adminDetailInput">Row detail (optional)</label>
+            <input id="adminDetailInput" class="auth-input" type="text" maxlength="48" placeholder="Admin override" />
+
+            <div class="settings-inline-actions">
+              <button class="button secondary" type="button" id="adminInjectScoreBtn">Inject custom score</button>
+              <button class="button secondary" type="button" id="adminQuickMinesBtn">1s Minesweeper #1</button>
+              <button class="button secondary" type="button" id="adminQuickCookiesBtn">Infinite Cookies #1</button>
+              <button class="button secondary" type="button" id="adminResetScoresBtn">Reset scores (selected game)</button>
+              <button class="button secondary" type="button" id="adminRevertScoresBtn">Revert scores (selected game)</button>
+              <button class="button secondary" type="button" id="adminPurgeUnknownAccountsBtn">Purge unknown accounts</button>
+            </div>
+          </section>
+        </div>
+
+        <p class="auth-status" id="settingsStatus"></p>
+      </section>
+    </div>
+  </div>
+</body>
+</html>
