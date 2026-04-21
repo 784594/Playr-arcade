@@ -20,6 +20,32 @@ Playr is a polished static front end for a multi-game arcade hub. It focuses on 
 
 Open `index.html` in a browser. The site is fully static and does not require a build step.
 
+## Publishing updates (every change)
+
+Use this flow any time you edit files and want the live site updated:
+
+1. Save your file changes.
+2. Commit and push to `main`:
+
+```bash
+git add .
+git commit -m "Describe what changed"
+git push origin main
+```
+
+3. Wait for GitHub Pages to deploy automatically (usually under 2 minutes).
+4. Hard refresh the live site (or use an incognito tab) to confirm the latest UI/code is live.
+
+If `git` is not recognized in your terminal on Windows, run Git with a full path:
+
+```powershell
+& "C:\Program Files\Git\cmd\git.exe" add .
+& "C:\Program Files\Git\cmd\git.exe" commit -m "Describe what changed"
+& "C:\Program Files\Git\cmd\git.exe" push origin main
+```
+
+Tip: check the repository Actions tab after each push to confirm the Pages deployment succeeded.
+
 ## Firestore rules setup
 
 If you see "Firestore permission denied" while signing up, changing display name, or joining multiplayer rooms, your Firestore rules are too strict for this project.

@@ -135,6 +135,7 @@ const dom = {
   cookieBtn: document.getElementById('cookieBtn'),
   cookieImage: document.getElementById('cookieImage'),
   cookieFallback: document.getElementById('cookieFallback'),
+  cookieWorkbench: document.getElementById('cookieWorkbench'),
   cookieCount: document.getElementById('cookieCount'),
   cpcDisplay: document.getElementById('cpcDisplay'),
   cpsDisplay: document.getElementById('cpsDisplay'),
@@ -841,21 +842,15 @@ function bindEvents() {
     });
   }
 
-  const adminConfig = {
-    gameState: gameState,
-    elements: {
-      adminTools: dom.adminTools,
-      adminModeBtn: dom.adminModeBtn,
-      adminInfo: dom.adminInfo,
-    },
-    callbacks: {
-      onRefreshUI: () => {
+  if (dom.adminModeBtn) {
+    dom.adminModeBtn.addEventListener('click', () => {
+      if (!isOwnerAccount()) {
         refreshAdminControlsUi();
-      },
-    },
-  };
-  if (window.AdminToolkit) {
-    window.AdminToolkit.init(adminConfig);
+        return;
+      }
+      gameState.adminEnabled = !gameState.adminEnabled;
+      refreshAdminControlsUi();
+    });
   }
   refreshAdminControlsUi();
 
@@ -899,8 +894,15 @@ function startLoops() {
 
 function isOwnerAccount() {
 	try {
+    if (window.PlayrAuth?.isAdmin) {
+      return true;
+    }
+
 		if (window.PlayrAuth && typeof window.PlayrAuth.getCurrentUser === 'function') {
 			const user = window.PlayrAuth.getCurrentUser();
+      if (user?.isAdmin) {
+        return true;
+      }
 			if (String(user?.displayName || '').trim().toLowerCase() === 'owner') {
 				return true;
 			}
@@ -913,6 +915,9 @@ function isOwnerAccount() {
 		const raw = localStorage.getItem('playrCurrentUser');
 		if (!raw) return false;
 		const parsed = JSON.parse(raw);
+    if (parsed?.isAdmin) {
+      return true;
+    }
 		return String(parsed?.displayName || '').trim().toLowerCase() === 'owner';
 	} catch {
 		return false;
@@ -921,6 +926,9 @@ function isOwnerAccount() {
 
 function refreshAdminSidebarUi() {
 	const isOwner = isOwnerAccount();
+  if (dom.cookieWorkbench) {
+    dom.cookieWorkbench.classList.toggle('admin-open', isOwner && gameState.adminSidebarOpen);
+  }
 	if (dom.adminSidebarToggleBtn) {
 		dom.adminSidebarToggleBtn.hidden = !isOwner;
 		dom.adminSidebarToggleBtn.textContent = gameState.adminSidebarOpen ? 'Hide Admin' : 'Show Admin';
@@ -930,6 +938,9 @@ function refreshAdminSidebarUi() {
 	if (!isOwner) {
 		dom.adminTools.hidden = true;
 		gameState.adminSidebarOpen = false;
+    if (dom.cookieWorkbench) {
+      dom.cookieWorkbench.classList.remove('admin-open');
+    }
 		return;
 	}
 
@@ -938,10 +949,24 @@ function refreshAdminSidebarUi() {
 
 function refreshAdminControlsUi() {
 	if (!dom.adminTools) return;
+  if (dom.adminModeBtn) {
+    dom.adminModeBtn.textContent = gameState.adminEnabled ? 'Disable Admin' : 'Enable Admin';
+    dom.adminModeBtn.setAttribute('aria-pressed', String(gameState.adminEnabled));
+    dom.adminModeBtn.disabled = !isOwnerAccount();
+  }
 	if (dom.adminCookieInput) dom.adminCookieInput.disabled = !gameState.adminEnabled;
 	if (dom.adminAddCookiesBtn) dom.adminAddCookiesBtn.disabled = !gameState.adminEnabled;
 	if (dom.adminResetScoresBtn) dom.adminResetScoresBtn.disabled = !gameState.adminEnabled;
 	if (dom.adminRevertScoresBtn) dom.adminRevertScoresBtn.disabled = !gameState.adminEnabled || !gameState.adminScoreSnapshot;
+  if (dom.adminInfo) {
+    if (!isOwnerAccount()) {
+      dom.adminInfo.textContent = 'Admin controls are restricted to the Owner account.';
+    } else if (gameState.adminEnabled) {
+      dom.adminInfo.textContent = 'Admin enabled. Use the buttons above to adjust this run.';
+    } else {
+      dom.adminInfo.textContent = 'Admin is locked until you enable it as the Owner account.';
+    }
+  }
 }
 
 function captureAdminScoreSnapshotIfNeeded() {

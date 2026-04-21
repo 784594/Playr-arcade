@@ -126,7 +126,7 @@ const AdminToolkit = {
 
 			adminModeBtn.textContent = gameState.adminEnabled ? 'Disable Admin' : 'Enable Admin';
 			if (!gameState.adminEnabled) {
-				adminInfo.textContent = 'Admin disabled. Add ?admin=1 to URL or press Ctrl+Shift+A to show this panel.';
+				adminInfo.textContent = 'Admin disabled. Add ?admin=1 to URL to show this panel.';
 			} else {
 				adminInfo.textContent = 'Admin enabled. Game-specific controls are available above.';
 			}
@@ -169,18 +169,6 @@ const AdminToolkit = {
 		// Admin mode button toggle
 		adminModeBtn.addEventListener('click', () => {
 			api.toggleMode();
-		});
-
-		// Ctrl+Shift+A keyboard shortcut
-		window.addEventListener('keydown', (event) => {
-			if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'a') {
-				event.preventDefault();
-				if (!this._isOwnerUser()) {
-					elements.adminInfo.textContent = 'Admin controls are restricted to the Owner account.';
-					return;
-				}
-				api.revealPanel();
-			}
 		});
 
 		// Check URL for ?admin=1 on page load

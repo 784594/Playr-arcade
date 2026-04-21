@@ -601,7 +601,7 @@ function renderBoard() {
 }
 
 function init() {
-	gameStatus.textContent = 'Minesweeper ready. Global leaderboard integration is the next backend step.';
+	gameStatus.textContent = '';
 	renderBestTimes();
 	resetBoard('easy');
 	state.adminSidebarOpen = isOwnerAccount();

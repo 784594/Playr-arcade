@@ -188,7 +188,6 @@
 		roomCenterPanel: document.getElementById('roomCenterPanel'),
 		roomCodeChip: document.getElementById('roomCodeChip'),
 		roomCodeChipValue: document.getElementById('roomCodeChipValue'),
-		copyRoomChipBtn: document.getElementById('copyRoomChipBtn'),
 		inventoryPanel: document.getElementById('inventoryPanel'),
 		elementsPanel: document.getElementById('elementsPanel'),
 		inventoryList: document.getElementById('inventoryList'),
@@ -205,7 +204,6 @@
 		roomDefaultFlow: document.getElementById('roomDefaultFlow'),
 		joinRoomFlow: document.getElementById('joinRoomFlow'),
 		createRoomBtn: document.getElementById('createRoomBtn'),
-		copyRoomInviteBtn: document.getElementById('copyRoomInviteBtn'),
 		ownerLobbyBtn: document.getElementById('ownerLobbyBtn'),
 		joinFlowBtn: document.getElementById('joinFlowBtn'),
 		joinFlowBackBtn: document.getElementById('joinFlowBackBtn'),
@@ -227,7 +225,10 @@
 	};
 
 	function showNotice(message, timeoutMs = 1400) {
-		if (!els.status) return;
+		if (!els.status) {
+			showRoomHint(message || '');
+			return;
+		}
 		els.status.textContent = message || '';
 		if (state.noticeTimer) {
 			clearTimeout(state.noticeTimer);
@@ -242,6 +243,31 @@
 
 	function showRoomHint(message) {
 		if (els.roomHint) els.roomHint.textContent = message || '';
+	}
+
+	function waitForAuthUser(auth, timeoutMs = 1800) {
+		if (!auth?.onAuthStateChanged) {
+			return Promise.resolve(auth?.currentUser || null);
+		}
+		if (auth.currentUser) {
+			return Promise.resolve(auth.currentUser);
+		}
+		return new Promise((resolve) => {
+			let settled = false;
+			let unsubscribe = null;
+			const finish = (user) => {
+				if (settled) return;
+				settled = true;
+				clearTimeout(timerId);
+				if (typeof unsubscribe === 'function') unsubscribe();
+				resolve(user || null);
+			};
+			unsubscribe = auth.onAuthStateChanged(
+				(user) => finish(user),
+				() => finish(auth.currentUser || null),
+			);
+			const timerId = setTimeout(() => finish(auth.currentUser || null), timeoutMs);
+		});
 	}
 
 	function setRoomPanelMode(mode) {
@@ -352,11 +378,11 @@
 	async function ensureFirebaseUser() {
 		const firebase = getFirebase();
 		if (!firebase?.auth) return null;
-		if (firebase.auth.currentUser) {
-			const user = firebase.auth.currentUser;
+		const existingUser = await waitForAuthUser(firebase.auth);
+		if (existingUser) {
 			return {
-				uid: String(user.uid || 'guest'),
-				displayName: normalizeName(user.displayName || state.user?.displayName || 'Player'),
+				uid: String(existingUser.uid || 'guest'),
+				displayName: normalizeName(existingUser.displayName || state.user?.displayName || 'Player'),
 			};
 		}
 		try {
@@ -695,9 +721,6 @@
 		if (els.roomCenterPanel) {
 			els.roomCenterPanel.classList.toggle('is-live', inLobby);
 		}
-		if (els.copyRoomInviteBtn) {
-			els.copyRoomInviteBtn.hidden = !inLobby;
-		}
 		if (els.roomCodeChip) {
 			els.roomCodeChip.hidden = !(inLobby && isHost);
 		}
@@ -706,6 +729,7 @@
 		}
 		if (els.ownerLobbyBtn) {
 			els.ownerLobbyBtn.hidden = !isCurrentUserOwner();
+			els.ownerLobbyBtn.textContent = state.ownerLobbyOpen ? 'Close Lobby' : 'Owner Lobby';
 		}
 		if (!inLobby) {
 			els.roomStatus.textContent = 'No room';
@@ -739,7 +763,11 @@
 
 	function renderOwnerLobby() {
 		if (!els.ownerLobbyPanel) return;
-		const canShow = isCurrentUserOwner() && Boolean(state.roomId);
+		const canShow = isCurrentUserOwner();
+		if (els.ownerLobbyBtn) {
+			els.ownerLobbyBtn.hidden = !canShow;
+			els.ownerLobbyBtn.textContent = state.ownerLobbyOpen ? 'Close Lobby' : 'Owner Lobby';
+		}
 		els.ownerLobbyPanel.hidden = !canShow || !state.ownerLobbyOpen;
 		if (!canShow) return;
 
@@ -1138,9 +1166,10 @@
 	}
 
 	function updateCounter() {
-		if (!els.uniqueCounter) return;
 		const craftedCount = state.discoveredCraftedNames.size;
-		els.uniqueCounter.textContent = `Unique Crafted: ${craftedCount}`;
+		if (els.uniqueCounter) {
+			els.uniqueCounter.textContent = `Unique Crafted: ${craftedCount}`;
+		}
 		if (els.itemCount) els.itemCount.textContent = String(state.elementsById.size);
 	}
 
@@ -1380,7 +1409,7 @@
 		const firebase = getFirebase();
 		const ensuredUser = await ensureFirebaseUser();
 		if (ensuredUser) state.user = ensuredUser;
-		if (!firebase || !state.user?.uid) {
+		if (!firebase || !firebase.auth?.currentUser || !state.user?.uid) {
 			showNotice('Sign in to create a room');
 			return;
 		}
@@ -1420,7 +1449,7 @@
 		const firebase = getFirebase();
 		const ensuredUser = await ensureFirebaseUser();
 		if (ensuredUser) state.user = ensuredUser;
-		if (!firebase || !state.user?.uid) {
+		if (!firebase || !firebase.auth?.currentUser || !state.user?.uid) {
 			showNotice('Sign in to join a room');
 			return false;
 		}
@@ -1811,33 +1840,6 @@
 			});
 		}
 
-		if (els.copyRoomInviteBtn) {
-			els.copyRoomInviteBtn.addEventListener('click', async () => {
-				if (!state.roomId) {
-					showNotice('Create or join a room first');
-					return;
-				}
-				try {
-					await navigator.clipboard.writeText(state.roomId);
-					showNotice('Room code copied');
-				} catch {
-					showNotice(`Room code: ${state.roomId}`);
-				}
-			});
-		}
-
-		if (els.copyRoomChipBtn) {
-			els.copyRoomChipBtn.addEventListener('click', async () => {
-				if (!state.roomId) return;
-				try {
-					await navigator.clipboard.writeText(state.roomId);
-					showNotice('Room code copied');
-				} catch {
-					showNotice(`Room code: ${state.roomId}`);
-				}
-			});
-		}
-
 		if (els.joinRoomBtn) {
 			els.joinRoomBtn.addEventListener('click', () => {
 				void joinRoom(els.joinRoomInput?.value || '');
@@ -1960,7 +1962,7 @@
 	}
 
 	function init() {
-		if (!els.workspace || !els.inventoryList || !els.uniqueCounter) return;
+		if (!els.workspace || !els.inventoryList) return;
 		loadLiveCache();
 		initializeElements();
 		const firebase = getFirebase();

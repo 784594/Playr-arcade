@@ -43,41 +43,50 @@
             <div class="status-pill" id="rebirthStatus">Rebirth: 0/3 (+0%)</div>
           </div>
 
-          <div id="cookieClickerArea" class="cookie-clicker">
-            <button id="cookieBtn" class="cookie-button" type="button" aria-label="Click the cookie">
-              <img id="cookieImage" class="cookie-image" src="../../../images/craiyon_213911_image.png" alt="Cookie">
-              <span id="cookieFallback" class="cookie-fallback" hidden></span>
-            </button>
-            <div id="crumbsContainer" class="crumbs-container"></div>
-            <div id="popupContainer" class="popup-container" aria-hidden="true"></div>
-          </div>
+          <div class="cookie-workbench" id="cookieWorkbench">
+            <section class="admin-tools admin-sidebar" id="adminTools" hidden>
+              <div class="admin-header">
+                <div>
+                  <p class="panel-label">Owner tools</p>
+                  <h2>Admin Panel</h2>
+                </div>
+              </div>
+              <p class="hint">Owner-only controls. Reset and Revert stay available while admin mode is on.</p>
+              <div class="admin-grid">
+                <button class="button primary admin-btn" id="adminModeBtn" type="button">Enable Admin</button>
+              </div>
+              <div class="admin-time">
+                <label class="auth-label" for="adminCookieInput">Add Cookies</label>
+                <div class="admin-time-row">
+                  <input class="auth-input admin-cookie-input" id="adminCookieInput" type="number" min="0" step="100000" value="0" disabled />
+                  <button class="button secondary admin-btn" id="adminAddCookiesBtn" type="button" disabled>Add</button>
+                </div>
+              </div>
+              <div class="admin-grid admin-grid-actions">
+                <button class="button secondary admin-btn" id="adminResetScoresBtn" type="button" disabled>Reset</button>
+                <button class="button secondary admin-btn" id="adminRevertScoresBtn" type="button" disabled>Revert</button>
+              </div>
+              <p class="hint" id="adminInfo">Admin is locked until you enable it as the Owner account.</p>
+            </section>
 
-          <div class="game-actions">
-            <button class="button primary" type="button" id="saveBtn">Save Progress</button>
-            <button class="button secondary" type="button" id="resetBtn">Reset Game</button>
-            <button class="button secondary" type="button" id="rebirthBtn">Rebirth Locked</button>
-            <button class="button secondary" type="button" id="adminSidebarToggleBtn" hidden>Show Admin</button>
-          </div>
+            <div class="cookie-stage">
+              <div id="cookieClickerArea" class="cookie-clicker">
+                <button id="cookieBtn" class="cookie-button" type="button" aria-label="Click the cookie">
+                  <img id="cookieImage" class="cookie-image" src="../../../images/craiyon_213911_image.png" alt="Cookie">
+                  <span id="cookieFallback" class="cookie-fallback" hidden></span>
+                </button>
+                <div id="crumbsContainer" class="crumbs-container"></div>
+                <div id="popupContainer" class="popup-container" aria-hidden="true"></div>
+              </div>
 
-          <section class="admin-tools admin-sidebar" id="adminTools" hidden>
-            <h2>Admin Panel</h2>
-            <p class="hint">Owner-only controls. Reset and Revert are always available.</p>
-            <div class="admin-grid">
-              <button class="admin-btn" id="adminModeBtn" type="button">Enable Admin</button>
-            </div>
-            <div class="admin-time">
-              <label for="adminCookieInput">Add Cookies</label>
-              <div class="admin-time-row">
-                <input id="adminCookieInput" type="number" min="0" step="100000" value="0" disabled />
-                <button class="admin-btn" id="adminAddCookiesBtn" type="button" disabled>Add</button>
+              <div class="game-actions">
+                <button class="button primary" type="button" id="saveBtn">Save Progress</button>
+                <button class="button secondary" type="button" id="resetBtn">Reset Game</button>
+                <button class="button secondary" type="button" id="rebirthBtn">Rebirth Locked</button>
+                <button class="button secondary admin-visibility-btn" type="button" id="adminSidebarToggleBtn" hidden>Show Admin</button>
               </div>
             </div>
-            <div class="admin-grid">
-              <button class="admin-btn" id="adminResetScoresBtn" type="button" disabled>Reset</button>
-              <button class="admin-btn" id="adminRevertScoresBtn" type="button" disabled>Revert</button>
-            </div>
-            <p class="hint" id="adminInfo">Admin disabled. Add <code>?admin=1</code> to URL or press Ctrl+Shift+A to show this panel.</p>
-          </section>
+          </div>
         </div>
 
         <aside class="upgrades-panel">

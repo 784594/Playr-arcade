@@ -18,10 +18,8 @@
     <div class="top">
       <a class="back-link" href="../../../index.html">Back to hub</a>
     </div>
-    <p id="gameStatus"></p>
     <section class="craft-layout" aria-label="Infinite Craft play area">
       <article class="play-area craft-surface-panel">
-        <div class="craft-counter" id="uniqueCounter" aria-live="polite">Unique Crafted: 0</div>
         <div id="achievementToast" class="achievement-toast" aria-live="polite" hidden></div>
         <section id="roomCenterPanel" class="room-center-panel panel-card" aria-label="Room controls">
           <div class="room-panel-header">
@@ -32,11 +30,10 @@
             <p class="hint" id="roomHint">Create or join a shared workplane.</p>
             <div class="room-panel-row room-panel-actions">
               <button id="createRoomBtn" class="toolbar-btn" type="button">Create Room</button>
-              <button id="copyRoomInviteBtn" class="toolbar-btn" type="button" hidden>Copy Invite</button>
               <button id="joinFlowBtn" class="toolbar-btn" type="button">Join a Room</button>
             </div>
             <div class="room-panel-row room-panel-single-action">
-              <button id="ownerLobbyBtn" class="toolbar-btn" type="button">Owner Lobby</button>
+              <button id="ownerLobbyBtn" class="toolbar-btn" type="button" hidden>Owner Lobby</button>
             </div>
             <p class="hint" id="roomCodeDisplay">No room yet.</p>
           </div>
@@ -53,7 +50,6 @@
         <div id="roomCodeChip" class="room-code-chip" hidden>
           <span class="room-code-chip-label">Room</span>
           <strong id="roomCodeChipValue">-</strong>
-          <button id="copyRoomChipBtn" class="toolbar-btn room-chip-copy" type="button">Copy</button>
         </div>
         <div id="workspace" class="craft-workspace" aria-label="Crafting workspace"></div>
         <div id="workspaceOverlay" class="workspace-overlay-layer" aria-hidden="true"></div>

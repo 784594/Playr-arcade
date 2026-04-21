@@ -36,7 +36,7 @@ const SINGLE_PLAYER_PLACEHOLDERS = [
 ];
 
 const MULTIPLAYER_PLACEHOLDERS = [
-  { id: 'infinite-craft-multiplayer', name: 'Infinite Craft Multiplayer', controls: 'Mouse - shared room crafting (2P-5P)' },
+  { id: 'infinite-craft-multiplayer', name: 'Infinite Craft Multiplayer', controls: 'Mouse - shared room crafting (2P-4P)' },
   { id: 'battleship', name: 'Battleship', controls: 'Mouse - Turn-based 2P/4P tournament' },
   { id: 'connect-4', name: 'Connect 4', controls: 'Mouse - 2P/4P rotation/bracket' },
   { id: 'chess', name: 'Chess', controls: 'Mouse - 2D top-down 2P' },
