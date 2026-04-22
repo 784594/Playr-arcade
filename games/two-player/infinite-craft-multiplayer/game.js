@@ -91,7 +91,7 @@
 	};
 	const FALLBACK_EMOJI = ['✨', '🧪', '🪐', '🧩', '💠', '🔮', '🌀', '🌟'];
 	const COMBINE_DISTANCE = 66;
-	const STRICT_KNOWN_RECIPES_ONLY = false;
+	const STRICT_KNOWN_RECIPES_ONLY = true;
 	const API_ONLY_RECIPES_MODE = false;
 	const DATASET_ONLY_RECIPES_MODE = false;
 	const MULTIPLAYER_MAX_PLAYERS = 5;
