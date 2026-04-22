@@ -93,7 +93,7 @@
 	const COMBINE_DISTANCE = 66;
 	const STRICT_KNOWN_RECIPES_ONLY = false;
 	const API_ONLY_RECIPES_MODE = false;
-	const DATASET_ONLY_RECIPES_MODE = true;
+	const DATASET_ONLY_RECIPES_MODE = false;
 	const MULTIPLAYER_MAX_PLAYERS = 5;
 	const ROOM_COLLECTION = 'craftRooms';
 	const ROOM_PRESENCE_COLLECTION = 'presence';
@@ -1250,8 +1250,12 @@
 		const a = normalizeLookupName(elementA.name);
 		const b = normalizeLookupName(elementB.name);
 		if (!a || !b) return null;
-		const key = [a, b].sort().join('::');
-		const entry = state.localExtractMap.get(key);
+		const sortedKey = [a, b].sort().join('::');
+		const forwardKey = `${a}::${b}`;
+		const reverseKey = `${b}::${a}`;
+		const entry = state.localExtractMap.get(forwardKey)
+			|| state.localExtractMap.get(reverseKey)
+			|| state.localExtractMap.get(sortedKey);
 		if (!entry) return null;
 
 		const mergedTags = [...new Set([...elementA.tags, ...elementB.tags])].slice(0, 5);
@@ -1260,7 +1264,7 @@
 		const datasetEmoji = String(entry.emoji || '').trim();
 		const resolvedEmoji = datasetEmoji && datasetEmoji !== PLACEHOLDER_EMOJI
 			? datasetEmoji
-			: (canonicalEmoji || pickEmoji(mergedTags, hashString(key)));
+			: (canonicalEmoji || pickEmoji(mergedTags, hashString(sortedKey)));
 		return {
 			id: `local-${entry.id || slugify(entry.name)}`,
 			wikiId: Number.isFinite(entry.id) ? entry.id : undefined,
@@ -1327,7 +1331,9 @@
 
 	async function resolveRecipe(elementA, elementB) {
 		const key = sortedPairKey(elementA.id, elementB.id);
-		const base = BASE_RECIPES[key];
+		const forwardKey = `${String(elementA.id || '')}::${String(elementB.id || '')}`;
+		const reverseKey = `${String(elementB.id || '')}::${String(elementA.id || '')}`;
+		const base = BASE_RECIPES[forwardKey] || BASE_RECIPES[reverseKey] || BASE_RECIPES[key];
 		if (base) {
 			const baseSaved = addElement({
 				id: slugify(base.name),
