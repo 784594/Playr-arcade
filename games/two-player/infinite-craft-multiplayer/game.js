@@ -8,6 +8,7 @@
 
 	const BASE_RECIPES = {
 		'earth::earth': { name: 'Mountain', emoji: '🏔️', tags: ['nature', 'stone'] },
+		'mountain::mountain': { name: 'Mountain Range', emoji: '⛰️', tags: ['nature', 'stone'] },
 		'earth::mountain': { name: 'Volcano', emoji: '🌋', tags: ['nature', 'heat', 'stone'] },
 		'earth::water': { name: 'Mud', emoji: '🟤', tags: ['nature', 'soil'] },
 		'earth::fire': { name: 'Lava', emoji: '🌋', tags: ['heat', 'stone'] },
@@ -51,6 +52,18 @@
 	};
 
 	const CRAFT_FORMS = ['Stone', 'Bloom', 'Essence', 'Forge', 'Mist', 'Shard', 'Spirit', 'Flow', 'Spark', 'Root'];
+	const PLACEHOLDER_EMOJI = '✨';
+	const CANONICAL_EMOJI_BY_NAME = (() => {
+		const map = new Map();
+		for (const starter of STARTER_ELEMENTS) {
+			map.set(String(starter.name || '').trim().toLowerCase(), starter.emoji || PLACEHOLDER_EMOJI);
+		}
+		for (const recipe of Object.values(BASE_RECIPES)) {
+			if (!recipe?.name) continue;
+			map.set(String(recipe.name).trim().toLowerCase(), recipe.emoji || PLACEHOLDER_EMOJI);
+		}
+		return map;
+	})();
 	const TAG_LABELS = {
 		nature: 'Wild',
 		liquid: 'Tide',
@@ -1037,11 +1050,17 @@
 		if (!entry) return null;
 
 		const mergedTags = [...new Set([...elementA.tags, ...elementB.tags])].slice(0, 5);
+		const normalizedResultName = normalizeLookupName(entry.name);
+		const canonicalEmoji = CANONICAL_EMOJI_BY_NAME.get(normalizedResultName) || '';
+		const datasetEmoji = String(entry.emoji || '').trim();
+		const resolvedEmoji = datasetEmoji && datasetEmoji !== PLACEHOLDER_EMOJI
+			? datasetEmoji
+			: (canonicalEmoji || pickEmoji(mergedTags, hashString(key)));
 		return {
 			id: `local-${entry.id || slugify(entry.name)}`,
 			wikiId: Number.isFinite(entry.id) ? entry.id : undefined,
 			name: entry.name,
-			emoji: entry.emoji || pickEmoji(mergedTags, hashString(key)),
+			emoji: resolvedEmoji,
 			tags: mergedTags,
 		};
 	}
