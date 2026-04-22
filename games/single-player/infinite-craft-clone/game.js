@@ -109,7 +109,7 @@
 		appId: '1:784118485475:web:5347f708718f56602fd0d6',
 		measurementId: 'G-J4DKRFRX33',
 	};
-	const LIVE_RECIPE_LOOKUP_ENABLED = false;
+	const LIVE_RECIPE_LOOKUP_ENABLED = true;
 	const LIVE_RECIPE_TIMEOUT_MS = 5000;
 	const LIVE_RECIPE_COOLDOWN_MS = 450;
 	const LIVE_CACHE_STORAGE_KEY = 'playrInfiniteCraftLiveCacheV1';
@@ -681,7 +681,11 @@
 	}
 
 	function normalizeName(value) {
-		return String(value || '').trim().replace(/\s+/g, ' ');
+		return String(value || '')
+			.normalize('NFKC')
+			.replace(/[\u200B-\u200D\uFEFF]/g, '')
+			.trim()
+			.replace(/\s+/g, ' ');
 	}
 
 	function normalizeLookupName(value) {
@@ -1407,9 +1411,14 @@
 		const starterOrder = STARTER_ELEMENTS
 			.map((starter) => state.elementsById.get(starter.id))
 			.filter(Boolean);
-		const discoveredOrder = [...state.elementsById.values()]
-			.filter((entry) => !state.starterIds.has(entry.id))
-			.sort((a, b) => (a.discoveredAt || 0) - (b.discoveredAt || 0));
+		const discoveredByName = new Map();
+		for (const entry of state.elementsById.values()) {
+			if (state.starterIds.has(entry.id)) continue;
+			const key = normalizeLookupName(entry.name || '');
+			if (!key || discoveredByName.has(key)) continue;
+			discoveredByName.set(key, entry);
+		}
+		const discoveredOrder = [...discoveredByName.values()].sort((a, b) => (a.discoveredAt || 0) - (b.discoveredAt || 0));
 		const items = [...starterOrder, ...discoveredOrder]
 			.map((entry) => `
 				<button type="button" class="starter-item" data-quick-id="${entry.id}" title="${entry.name}">
@@ -1540,9 +1549,14 @@
 	}
 
 	function sortedInventory() {
-		const entries = [...state.elementsById.values()]
-			.filter((entry) => !state.starterIds.has(entry.id))
-			.sort(compareInventoryEntries);
+		const byName = new Map();
+		for (const entry of state.elementsById.values()) {
+			if (state.starterIds.has(entry.id)) continue;
+			const key = normalizeLookupName(entry.name || '');
+			if (!key || byName.has(key)) continue;
+			byName.set(key, entry);
+		}
+		const entries = [...byName.values()].sort(compareInventoryEntries);
 		return entries;
 	}
 
@@ -1557,7 +1571,7 @@
 		}
 
 		els.inventoryList.innerHTML = entries.map((entry) => `
-			<button type="button" class="inventory-item ${term && !entry.name.toLowerCase().includes(term) ? 'is-filtered' : ''}" data-inventory-id="${entry.id}" draggable="false" title="${entry.name}">
+			<button type="button" class="inventory-item" data-inventory-id="${entry.id}" draggable="false" title="${entry.name}">
 				<span class="craft-node-emoji">${entry.emoji}</span>
 				<span class="inventory-item-name">${entry.name}</span>
 			</button>
