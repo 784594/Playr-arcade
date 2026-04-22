@@ -164,7 +164,16 @@
         </p>
 
         <div class="auth-form" id="authFormSection">
-          <label class="auth-label" for="authIdentifierInput">Create a Login Name</label>
+          <label class="auth-label auth-label-row" for="authIdentifierInput">
+            <span>Create a Login Name</span>
+            <span
+              class="auth-name-indicator"
+              id="authNameIndicator"
+              aria-hidden="true"
+              data-state="idle"
+              hidden
+            ></span>
+          </label>
           <input id="authIdentifierInput" class="auth-input" type="text" placeholder="Your login name" autocomplete="username" />
 
           <label class="auth-label" for="authPinInput">Create A Password</label>

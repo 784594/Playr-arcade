@@ -44,6 +44,7 @@ git push origin main
 - Every update/file change must be recorded in `updates/logs.md`.
 - Keep log entries concise and include date, what changed, and affected files/features.
 - If a commit is pushed, make sure logs are updated in the same commit whenever possible.
+- Exception: do not add entries to `updates/` for admin-panel-only changes.
 
 If `git` is not recognized in your terminal on Windows, run Git with a full path:
 

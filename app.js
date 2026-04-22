@@ -374,15 +374,19 @@ function validateDisplayName(displayName) {
   const cleaned = canonicalizeDisplayName(displayName);
 
   if (cleaned.length < 3) {
-    return { valid: false, reason: 'Display name must be at least 3 characters.' };
+    return { valid: false, reason: 'Login name must be at least 3 characters.', reasonCode: 'too-short' };
   }
 
   if (cleaned.length > 24) {
-    return { valid: false, reason: 'Display name must be 24 characters or less.' };
+    return { valid: false, reason: 'Login name must be 24 characters or less.', reasonCode: 'too-long' };
   }
 
   if (!/^[A-Za-z0-9 _.-]+$/.test(cleaned)) {
-    return { valid: false, reason: 'Use letters, numbers, spaces, dots, dashes, and underscores only.' };
+    return {
+      valid: false,
+      reason: 'Login name can only use letters, numbers, spaces, dots, dashes, and underscores.',
+      reasonCode: 'invalid-characters',
+    };
   }
 
   const moderationText = normalizeForModeration(cleaned);
@@ -391,15 +395,23 @@ function validateDisplayName(displayName) {
 
   const hasReserved = RESERVED_RANK_TERMS.some((term) => moderationText.includes(term));
   if (hasReserved) {
-    return { valid: false, reason: 'That name uses a reserved staff or rank word.' };
+    return {
+      valid: false,
+      reason: 'That login name uses a reserved staff or rank word.',
+      reasonCode: 'reserved-term',
+    };
   }
 
   const hasProfanity = PROFANITY_TERMS.some((term) => moderationText.includes(term) || sparseCheck.includes(term));
   if (hasProfanity) {
-    return { valid: false, reason: 'That display name contains restricted language.' };
+    return {
+      valid: false,
+      reason: 'That login name contains a blocked word or inappropriate language.',
+      reasonCode: 'restricted-language',
+    };
   }
 
-  return { valid: true, cleaned };
+  return { valid: true, cleaned, reasonCode: 'valid' };
 }
 
 function buildDisplayNameCandidatePool(rawBase) {
@@ -941,6 +953,8 @@ const authDescription = document.getElementById('authDescription');
 const authFormSection = document.getElementById('authFormSection');
 const authIdentifierInput = document.getElementById('authIdentifierInput');
 const authIdentifierLabel = document.querySelector('label[for="authIdentifierInput"]');
+const authIdentifierLabelText = authIdentifierLabel?.querySelector('span');
+const authNameIndicator = document.getElementById('authNameIndicator');
 const authPinInput = document.getElementById('authPinInput');
 const authPinToggleBtn = document.getElementById('authPinToggleBtn');
 const authPinLabel = document.querySelector('label[for="authPinInput"]');
@@ -1026,6 +1040,7 @@ const authUiState = {
   mode: 'signup',
   pendingRegistration: null,
   showPassword: false,
+  nameCheckRequestId: 0,
 };
 
 function readStoredAdminOverrides() {
@@ -1499,6 +1514,59 @@ function setAuthStatus(message, tone = 'info') {
   authStatus.style.color = tone === 'danger' ? '#ff9cb1' : tone === 'success' ? '#9ff5cb' : '#d2e5ff';
 }
 
+function setAuthNameIndicator(state = 'idle') {
+  if (!authNameIndicator) return;
+  authNameIndicator.dataset.state = state;
+  authNameIndicator.hidden = state === 'idle';
+}
+
+function buildSignupNameMessage(validation, suggestions = []) {
+  const suggestionText = suggestions.length ? ` Try: ${suggestions.join(', ')}.` : '';
+  if (!validation || validation.valid) return '';
+
+  if (validation.reasonCode === 'restricted-language') {
+    return `That login name includes a blocked word or inappropriate language.${suggestionText}`;
+  }
+
+  if (validation.reasonCode === 'reserved-term') {
+    return `That login name looks like a staff or system name, so it can’t be used.${suggestionText}`;
+  }
+
+  return `${validation.reason}${suggestionText}`;
+}
+
+async function refreshSignupNameIndicator() {
+  const currentRequestId = ++authUiState.nameCheckRequestId;
+
+  if (authUiState.mode !== 'signup' || !authIdentifierInput) {
+    setAuthNameIndicator('idle');
+    return;
+  }
+
+  const requestedName = String(authIdentifierInput.value || '').trim();
+  if (!requestedName) {
+    setAuthNameIndicator('idle');
+    return;
+  }
+
+  const validation = validateDisplayName(requestedName);
+  if (!validation.valid) {
+    setAuthNameIndicator('invalid');
+    return;
+  }
+
+  setAuthNameIndicator('checking');
+
+  try {
+    const availability = await checkDisplayNameAvailability(validation.cleaned);
+    if (currentRequestId !== authUiState.nameCheckRequestId) return;
+    setAuthNameIndicator(availability.available ? 'valid' : 'invalid');
+  } catch {
+    if (currentRequestId !== authUiState.nameCheckRequestId) return;
+    setAuthNameIndicator('invalid');
+  }
+}
+
 function isDisplayNameTaken(displayName, ignoreIdentifier = null) {
   const normalized = String(displayName || '').trim().toLowerCase();
   if (!normalized) return false;
@@ -1529,6 +1597,9 @@ function setAuthPasswordVisibility(show) {
 function toggleAuthMode() {
   setAuthMode(authUiState.mode === 'signup' ? 'login' : 'signup');
   if (authPinInput) authPinInput.value = '';
+  if (authIdentifierInput) authIdentifierInput.value = '';
+  authUiState.nameCheckRequestId += 1;
+  setAuthNameIndicator('idle');
   setAuthPasswordVisibility(false);
   setAuthStatus('', 'info');
   renderAuthUi();
@@ -1831,8 +1902,8 @@ function renderAuthUi() {
         ? 'Enter your login name and password. Warning: password recovery is disabled right now.'
         : 'Create your account with a login name and password. Warning: password recovery is disabled right now, so save your password safely.';
     }
-    if (authIdentifierLabel) {
-      authIdentifierLabel.textContent = authUiState.mode === 'login' ? 'Login name' : 'Create a Login Name';
+    if (authIdentifierLabelText) {
+      authIdentifierLabelText.textContent = authUiState.mode === 'login' ? 'Login name' : 'Create a Login Name';
     }
     if (authPinLabel) {
       authPinLabel.textContent = authUiState.mode === 'login' ? 'Password' : 'Create A Password';
@@ -1853,6 +1924,7 @@ function renderAuthUi() {
     if (authIdentifierInput) authIdentifierInput.disabled = false;
     if (authPinInput) authPinInput.disabled = false;
     setAuthPasswordVisibility(authUiState.showPassword);
+    void refreshSignupNameIndicator();
     return;
   }
 
@@ -1860,6 +1932,7 @@ function renderAuthUi() {
     authDescription.textContent = `You are logged in as ${account.displayName}.`;
   }
   authFormSection.hidden = true;
+  setAuthNameIndicator('idle');
 }
 
 function openAuthOverlay(prefillMessage = '') {
@@ -1884,8 +1957,16 @@ async function loginOrCreateAccount() {
     return;
   }
 
+  const requestedIdentifier = String(authIdentifierInput?.value || '').trim();
   const normalized = normalizeIdentifier(authIdentifierInput?.value);
-  if (!normalized) {
+
+  if (authUiState.mode === 'signup' && !requestedIdentifier) {
+    setAuthNameIndicator('invalid');
+    setAuthStatus('Enter a login name to sign up.', 'danger');
+    return;
+  }
+
+  if (!normalized && authUiState.mode === 'login') {
     setAuthStatus('Enter a valid login name.', 'danger');
     return;
   }
@@ -1955,17 +2036,11 @@ async function loginOrCreateAccount() {
       return;
     }
 
-    const requestedName = String(authIdentifierInput?.value || '').trim();
-    if (!requestedName) {
-      setAuthStatus('Enter a login name to sign up.', 'danger');
-      return;
-    }
-
-    const displayNameValidation = validateDisplayName(requestedName);
+    const displayNameValidation = validateDisplayName(requestedIdentifier);
     if (!displayNameValidation.valid) {
-      const suggestions = suggestLocalDisplayNames(requestedName, 3);
-      const suggestionText = suggestions.length ? ` Try: ${suggestions.join(', ')}.` : '';
-      setAuthStatus(`${displayNameValidation.reason}${suggestionText}`, 'danger');
+      const suggestions = suggestLocalDisplayNames(requestedIdentifier, 3);
+      setAuthNameIndicator('invalid');
+      setAuthStatus(buildSignupNameMessage(displayNameValidation, suggestions), 'danger');
       return;
     }
 
@@ -1974,9 +2049,12 @@ async function loginOrCreateAccount() {
     if (!availability.available) {
       const suggestions = await suggestAvailableDisplayNames(displayName, 3);
       const suggestionText = suggestions.length ? ` Try: ${suggestions.join(', ')}.` : '';
-      setAuthStatus(`That display name is already in use.${suggestionText}`, 'danger');
+      setAuthNameIndicator('invalid');
+      setAuthStatus(`That login name is already in use.${suggestionText}`, 'danger');
       return;
     }
+
+    setAuthNameIndicator('valid');
 
     const signupIdentifier = normalized.type === 'email'
       ? normalized.value
@@ -3190,6 +3268,10 @@ function init() {
 
   if (authIdentifierInput) {
     authIdentifierInput.addEventListener('keydown', handleAuthEnterSubmit);
+    authIdentifierInput.addEventListener('input', () => {
+      setAuthStatus('', 'info');
+      void refreshSignupNameIndicator();
+    });
   }
 
   if (authPinInput) {
