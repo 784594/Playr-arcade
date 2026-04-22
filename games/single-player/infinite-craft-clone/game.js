@@ -1349,19 +1349,29 @@
 			return baseSaved;
 		}
 
+		const isKnownRecipeElement = (entry) => {
+			if (!entry) return false;
+			if (String(entry.id || '').startsWith('live-')) return true;
+			if (String(entry.id || '').startsWith('wiki-')) return true;
+			if (String(entry.id || '').startsWith('local-')) return true;
+			return Number.isFinite(Number(entry.wikiId));
+		};
+
 		const existingResultId = state.recipeResults.get(key);
 		if (existingResultId && state.elementsById.has(existingResultId)) {
-			return state.elementsById.get(existingResultId);
-		}
-
-		const localRecipe = await resolveLocalExtractRecipe(elementA, elementB);
-		if (localRecipe) {
-			const localSaved = addElement(localRecipe);
-			if (localSaved) state.recipeResults.set(key, localSaved.id);
-			return localSaved;
+			const existingEntry = state.elementsById.get(existingResultId);
+			if (isKnownRecipeElement(existingEntry)) {
+				return existingEntry;
+			}
 		}
 
 		if (DATASET_ONLY_RECIPES_MODE) {
+			const localOnly = await resolveLocalExtractRecipe(elementA, elementB);
+			if (localOnly) {
+				const localSaved = addElement(localOnly);
+				if (localSaved) state.recipeResults.set(key, localSaved.id);
+				return localSaved;
+			}
 			return null;
 		}
 
@@ -1386,6 +1396,13 @@
 			const wikiSaved = addElement(wikiRecipe);
 			if (wikiSaved) state.recipeResults.set(key, wikiSaved.id);
 			return wikiSaved;
+		}
+
+		const localRecipe = await resolveLocalExtractRecipe(elementA, elementB);
+		if (localRecipe) {
+			const localSaved = addElement(localRecipe);
+			if (localSaved) state.recipeResults.set(key, localSaved.id);
+			return localSaved;
 		}
 
 		if (STRICT_KNOWN_RECIPES_ONLY) {
