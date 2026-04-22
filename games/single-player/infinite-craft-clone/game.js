@@ -8,6 +8,7 @@
 
 	const BASE_RECIPES = {
 		'earth::earth': { name: 'Mountain', emoji: '🏔️', tags: ['nature', 'stone'] },
+		'water::water': { name: 'Lake', emoji: '🏞️', tags: ['liquid', 'nature'] },
 		'mountain::mountain': { name: 'Mountain Range', emoji: '⛰️', tags: ['nature', 'stone'] },
 		'earth::mountain': { name: 'Volcano', emoji: '🌋', tags: ['nature', 'heat', 'stone'] },
 		'earth::water': { name: 'Mud', emoji: '🟤', tags: ['nature', 'soil'] },
@@ -90,7 +91,7 @@
 	};
 	const FALLBACK_EMOJI = ['✨', '🧪', '🪐', '🧩', '💠', '🔮', '🌀', '🌟'];
 	const COMBINE_DISTANCE = 66;
-	const STRICT_KNOWN_RECIPES_ONLY = true;
+	const STRICT_KNOWN_RECIPES_ONLY = false;
 	const API_ONLY_RECIPES_MODE = false;
 	const DATASET_ONLY_RECIPES_MODE = true;
 	const MULTIPLAYER_MAX_PLAYERS = 5;
@@ -1128,24 +1129,44 @@
 
 	function addElement(element) {
 		if (!element || !element.id) return null;
-		const nameKey = normalizeLookupName(element.name || '');
+		const incomingNameKey = normalizeLookupName(element.name || '');
+		const incomingEmoji = String(element.emoji || '').trim() || PLACEHOLDER_EMOJI;
+		const incomingWikiId = Number(element.wikiId);
+		const derivedWikiId = Number.isFinite(incomingWikiId)
+			? incomingWikiId
+			: state.wikiNameToId.get(incomingNameKey);
+		const nameKey = incomingNameKey;
 		if (nameKey) {
 			const existingIdByName = state.elementIdByName.get(nameKey);
 			if (existingIdByName && state.elementsById.has(existingIdByName)) {
-				return state.elementsById.get(existingIdByName);
+				const existing = state.elementsById.get(existingIdByName);
+				if (existing) {
+					if ((!existing.emoji || existing.emoji === PLACEHOLDER_EMOJI) && incomingEmoji !== PLACEHOLDER_EMOJI) {
+						existing.emoji = incomingEmoji;
+					}
+					if (!Number.isFinite(Number(existing.wikiId)) && Number.isFinite(derivedWikiId)) {
+						existing.wikiId = derivedWikiId;
+					}
+				}
+				return existing;
 			}
 		}
 		if (state.elementsById.has(element.id)) {
-			return state.elementsById.get(element.id);
+			const existingById = state.elementsById.get(element.id);
+			if (existingById) {
+				if ((!existingById.emoji || existingById.emoji === PLACEHOLDER_EMOJI) && incomingEmoji !== PLACEHOLDER_EMOJI) {
+					existingById.emoji = incomingEmoji;
+				}
+				if (!Number.isFinite(Number(existingById.wikiId)) && Number.isFinite(derivedWikiId)) {
+					existingById.wikiId = derivedWikiId;
+				}
+			}
+			return existingById;
 		}
-		const existingWikiId = Number(element.wikiId);
-		const derivedWikiId = Number.isFinite(existingWikiId)
-			? existingWikiId
-			: state.wikiNameToId.get(normalizeLookupName(element.name));
 		const safeElement = {
 			id: String(element.id),
 			name: normalizeName(element.name || 'Element'),
-			emoji: element.emoji || '✨',
+			emoji: incomingEmoji,
 			tags: Array.isArray(element.tags) ? element.tags.slice(0, 6) : [],
 			wikiId: Number.isFinite(derivedWikiId) ? derivedWikiId : undefined,
 			discoveredAt: Date.now(),
