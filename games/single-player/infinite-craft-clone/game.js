@@ -1363,6 +1363,7 @@
 			if (isKnownRecipeElement(existingEntry)) {
 				return existingEntry;
 			}
+			state.recipeResults.delete(key);
 		}
 
 		if (DATASET_ONLY_RECIPES_MODE) {
@@ -1405,15 +1406,7 @@
 			return localSaved;
 		}
 
-		if (STRICT_KNOWN_RECIPES_ONLY) {
-			return null;
-		}
-
-		const recipeElement = makeDynamicRecipe(elementA, elementB);
-
-		const saved = addElement(recipeElement);
-		if (saved) state.recipeResults.set(key, saved.id);
-		return saved;
+		return null;
 	}
 
 	function updateCounter() {
