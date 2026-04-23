@@ -27,6 +27,7 @@
 	const POWER_DURATION = 6500;
 	const TRANSITION_MS = 1200;
 	const DEATH_ANIM_MS = 900;
+	const GHOST_RESPAWN_DELAY_MS = 2400;
 
 	const MAZE_LAYOUT = [
 		'############################',
@@ -142,23 +143,23 @@
 	}
 
 	function stepSpeedMs() {
-		return Math.max(88, 132 - (state.level - 1) * 3);
+		return Math.max(118, 172 - (state.level - 1) * 2);
 	}
 
 	function ghostSpeedMs(ghost) {
 		if (ghost.state === 'eyes') {
-			return Math.max(84, 112 - (state.level - 1));
+			return Math.max(100, 132 - (state.level - 1));
 		}
 
 		if (ghost.state === 'frightened') {
-			return Math.max(240, 310 - state.level * 3);
+			return Math.max(300, 380 - state.level * 3);
 		}
 
 		if (ghost.state === 'house') {
-			return Math.max(138, 172 - state.level);
+			return Math.max(180, 230 - state.level);
 		}
 
-		return Math.max(114, 158 - (state.level - 1) * 2);
+		return Math.max(136, 188 - (state.level - 1) * 2);
 	}
 
 	function setStatus(text, duration = 0) {
@@ -460,18 +461,8 @@
 		return true;
 	}
 
-	function isGhostAt(x, y, exceptGhost = null) {
-		for (const ghost of state.ghosts) {
-			if (ghost === exceptGhost) continue;
-			if (ghost.x === x && ghost.y === y) return true;
-		}
-		return false;
-	}
-
 	function canGhostMoveTo(ghost, x, y) {
-		if (!canEnterCell(x, y, 'ghost', ghost)) return false;
-		if (isGhostAt(x, y, ghost)) return false;
-		return true;
+		return canEnterCell(x, y, 'ghost', ghost);
 	}
 
 	function validDirections(entity, type) {
@@ -562,12 +553,40 @@
 		return pool[Math.floor(Math.random() * pool.length)];
 	}
 
+	function farthestDirectionFromTarget(entity, type, target) {
+		const options = validDirections(entity, type);
+		if (!options.length) return null;
+
+		let choices = options;
+		if (options.length > 1) {
+			const nonReverse = options.filter((direction) => !isOpposite(entity.dir, direction));
+			if (nonReverse.length) choices = nonReverse;
+		}
+
+		const distances = computeDistanceMap(target, type, entity);
+		let best = choices[0];
+		let bestDistance = -Infinity;
+
+		for (const direction of choices) {
+			const next = normalizePosition(entity.x + direction.x, entity.y + direction.y);
+			const distance = distances[next.y][next.x];
+			const score = Number.isFinite(distance) ? distance : BOARD_COLS * BOARD_ROWS;
+			if (score > bestDistance) {
+				bestDistance = score;
+				best = direction;
+			}
+		}
+
+		return best;
+	}
+
 	function getCurrentMode() {
 		return MODE_SCHEDULE[state.modeIndex].name;
 	}
 
 	function targetForGhost(ghost) {
 		const currentMode = getCurrentMode();
+		const pacman = state.pacman;
 
 		if (ghost.state === 'eyes') {
 			return { x: ghost.spawn.x, y: ghost.spawn.y };
@@ -585,10 +604,8 @@
 			return { x: ghost.scatter.x, y: ghost.scatter.y };
 		}
 
-		const pacman = state.pacman;
-
 		if (ghost.id === 'blinky') {
-			return { x: pacman.x, y: pacman.y };
+			return projectAhead(pacman, pacman.dir, 1);
 		}
 
 		if (ghost.id === 'pinky') {
@@ -612,6 +629,19 @@
 		}
 
 		return { x: pacman.x, y: pacman.y };
+	}
+
+	function chooseGhostDirection(ghost) {
+		if (ghost.state === 'frightened') {
+			return farthestDirectionFromTarget(ghost, 'ghost', state.pacman)
+				|| randomDirection(ghost, 'ghost');
+		}
+
+		const target = ghost.state === 'eyes'
+			? { x: ghost.spawn.x, y: ghost.spawn.y }
+			: targetForGhost(ghost);
+		return bestDirectionFromDistance(ghost, 'ghost', target)
+			|| randomDirection(ghost, 'ghost');
 	}
 
 	function movePacman() {
@@ -746,9 +776,10 @@
 
 		while (ghost.cooldown <= 0) {
 			if (ghost.state === 'eyes' && ghost.x === ghost.spawn.x && ghost.y === ghost.spawn.y) {
-				ghost.state = getCurrentMode();
-				ghost.released = true;
-				ghost.releaseDelay = 0;
+				ghost.state = 'house';
+				ghost.released = false;
+				ghost.releaseDelay = GHOST_RESPAWN_DELAY_MS;
+				ghost.dir = { x: 0, y: -1 };
 			}
 
 			if (!ghost.released) {
@@ -786,33 +817,13 @@
 				}
 			}
 
-			if (ghost.state === 'frightened') {
-				const direction = randomDirection(ghost, 'ghost');
-				if (!direction) {
-					ghost.cooldown = 24;
-					return;
-				}
-
-				ghost.dir = direction;
-			} else if (ghost.state === 'eyes') {
-				const target = { x: ghost.spawn.x, y: ghost.spawn.y };
-				const direction = bestDirectionFromDistance(ghost, 'ghost', target) || randomDirection(ghost, 'ghost');
-				if (!direction) {
-					ghost.cooldown = 24;
-					return;
-				}
-
-				ghost.dir = direction;
-			} else {
-				const target = targetForGhost(ghost);
-				const direction = bestDirectionFromDistance(ghost, 'ghost', target) || randomDirection(ghost, 'ghost');
-				if (!direction) {
-					ghost.cooldown = 24;
-					return;
-				}
-
-				ghost.dir = direction;
+			const direction = chooseGhostDirection(ghost);
+			if (!direction) {
+				ghost.cooldown = 24;
+				return;
 			}
+
+			ghost.dir = direction;
 
 			const next = normalizePosition(ghost.x + ghost.dir.x, ghost.y + ghost.dir.y);
 			if (!canGhostMoveTo(ghost, next.x, next.y)) {
@@ -827,8 +838,10 @@
 			ghost.cooldown += ghost.speedMs;
 
 			if (ghost.state === 'eyes' && ghost.x === ghost.spawn.x && ghost.y === ghost.spawn.y) {
-				ghost.state = getCurrentMode();
-				ghost.released = true;
+				ghost.state = 'house';
+				ghost.released = false;
+				ghost.releaseDelay = GHOST_RESPAWN_DELAY_MS;
+				ghost.dir = { x: 0, y: -1 };
 			}
 
 			if (
@@ -847,15 +860,15 @@
 	}
 
 	function eatGhost(ghost) {
-		ghost.x = ghost.spawn.x;
-		ghost.y = ghost.spawn.y;
-		ghost.fromX = ghost.spawn.x;
-		ghost.fromY = ghost.spawn.y;
-		ghost.state = 'house';
-		ghost.released = false;
-		ghost.releaseDelay = 900;
-		ghost.dir = { x: 0, y: -1 };
-		ghost.cooldown = 0;
+		ghost.state = 'eyes';
+		ghost.released = true;
+		ghost.releaseDelay = GHOST_RESPAWN_DELAY_MS;
+		ghost.fromX = ghost.x;
+		ghost.fromY = ghost.y;
+		ghost.cooldown = Math.min(ghost.cooldown, 0);
+		if (ghost.dir.x === 0 && ghost.dir.y === 0) {
+			ghost.dir = { x: 0, y: -1 };
+		}
 		ghost.eatenCount += 1;
 		const scoreAward = 200 * (2 ** state.frightenedCombo);
 		state.score += scoreAward;
@@ -1019,28 +1032,6 @@
 		}
 
 		ctx.restore();
-
-		for (let y = 0; y < BOARD_ROWS; y += 1) {
-			for (let x = 0; x < BOARD_COLS; x += 1) {
-				const cell = cellAt(x, y);
-				if (!cell || !cell.gate) continue;
-
-				ctx.save();
-				ctx.strokeStyle = '#7ec9ff';
-				ctx.lineWidth = 0.08;
-				ctx.beginPath();
-				ctx.moveTo(x + 0.12, y + 0.5);
-				ctx.lineTo(x + 0.88, y + 0.5);
-				ctx.stroke();
-				ctx.restore();
-			}
-		}
-
-		ctx.save();
-		ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-		ctx.lineWidth = 0.08;
-		ctx.strokeRect(7.05, 8.05, 6.9, 4.9);
-		ctx.restore();
 	}
 
 	function drawPellet(x, y, power = false) {
@@ -1143,7 +1134,8 @@
 		}
 
 		const x = position.x + 0.5;
-		const y = position.y + 0.52;
+		const eyeFloat = ghost.state === 'eyes' ? Math.sin(state.animTime / 140 + ghost.index * 0.8) * 0.05 : 0;
+		const y = position.y + 0.52 + eyeFloat;
 		const radius = 0.38;
 
 		if (ghost.state !== 'eyes') {
@@ -1179,9 +1171,12 @@
 		ctx.fill();
 
 		if (ghost.state === 'eyes') {
-			ctx.strokeStyle = '#e8f2ff';
+			ctx.beginPath();
+			ctx.strokeStyle = 'rgba(205, 231, 255, 0.65)';
 			ctx.lineWidth = 0.03;
-			ctx.strokeRect(x - 0.18, y - 0.14, 0.4, 0.26);
+			ctx.moveTo(x - 0.08, y + 0.03);
+			ctx.quadraticCurveTo(x, y + 0.1, x + 0.08, y + 0.03);
+			ctx.stroke();
 		}
 	}
 
