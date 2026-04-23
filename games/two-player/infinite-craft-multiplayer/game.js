@@ -98,7 +98,7 @@
 	const API_ONLY_RECIPES_MODE = false;
 	const DATASET_ONLY_RECIPES_MODE = false;
 	const MULTIPLAYER_MAX_PLAYERS = 5;
-	const ROOM_COLLECTION = 'craftRooms';
+	const ROOM_COLLECTION = 'craftRoomsV2';
 	const ROOM_PRESENCE_COLLECTION = 'presence';
 	const CURSOR_UPDATE_MS = 50;
 	const ACHIEVEMENT_VISIBLE_MS = 5000;
@@ -114,7 +114,7 @@
 	const LIVE_RECIPE_LOOKUP_ENABLED = true;
 	const LIVE_RECIPE_TIMEOUT_MS = 5000;
 	const LIVE_RECIPE_COOLDOWN_MS = 450;
-	const LIVE_CACHE_STORAGE_KEY = 'playrInfiniteCraftLiveCacheV1';
+	const LIVE_CACHE_STORAGE_KEY = 'playrInfiniteCraftLiveCacheV2';
 	const LOCAL_EXTRACT_RECIPES_PATHS = [
 		'../../../data/infinite-craft-recipes/chunk-1.json',
 		'../../../data/infinite-craft-recipes/chunk-2.json',

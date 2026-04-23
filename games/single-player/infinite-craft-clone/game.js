@@ -98,9 +98,9 @@
 	const API_ONLY_RECIPES_MODE = false;
 	const DATASET_ONLY_RECIPES_MODE = false;
 	const MULTIPLAYER_MAX_PLAYERS = 5;
-	const ROOM_COLLECTION = 'craftRooms';
+	const ROOM_COLLECTION = 'craftRoomsV2';
 	const ROOM_PRESENCE_COLLECTION = 'presence';
-	const PROGRESS_STORAGE_KEY = 'playrInfiniteCraftSinglePlayerProgressV1';
+	const PROGRESS_STORAGE_KEY = 'playrInfiniteCraftSinglePlayerProgressV2';
 	const CURSOR_UPDATE_MS = 50;
 	const ACHIEVEMENT_VISIBLE_MS = 5000;
 	const FIREBASE_CONFIG = {
@@ -115,7 +115,7 @@
 	const LIVE_RECIPE_LOOKUP_ENABLED = true;
 	const LIVE_RECIPE_TIMEOUT_MS = 5000;
 	const LIVE_RECIPE_COOLDOWN_MS = 450;
-	const LIVE_CACHE_STORAGE_KEY = 'playrInfiniteCraftLiveCacheV1';
+	const LIVE_CACHE_STORAGE_KEY = 'playrInfiniteCraftLiveCacheV2';
 	const BOARD_PARTICLE_COUNT = 30;
 	const BOARD_CONNECTION_RADIUS = 180;
 	const BOARD_AMBIENT_RADIUS = 125;
