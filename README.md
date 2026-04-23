@@ -79,6 +79,57 @@ firebase deploy --only firestore:rules
 - UI policy: do not use native browser dialogs (`alert`, `confirm`, `prompt`); use in-app panels/modals for all confirmations and inputs.
 - Placeholder and status badges are hidden from game cards to maintain a polished, quality-focused hub. Only fully implemented games are showcased.
 
+## Infinite Craft recipe dataset extraction
+
+If you want to rebuild or extend the local recipe dataset yourself, use:
+
+- [scripts/fetch-infinite-craft-recipes.mjs](scripts/fetch-infinite-craft-recipes.mjs)
+
+This script can:
+
+- fetch from zero (full rebuild)
+- fetch in chunks (for example 1M, then next 1M, then remaining 1M, then the remainder)
+- skip already-known recipe keys from existing files
+- resume after interruption via checkpoint JSON
+- use the fast `infinite-craft.gg` chunk dataset by default
+- fall back to the slower `infinibrowser.wiki` per-item crawler with `--source infinibrowser`
+
+Recommended four-file layout:
+
+1. `data/wiki-recipes-part-1.json` or your current base file
+2. `data/wiki-recipes-part-2.json`
+3. `data/wiki-recipes-part-3.json`
+4. `data/wiki-recipes-part-4.json`
+
+The game loader now merges all four chunk files automatically, plus the legacy `wiki-recipes-lite.json` if it is still present.
+
+Recommended fast workflow:
+
+1. If you already have the current `~1.0M` legacy file, build the next chunk by skipping it:
+
+```powershell
+node scripts/fetch-infinite-craft-recipes.mjs --source icgg --mode chunk --target-new 2300000 --existing games/single-player/infinite-craft-clone/data/wiki-recipes-lite.json --output data/wiki-recipes-part-2.json --checkpoint data/wiki-recipes-part-2.checkpoint.json
+```
+
+2. If you want a fresh full rebuild from zero:
+
+```powershell
+node scripts/fetch-infinite-craft-recipes.mjs --source icgg --mode full --target-new 3470353 --output data/wiki-recipes-full.json --checkpoint data/wiki-recipes-full.checkpoint.json
+```
+
+3. If you specifically want the old crawler instead of the fast chunk import:
+
+```powershell
+node scripts/fetch-infinite-craft-recipes.mjs --source infinibrowser --mode chunk --target-new 1000000 --existing games/single-player/infinite-craft-clone/data/wiki-recipes-part-1.json --output data/wiki-recipes-part-2.json --checkpoint data/wiki-recipes-part-2.checkpoint.json
+```
+
+Notes:
+
+- `icgg` is the default source now, so `--source icgg` is optional.
+- The script reuses `--existing` files to skip known recipe keys.
+- The script also resumes from a partially written `--output` file if one already exists.
+- `data/wiki-recipes-part-2.checkpoint.json` now tracks chunk progress instead of item-id progress when using the fast source.
+
 ## Next steps
 
 - Replace placeholder game data with real titles and scoring rules

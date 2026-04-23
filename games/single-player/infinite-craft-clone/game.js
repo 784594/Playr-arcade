@@ -121,7 +121,10 @@
 	const BOARD_AMBIENT_RADIUS = 125;
 	const BOARD_MAX_LINES_PER_NODE = 5;
 	const LOCAL_EXTRACT_RECIPES_PATHS = [
-		'./data/wiki-recipes-lite.json',
+		'../../../data/infinite-craft-recipes/chunk-1.json',
+		'../../../data/infinite-craft-recipes/chunk-2.json',
+		'../../../data/infinite-craft-recipes/chunk-3.json',
+		'../../../data/infinite-craft-recipes/chunk-4.json',
 	];
 	const WIKI_DATA_PREFIX_CANDIDATES = [
 		new URL(window.location.href).searchParams.get('wikiData') || '',
@@ -831,18 +834,23 @@
 	}
 
 	async function loadLocalExtractRecipes() {
-		let data = null;
-		let sourcePath = '';
+		const mergedRecipes = {};
+		const loadedPaths = [];
+		let loadedCount = 0;
 		for (const path of LOCAL_EXTRACT_RECIPES_PATHS) {
 			const candidate = await fetchJsonSafe(path);
 			if (candidate && typeof candidate === 'object' && typeof candidate.recipes === 'object') {
-				data = candidate;
-				sourcePath = path;
-				break;
+				loadedPaths.push(path);
+				for (const [key, value] of Object.entries(candidate.recipes)) {
+					if (!key || !value || typeof value !== 'object') continue;
+					if (mergedRecipes[key]) continue;
+					mergedRecipes[key] = value;
+					loadedCount += 1;
+				}
 			}
 		}
 
-		if (!data) {
+		if (!loadedCount) {
 			state.localExtractLoadFailed = true;
 			state.localExtractReady = false;
 			state.localExtractSource = '';
@@ -850,7 +858,7 @@
 		}
 
 		const nextMap = new Map();
-		for (const [key, value] of Object.entries(data.recipes)) {
+		for (const [key, value] of Object.entries(mergedRecipes)) {
 			if (!key || !value || typeof value !== 'object') continue;
 			nextMap.set(String(key).toLowerCase(), {
 				id: Number(value.id || 0),
@@ -868,7 +876,7 @@
 		state.localExtractMap = nextMap;
 		state.localExtractReady = true;
 		state.localExtractLoadFailed = false;
-		state.localExtractSource = sourcePath;
+		state.localExtractSource = loadedPaths.join(', ');
 		return true;
 	}
 
