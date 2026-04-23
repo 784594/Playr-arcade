@@ -1,9 +1,9 @@
 (function () {
 	const DIFFICULTIES = {
-		easy: { label: 'Easy', blanks: 45, minUnitGivens: 4 },
-		medium: { label: 'Medium', blanks: 49, minUnitGivens: 3 },
-		hard: { label: 'Hard', blanks: 53, minUnitGivens: 2 },
-		expert: { label: 'Expert', blanks: 57, minUnitGivens: 2 },
+		easy: { label: 'Easy', blanks: 45, blankTargets: [45], minUnitGivens: 4 },
+		medium: { label: 'Medium', blanks: 49, blankTargets: [49, 48], minUnitGivens: 3 },
+		hard: { label: 'Hard', blanks: 53, blankTargets: [53, 52, 51], minUnitGivens: 2 },
+		expert: { label: 'Expert', blanks: 57, blankTargets: [57, 56, 55, 54], minUnitGivens: 2 },
 	};
 
 	const BEST_KEY = 'arcadeAtlas.sudoku.bestTimes.v1';
@@ -54,6 +54,7 @@
 		notes: Array.from({ length: 81 }, () => new Set()),
 		seconds: 0,
 		timerId: null,
+		timerStarted: false,
 		locked: true,
 		solved: false,
 		bestTimes: loadBestTimes(),
@@ -339,7 +340,9 @@
 	}
 
 	function startTimer() {
+		if (state.timerStarted && state.timerId) return;
 		stopTimer();
+		state.timerStarted = true;
 		state.timerId = window.setInterval(() => {
 			state.seconds += 1;
 			if (timerValueEl) timerValueEl.textContent = formatSeconds(state.seconds);
@@ -350,6 +353,11 @@
 		if (!state.timerId) return;
 		window.clearInterval(state.timerId);
 		state.timerId = null;
+	}
+
+	function ensureTimerStarted() {
+		if (state.timerStarted || state.locked || state.solved) return;
+		startTimer();
 	}
 
 	function isFixed(index) {
@@ -452,8 +460,6 @@
 	}
 
 	function renderBoard() {
-		const conflictSet = computeConflictSet();
-		const selectedValue = state.selected >= 0 ? state.values[state.selected] : 0;
 		const peers = state.selected >= 0 ? getPeerIndices(state.selected) : new Set();
 
 		boardEl.innerHTML = '';
@@ -472,8 +478,6 @@
 			if (fixed) button.classList.add('is-fixed');
 			if (state.selected === index) button.classList.add('is-selected');
 			if (peers.has(index)) button.classList.add('is-peer');
-			if (selectedValue && selectedValue === value && state.selected !== index) button.classList.add('is-matching');
-			if (conflictSet.has(index)) button.classList.add('is-conflict');
 
 			if (row % 3 === 0) button.classList.add('box-top');
 			if (col % 3 === 0) button.classList.add('box-left');
@@ -554,6 +558,7 @@
 
 		if (state.notesMode) {
 			if (state.values[index] !== 0) return;
+			ensureTimerStarted();
 			if (state.notes[index].has(value)) {
 				state.notes[index].delete(value);
 			} else {
@@ -563,20 +568,11 @@
 			return;
 		}
 
+		ensureTimerStarted();
 		state.values[index] = value;
 		state.notes[index].clear();
 
-		if (state.solution[index] !== value) {
-			const cell = boardEl.querySelector(`.sudoku-cell[data-index="${index}"]`);
-			if (cell) {
-				cell.classList.add('is-wrong');
-				window.setTimeout(() => cell.classList.remove('is-wrong'), 230);
-			}
-			setStatus('That number does not match the solution for this cell.', 'Playing');
-		} else {
-			setStatus('', 'Playing');
-		}
-
+		setStatus('', 'Playing');
 		renderBoard();
 		checkSolved();
 	}
@@ -731,14 +727,21 @@
 		let solved = null;
 		let puzzle = null;
 
-		for (let attempt = 0; attempt < 8; attempt += 1) {
+		const blankTargets = Array.isArray(options.blankTargets) && options.blankTargets.length
+			? options.blankTargets
+			: [options.blanks];
+
+		for (let attempt = 0; attempt < 30; attempt += 1) {
 			const candidateSolved = generateSolvedBoard();
 			if (!isCompleteValidGrid(candidateSolved)) continue;
-			const candidatePuzzle = buildPuzzle(candidateSolved, options.blanks, options.minUnitGivens);
-			if (!candidatePuzzle) continue;
-			solved = candidateSolved;
-			puzzle = candidatePuzzle;
-			break;
+			for (const blankTarget of blankTargets) {
+				const candidatePuzzle = buildPuzzle(candidateSolved, blankTarget, options.minUnitGivens);
+				if (!candidatePuzzle) continue;
+				solved = candidateSolved;
+				puzzle = candidatePuzzle;
+				break;
+			}
+			if (solved && puzzle) break;
 		}
 
 		if (!solved || !puzzle) {
@@ -752,15 +755,15 @@
 		state.values = puzzle.slice();
 		state.notes = Array.from({ length: 81 }, () => new Set());
 		state.seconds = 0;
+		state.timerStarted = false;
 		stopTimer();
 		if (timerValueEl) timerValueEl.textContent = '0:00';
 
 		renderBoard();
-		startTimer();
 		state.locked = false;
-		setStatus('', 'Playing');
+		setStatus('', 'Ready');
 		if (hintTextEl) {
-			hintTextEl.textContent = `${DIFFICULTIES[state.difficulty].label} puzzle selected. Select a cell to begin.`;
+			hintTextEl.textContent = `${DIFFICULTIES[state.difficulty].label} puzzle selected. Timer starts on your first note or number.`;
 		}
 	}
 

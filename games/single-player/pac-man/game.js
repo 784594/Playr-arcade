@@ -23,37 +23,42 @@
 	const directionButtons = Array.from(document.querySelectorAll('[data-direction]'));
 
 	const BEST_KEY = 'playr.pacman.bestScore.v1';
-	const BOARD_COLS = 21;
-	const BOARD_ROWS = 21;
-	const TUNNEL_ROW = 10;
 	const START_LIVES = 5;
 	const POWER_DURATION = 6500;
 	const TRANSITION_MS = 1200;
 	const DEATH_ANIM_MS = 900;
 
 	const MAZE_LAYOUT = [
-		'#####################',
-		'#o........#........o#',
-		'#.###.###.#.###.###.#',
-		'#...................#',
-		'#.###.#.#####.#.###.#',
-		'#.....#...#...#.....#',
-		'#####.###.#.###.#####',
-		'#...#.....#.....#...#',
-		'#.#.......===.......#',
-		'#.#.#...hhhhh...#.#.#',
-		'.###....hhhhh....###.',
-		'#.#.#...hhhhh...#.#.#',
-		'#.#.#.###.#.###.#.#.#',
-		'#...#.....#.....#...#',
-		'###.#.###.#.###.#.###',
-		'#.....#...#...#.....#',
-		'#.###.#.#####.#.###.#',
-		'#o..#...........#..o#',
-		'###.#.#.#####.#.#.###',
-		'#.....#...#...#.....#',
-		'#####################',
+		'############################',
+		'#............##............#',
+		'#.####.#####.##.#####.####.#',
+		'#o####.#####.##.#####.####o#',
+		'#..........................#',
+		'#.####.##.########.##.####.#',
+		'#......##....##....##......#',
+		'######.##### ## #####.######',
+		'     #.##### ## #####.#     ',
+		'     #.##          ##.#     ',
+		'     #.## ###==### ##.#     ',
+		'######.## #hhhhhh# ##.######',
+		'      .   #hhhhhh#   .      ',
+		'######.## ######## ##.######',
+		'     #.##          ##.#     ',
+		'     #.## ######## ##.#     ',
+		'######.## ######## ##.######',
+		'#............##............#',
+		'#.####.#####.##.#####.####.#',
+		'#o..##................##..o#',
+		'###.##.##.########.##.##.###',
+		'#......##....##....##......#',
+		'#.##########.##.##########.#',
+		'#..........................#',
+		'############################',
 	];
+
+	const BOARD_COLS = Math.max(...MAZE_LAYOUT.map((row) => row.length));
+	const BOARD_ROWS = MAZE_LAYOUT.length;
+	const TUNNEL_ROW = 12;
 
 	const MODE_SCHEDULE = [
 		{ name: 'scatter', duration: 7000 },
@@ -65,13 +70,13 @@
 	];
 
 	const GHOST_CONFIGS = [
-		{ id: 'blinky', name: 'Blinky', color: '#ff5f6c', scatter: { x: 19, y: 1 }, spawn: { x: 10, y: 7 }, releaseDelay: 0, startOutside: true },
-		{ id: 'pinky', name: 'Pinky', color: '#ff78d2', scatter: { x: 1, y: 1 }, spawn: { x: 9, y: 10 }, releaseDelay: 1200, startOutside: false },
-		{ id: 'inky', name: 'Inky', color: '#79f0ff', scatter: { x: 19, y: 19 }, spawn: { x: 10, y: 10 }, releaseDelay: 2600, startOutside: false },
-		{ id: 'clyde', name: 'Clyde', color: '#ffb35c', scatter: { x: 1, y: 19 }, spawn: { x: 11, y: 10 }, releaseDelay: 4200, startOutside: false },
+		{ id: 'blinky', name: 'Blinky', color: '#ff5f6c', scatter: { x: 26, y: 1 }, spawn: { x: 13, y: 9 }, releaseDelay: 0, startOutside: true },
+		{ id: 'pinky', name: 'Pinky', color: '#ff78d2', scatter: { x: 1, y: 1 }, spawn: { x: 12, y: 11 }, releaseDelay: 1200, startOutside: false },
+		{ id: 'inky', name: 'Inky', color: '#79f0ff', scatter: { x: 26, y: 23 }, spawn: { x: 13, y: 11 }, releaseDelay: 2600, startOutside: false },
+		{ id: 'clyde', name: 'Clyde', color: '#ffb35c', scatter: { x: 1, y: 23 }, spawn: { x: 15, y: 11 }, releaseDelay: 4200, startOutside: false },
 	];
 
-	const GHOST_HOUSE_GATE = { x: 10, y: 8 };
+	const GHOST_HOUSE_GATE = { x: 13, y: 10 };
 
 	const state = {
 		started: false,
@@ -257,7 +262,7 @@
 		setOpen(0, TUNNEL_ROW, false);
 		setOpen(BOARD_COLS - 1, TUNNEL_ROW, false);
 
-		const pacmanSpawn = { x: 10, y: 15 };
+		const pacmanSpawn = { x: 13, y: 14 };
 		const protectedCells = [pacmanSpawn, { x: GHOST_HOUSE_GATE.x, y: GHOST_HOUSE_GATE.y }];
 
 		for (const cell of protectedCells) {
@@ -277,10 +282,10 @@
 
 	function createPacman() {
 		return {
-			x: 10,
-			y: 15,
-			fromX: 10,
-			fromY: 15,
+			x: 13,
+			y: 14,
+			fromX: 13,
+			fromY: 14,
 			dir: { x: -1, y: 0 },
 			queuedDir: { x: -1, y: 0 },
 			cooldown: 0,
@@ -932,7 +937,21 @@
 	}
 
 	function updateGame(dt) {
-		if (!state.started || state.paused || state.gameOver) {
+		updateTimers(dt);
+
+		if (!state.started || state.gameOver) {
+			updateHud();
+			render();
+			return;
+		}
+
+		if (state.transitionMs > 0) {
+			updateHud();
+			render();
+			return;
+		}
+
+		if (state.paused) {
 			updateHud();
 			render();
 			return;
@@ -940,13 +959,6 @@
 
 		frameDeltaMs = dt;
 		applySpeeds();
-		updateTimers(dt);
-
-		if (state.transitionMs > 0) {
-			updateHud();
-			render();
-			return;
-		}
 
 		movePacman();
 		for (const ghost of state.ghosts) {

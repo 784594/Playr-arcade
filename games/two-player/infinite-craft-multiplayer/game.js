@@ -98,7 +98,7 @@
 	const API_ONLY_RECIPES_MODE = false;
 	const DATASET_ONLY_RECIPES_MODE = false;
 	const MULTIPLAYER_MAX_PLAYERS = 5;
-	const ROOM_COLLECTION = 'craftRoomsV2';
+	const ROOM_COLLECTION = 'craftRooms';
 	const ROOM_PRESENCE_COLLECTION = 'presence';
 	const CURSOR_UPDATE_MS = 50;
 	const ACHIEVEMENT_VISIBLE_MS = 5000;

@@ -149,7 +149,9 @@
 	}
 
 	function getPipeGap() {
-		return Math.max(148, 182 - Math.min(42, Math.floor(state.score * 1.4)));
+		const startingGap = Math.max(164, Math.round(WORLD.height * 0.33));
+		const tightening = Math.min(34, Math.floor(state.score * 1.75));
+		return Math.max(136, startingGap - tightening);
 	}
 
 	function getDifficultyLabel() {

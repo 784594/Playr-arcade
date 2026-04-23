@@ -56,50 +56,162 @@
 		textShadow: '#061019',
 	};
 
-	const laneDefs = {
-		1: [
-			{ x: 0.5, len: 3, speed: 1.65, type: 'log' },
-			{ x: 8.5, len: 2, speed: 1.65, type: 'log' },
-		],
-		2: [
-			{ x: 2.2, len: 2, speed: -1.95, type: 'turtle' },
-			{ x: 9.4, len: 3, speed: -1.95, type: 'turtle' },
-		],
-		3: [
-			{ x: 1.0, len: 4, speed: 1.35, type: 'log' },
-			{ x: 10.3, len: 3, speed: 1.35, type: 'log' },
-		],
-		4: [
-			{ x: 3.5, len: 2, speed: -2.35, type: 'turtle' },
-			{ x: 12.1, len: 2, speed: -2.35, type: 'turtle' },
-		],
-		5: [
-			{ x: 0.0, len: 5, speed: 1.1, type: 'log' },
-			{ x: 8.8, len: 4, speed: 1.1, type: 'log' },
-		],
-		7: [
-			{ x: 1.5, len: 2, speed: -2.7, type: 'carA' },
-			{ x: 8.2, len: 2, speed: -2.7, type: 'carB' },
-			{ x: 13.1, len: 2, speed: -2.7, type: 'carA' },
-		],
-		8: [
-			{ x: 0.2, len: 3, speed: 2.05, type: 'carC' },
-			{ x: 7.0, len: 2, speed: 2.05, type: 'carD' },
-			{ x: 12.3, len: 3, speed: 2.05, type: 'carC' },
-		],
-		9: [
-			{ x: 3.2, len: 2, speed: -3.2, type: 'carB' },
-			{ x: 9.8, len: 2, speed: -3.2, type: 'carA' },
-		],
-		10: [
-			{ x: 1.1, len: 4, speed: 1.5, type: 'carD' },
-			{ x: 10.7, len: 3, speed: 1.5, type: 'carC' },
-		],
-		11: [
-			{ x: 4.0, len: 2, speed: -3.5, type: 'carA' },
-			{ x: 11.0, len: 2, speed: -3.5, type: 'carB' },
-		],
-	};
+	const LEVEL_CONFIGS = [
+		{
+			name: 'Harbor Hop',
+			roundTime: 40,
+			lanes: {
+				1: [
+					{ x: 0.5, len: 3, speed: 1.65, type: 'log' },
+					{ x: 8.5, len: 2, speed: 1.65, type: 'log' },
+				],
+				2: [
+					{ x: 2.2, len: 2, speed: -1.95, type: 'turtle' },
+					{ x: 9.4, len: 3, speed: -1.95, type: 'turtle' },
+				],
+				3: [
+					{ x: 1.0, len: 4, speed: 1.35, type: 'log' },
+					{ x: 10.3, len: 3, speed: 1.35, type: 'log' },
+				],
+				4: [
+					{ x: 3.5, len: 2, speed: -2.35, type: 'turtle' },
+					{ x: 12.1, len: 2, speed: -2.35, type: 'turtle' },
+				],
+				5: [
+					{ x: 0.0, len: 5, speed: 1.1, type: 'log' },
+					{ x: 8.8, len: 4, speed: 1.1, type: 'log' },
+				],
+				7: [
+					{ x: 1.5, len: 2, speed: -2.7, type: 'carA' },
+					{ x: 8.2, len: 2, speed: -2.7, type: 'carB' },
+					{ x: 13.1, len: 2, speed: -2.7, type: 'carA' },
+				],
+				8: [
+					{ x: 0.2, len: 3, speed: 2.05, type: 'carC' },
+					{ x: 7.0, len: 2, speed: 2.05, type: 'carD' },
+					{ x: 12.3, len: 3, speed: 2.05, type: 'carC' },
+				],
+				9: [
+					{ x: 3.2, len: 2, speed: -3.2, type: 'carB' },
+					{ x: 9.8, len: 2, speed: -3.2, type: 'carA' },
+				],
+				10: [
+					{ x: 1.1, len: 4, speed: 1.5, type: 'carD' },
+					{ x: 10.7, len: 3, speed: 1.5, type: 'carC' },
+				],
+				11: [
+					{ x: 4.0, len: 2, speed: -3.5, type: 'carA' },
+					{ x: 11.0, len: 2, speed: -3.5, type: 'carB' },
+				],
+			},
+		},
+		{
+			name: 'Rush Hour',
+			roundTime: 36,
+			lanes: {
+				1: [
+					{ x: 1.2, len: 2, speed: 1.95, type: 'log' },
+					{ x: 7.4, len: 3, speed: 1.95, type: 'log' },
+					{ x: 13.1, len: 2, speed: 1.95, type: 'log' },
+				],
+				2: [
+					{ x: 0.4, len: 2, speed: -2.25, type: 'turtle' },
+					{ x: 6.4, len: 2, speed: -2.25, type: 'turtle' },
+					{ x: 11.8, len: 2, speed: -2.25, type: 'turtle' },
+				],
+				3: [
+					{ x: 2.0, len: 5, speed: 1.55, type: 'log' },
+					{ x: 11.2, len: 3, speed: 1.55, type: 'log' },
+				],
+				4: [
+					{ x: 1.4, len: 3, speed: -2.7, type: 'turtle' },
+					{ x: 9.5, len: 2, speed: -2.7, type: 'turtle' },
+				],
+				5: [
+					{ x: 0.0, len: 4, speed: 1.35, type: 'log' },
+					{ x: 7.2, len: 4, speed: 1.35, type: 'log' },
+				],
+				7: [
+					{ x: 0.9, len: 2, speed: -3.0, type: 'carA' },
+					{ x: 6.6, len: 3, speed: -3.0, type: 'carB' },
+					{ x: 13.0, len: 2, speed: -3.0, type: 'carD' },
+				],
+				8: [
+					{ x: 1.2, len: 2, speed: 2.3, type: 'carC' },
+					{ x: 8.1, len: 2, speed: 2.3, type: 'carD' },
+					{ x: 12.7, len: 2, speed: 2.3, type: 'carC' },
+				],
+				9: [
+					{ x: 2.7, len: 3, speed: -3.45, type: 'carB' },
+					{ x: 10.3, len: 2, speed: -3.45, type: 'carA' },
+				],
+				10: [
+					{ x: 0.7, len: 3, speed: 1.85, type: 'carD' },
+					{ x: 8.8, len: 3, speed: 1.85, type: 'carC' },
+				],
+				11: [
+					{ x: 3.1, len: 2, speed: -3.9, type: 'carA' },
+					{ x: 9.6, len: 2, speed: -3.9, type: 'carB' },
+					{ x: 14.2, len: 1.5, speed: -3.9, type: 'carA' },
+				],
+			},
+		},
+		{
+			name: 'Night Crossing',
+			roundTime: 32,
+			lanes: {
+				1: [
+					{ x: 0.4, len: 2, speed: 2.15, type: 'log' },
+					{ x: 5.6, len: 2, speed: 2.15, type: 'log' },
+					{ x: 11.3, len: 3, speed: 2.15, type: 'log' },
+				],
+				2: [
+					{ x: 2.0, len: 3, speed: -2.55, type: 'turtle' },
+					{ x: 10.0, len: 2, speed: -2.55, type: 'turtle' },
+				],
+				3: [
+					{ x: 1.0, len: 3, speed: 1.85, type: 'log' },
+					{ x: 7.4, len: 3, speed: 1.85, type: 'log' },
+					{ x: 13.5, len: 2, speed: 1.85, type: 'log' },
+				],
+				4: [
+					{ x: 0.8, len: 2, speed: -3.0, type: 'turtle' },
+					{ x: 6.6, len: 2, speed: -3.0, type: 'turtle' },
+					{ x: 12.4, len: 2, speed: -3.0, type: 'turtle' },
+				],
+				5: [
+					{ x: 0.0, len: 4, speed: 1.55, type: 'log' },
+					{ x: 6.5, len: 3, speed: 1.55, type: 'log' },
+					{ x: 11.7, len: 3, speed: 1.55, type: 'log' },
+				],
+				7: [
+					{ x: 1.0, len: 1.8, speed: -3.2, type: 'carA' },
+					{ x: 5.6, len: 2, speed: -3.2, type: 'carB' },
+					{ x: 10.4, len: 2, speed: -3.2, type: 'carD' },
+					{ x: 14.3, len: 1.6, speed: -3.2, type: 'carA' },
+				],
+				8: [
+					{ x: 0.3, len: 2.5, speed: 2.55, type: 'carC' },
+					{ x: 6.8, len: 2, speed: 2.55, type: 'carD' },
+					{ x: 11.7, len: 2.5, speed: 2.55, type: 'carC' },
+				],
+				9: [
+					{ x: 2.0, len: 2, speed: -3.7, type: 'carB' },
+					{ x: 7.9, len: 2, speed: -3.7, type: 'carA' },
+					{ x: 13.4, len: 2, speed: -3.7, type: 'carD' },
+				],
+				10: [
+					{ x: 1.2, len: 4, speed: 2.05, type: 'carD' },
+					{ x: 10.0, len: 3, speed: 2.05, type: 'carC' },
+				],
+				11: [
+					{ x: 3.3, len: 2, speed: -4.15, type: 'carA' },
+					{ x: 8.9, len: 1.8, speed: -4.15, type: 'carB' },
+					{ x: 13.2, len: 2, speed: -4.15, type: 'carA' },
+				],
+			},
+		},
+	];
 
 	const state = {
 		phase: 'idle',
@@ -118,6 +230,10 @@
 		respawnLock: 0,
 		message: 'Start Crossing',
 	};
+
+	function getLevelConfig() {
+		return LEVEL_CONFIGS[(state.level - 1) % LEVEL_CONFIGS.length];
+	}
 
 	function loadBest() {
 		try {
@@ -141,8 +257,9 @@
 
 	function cloneLanes() {
 		const speedFactor = 1 + (state.level - 1) * 0.12;
+		const levelConfig = getLevelConfig();
 		const result = [];
-		for (const [rowKey, objects] of Object.entries(laneDefs)) {
+		for (const [rowKey, objects] of Object.entries(levelConfig.lanes)) {
 			const row = Number(rowKey);
 			result.push({
 				row,
@@ -170,13 +287,13 @@
 		state.score = 0;
 		state.lives = START_LIVES;
 		state.level = 1;
-		state.timer = ROUND_TIME;
+		state.timer = getLevelConfig().roundTime;
 		state.homes = Array(HOME_COUNT).fill(false);
 		state.respawnLock = 0;
 		state.lanes = cloneLanes();
 		resetFrog();
 		state.phase = 'active';
-		setStatus('Hop to the river homes and avoid collisions.', 'Playing');
+		setStatus(`Level 1: ${getLevelConfig().name}. Hop to the river homes and avoid collisions.`, 'Playing');
 		updateHud();
 		updateOverlay();
 	}
@@ -206,7 +323,7 @@
 			endGame();
 			return;
 		}
-		state.timer = ROUND_TIME;
+		state.timer = getLevelConfig().roundTime;
 		resetFrog();
 		updateHud();
 	}
@@ -226,10 +343,10 @@
 		state.level += 1;
 		state.score += 500;
 		state.homes = Array(HOME_COUNT).fill(false);
-		state.timer = ROUND_TIME;
+		state.timer = getLevelConfig().roundTime;
 		state.lanes = cloneLanes();
 		resetFrog();
-		setStatus(`Level ${state.level}. Lanes are faster now.`, 'Level up');
+		setStatus(`Level ${state.level}: ${getLevelConfig().name}. Lanes are faster and patterns change.`, 'Level up');
 		updateHud();
 	}
 
@@ -350,7 +467,7 @@
 		state.homes[slot] = true;
 		state.score += 250 + Math.floor(state.timer * 6);
 		setStatus('Home reached.', 'Scored');
-		state.timer = ROUND_TIME;
+		state.timer = getLevelConfig().roundTime;
 		resetFrog();
 		updateHud();
 

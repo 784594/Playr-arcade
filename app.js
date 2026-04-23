@@ -2626,7 +2626,7 @@ function renderGames() {
   gameGrid.innerHTML = filteredGames
     .map(
       (game) => `
-        <article class="game-card ${game.id === uiState.activeGameId ? 'active' : ''}" tabindex="0" role="button" data-game-id="${game.id}" data-launch-url="${game.launchUrl || ''}">
+        <article class="game-card" tabindex="0" role="button" data-game-id="${game.id}" data-launch-url="${game.launchUrl || ''}">
           <div class="meta-row">
             ${game.status ? `<span class="tag ${game.accent}">${game.status}</span>` : ''}
             <span class="tag">${game.mode}</span>
@@ -2809,9 +2809,6 @@ function setActiveGame(gameId) {
   const game = filteredGames.find((entry) => entry.id === gameId) ?? fallback;
   if (!game) return;
   uiState.activeGameId = game.id;
-  document.querySelectorAll('.game-card').forEach((card) => {
-    card.classList.toggle('active', card.dataset.gameId === game.id);
-  });
   renderLeaderboard();
 }
 

@@ -27,7 +27,7 @@ body {
 }
 
 .page {
-	width: min(calc(100% - 18px), 1320px);
+	width: min(calc(100% - 18px), 1520px);
 	margin: 0 auto;
 	padding: 16px 0 24px;
 }
@@ -109,7 +109,7 @@ body {
 
 .frogger-layout {
 	display: grid;
-	grid-template-columns: 280px 1fr 280px;
+	grid-template-columns: minmax(220px, 260px) minmax(720px, 1fr) minmax(220px, 260px);
 	gap: 14px;
 	align-items: start;
 }
@@ -117,6 +117,7 @@ body {
 .board-shell {
 	display: grid;
 	gap: 10px;
+	min-width: 0;
 }
 
 .board-topline {
@@ -130,7 +131,7 @@ body {
 	position: relative;
 	border: 1px solid rgba(107, 223, 144, 0.2);
 	border-radius: 18px;
-	padding: 8px;
+	padding: 14px;
 	background:
 		linear-gradient(180deg, rgba(15, 25, 36, 0.98), rgba(10, 15, 24, 0.96)),
 		repeating-linear-gradient(
@@ -143,9 +144,10 @@ body {
 }
 
 .game-canvas {
-	width: 100%;
+	width: min(100%, 980px);
 	aspect-ratio: 15 / 13;
 	display: block;
+	margin: 0 auto;
 	border: 1px solid rgba(181, 226, 255, 0.22);
 	border-radius: 8px;
 	background: #0a1321;
@@ -171,7 +173,7 @@ body {
 }
 
 .overlay-card {
-	width: min(100%, 380px);
+	width: min(100%, 420px);
 	padding: 20px;
 	border-radius: 14px;
 	border: 1px solid rgba(107, 223, 144, 0.3);
@@ -243,10 +245,14 @@ body {
 
 .session-panel {
 	padding: 16px;
+	position: sticky;
+	top: 14px;
 }
 
 .stats-panel {
 	padding: 16px;
+	position: sticky;
+	top: 14px;
 }
 
 .session-panel h2 {
