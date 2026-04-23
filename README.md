@@ -108,7 +108,7 @@ Recommended fast workflow:
 1. If you already have the current `~1.0M` legacy file, build the next chunk by skipping it:
 
 ```powershell
-node scripts/fetch-infinite-craft-recipes.mjs --source icgg --mode chunk --target-new 2300000 --existing games/single-player/infinite-craft-clone/data/wiki-recipes-lite.json --output data/wiki-recipes-part-2.json --checkpoint data/wiki-recipes-part-2.checkpoint.json
+node scripts/fetch-infinite-craft-recipes.mjs --source icgg --mode chunk --target-new 2470353 --existing games/single-player/infinite-craft-clone/data/wiki-recipes-lite.json --output data/wiki-recipes-part-2.json --checkpoint data/wiki-recipes-part-2.checkpoint.json
 ```
 
 2. If you want a fresh full rebuild from zero:
@@ -129,6 +129,7 @@ Notes:
 - The script reuses `--existing` files to skip known recipe keys.
 - The script also resumes from a partially written `--output` file if one already exists.
 - `data/wiki-recipes-part-2.checkpoint.json` now tracks chunk progress instead of item-id progress when using the fast source.
+- The repo-friendly shared dataset lives in `data/infinite-craft-recipes/` and can be regenerated with `scripts/split-infinite-craft-recipes.mjs`.
 
 ## Next steps
 

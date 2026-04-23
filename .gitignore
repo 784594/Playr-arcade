@@ -42,6 +42,7 @@ firebase-adminsdk*.json
 # Oversized local data snapshots (not suitable for GitHub)
 data/wiki-recipes-part-2.json
 data/wiki-recipes-part-2.checkpoint.json
+data/wiki-recipes-part-2.*.checkpoint.json
 data/wiki-recipes-part-2.run.log
 data/wiki-recipes-part-2.run.err.log
 games/single-player/infinite-craft-clone/data/icgg-recipes-full.json

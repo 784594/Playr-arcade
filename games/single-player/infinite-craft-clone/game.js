@@ -125,6 +125,7 @@
 		'../../../data/infinite-craft-recipes/chunk-2.json',
 		'../../../data/infinite-craft-recipes/chunk-3.json',
 		'../../../data/infinite-craft-recipes/chunk-4.json',
+		'../../../data/infinite-craft-recipes/chunk-5.json',
 	];
 	const WIKI_DATA_PREFIX_CANDIDATES = [
 		new URL(window.location.href).searchParams.get('wikiData') || '',
@@ -1346,19 +1347,6 @@
 
 	async function resolveRecipe(elementA, elementB) {
 		const key = sortedPairKey(elementA.id, elementB.id);
-		const forwardKey = `${String(elementA.id || '')}::${String(elementB.id || '')}`;
-		const reverseKey = `${String(elementB.id || '')}::${String(elementA.id || '')}`;
-		const base = BASE_RECIPES[forwardKey] || BASE_RECIPES[reverseKey] || BASE_RECIPES[key];
-		if (base) {
-			const baseSaved = addElement({
-				id: slugify(base.name),
-				name: base.name,
-				emoji: base.emoji,
-				tags: Array.isArray(base.tags) ? base.tags : [],
-			});
-			if (baseSaved) state.recipeResults.set(key, baseSaved.id);
-			return baseSaved;
-		}
 
 		const isKnownRecipeElement = (entry) => {
 			if (!entry) return false;
