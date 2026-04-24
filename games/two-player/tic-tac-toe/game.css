@@ -188,8 +188,38 @@
 	font-size: 0.96rem;
 }
 
-.score-lines span {
-	display: block;
+.score-line {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	min-width: 0;
+}
+
+.score-player {
+	display: inline-flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 6px;
+	min-width: 0;
+	flex: 1 1 auto;
+}
+
+.score-player .playr-identity {
+	display: inline-flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 6px;
+	min-width: 0;
+}
+
+.score-player .playr-badge-stack {
+	flex: 0 0 auto;
+}
+
+.score-value {
+	flex: 0 0 auto;
+	font-weight: 700;
 }
 
 .board-info-actions {
@@ -304,12 +334,26 @@
 	flex-wrap: wrap;
 	gap: 6px;
 	font-weight: 700;
+	min-width: 0;
 	margin-right: 8px;
+}
+
+.chat-author .playr-identity {
+	display: inline-flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 6px;
+	min-width: 0;
+}
+
+.chat-author .playr-badge-stack {
+	flex: 0 0 auto;
 }
 
 .chat-time {
 	opacity: 0.7;
 	font-size: 0.8rem;
+	white-space: nowrap;
 }
 
 .chat-row {

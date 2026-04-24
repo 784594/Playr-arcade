@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-24-tic-tac-toe-ui-bug-fixes',
+      title: 'Bug fixes to Tic Tac Toe UI',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-24T21:25:00-04:00',
+      summary: 'Tic-Tac-Toe now keeps score badges aligned more cleanly and uses live account progression for the signed-in player in chat.',
+      details: [
+        'Score rows now keep player names, badges, and values on one aligned line instead of stretching the level chip into its own row.',
+        'Placeholder labels like Waiting no longer inherit fake default level badges.',
+        'Chat now refreshes the signed-in player badge from live progression data so the shown level stays in sync.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-24-tic-tac-toe-ui-improvement',
       title: 'Tic Tac Toe UI Improvement',
       category: 'update',

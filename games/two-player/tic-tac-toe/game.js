@@ -194,13 +194,40 @@
 			: null;
 	}
 
+	function getCurrentIdentityRecord() {
+		if (window.PlayrProgression && typeof window.PlayrProgression.getCurrentRecord === 'function') {
+			return window.PlayrProgression.getCurrentRecord();
+		}
+		if (window.PlayrAuth && typeof window.PlayrAuth.getCurrentUser === 'function') {
+			return window.PlayrAuth.getCurrentUser();
+		}
+		return state.user || null;
+	}
+
+	function getIdentitySource(uid = '', profile = null) {
+		const currentUid = String(state.user?.uid || '').trim();
+		const safeUid = String(uid || '').trim();
+		if (safeUid && currentUid && safeUid === currentUid) {
+			return { record: getCurrentIdentityRecord(), profile: null };
+		}
+		if (profile && typeof profile === 'object') {
+			return { record: null, profile };
+		}
+		return null;
+	}
+
 	function formatPlayerIdentity(name, userLike = null, options = {}) {
 		const api = getProgressionApi();
 		if (!api) {
 			return escapeHtml(normalizeName(name || 'Player'));
 		}
+		const source = userLike && typeof userLike === 'object' && ('record' in userLike || 'profile' in userLike)
+			? userLike
+			: { record: userLike || null, profile: null };
 		return api.formatIdentityMarkup(name, {
-			record: userLike || null,
+			record: source.record || null,
+			profile: source.profile || null,
+			showBadges: Boolean(source.record || source.profile),
 			compact: true,
 			...options,
 		});
@@ -232,6 +259,13 @@
 		return 'Waiting';
 	}
 
+	function getSecondPlayerUid(room) {
+		if (!room) return '';
+		if (room.hostUid && room.xUid && room.xUid !== room.hostUid) return room.xUid || '';
+		if (room.hostUid && room.oUid && room.oUid !== room.hostUid) return room.oUid || '';
+		return room.oUid || '';
+	}
+
 	function getPlayerScore(room, uid) {
 		if (!room || !uid) return 0;
 		const scores = room.playerScores || {};
@@ -243,13 +277,13 @@
 		const hostName = getHostName(room);
 		const secondName = getSecondPlayerName(room);
 		const hostScore = getPlayerScore(room, room?.hostUid);
-		const secondUid = room?.xUid && room.xUid !== room.hostUid ? room.xUid : room?.oUid && room.oUid !== room.hostUid ? room.oUid : '';
+		const secondUid = getSecondPlayerUid(room);
 		const secondScore = getPlayerScore(room, secondUid);
 		const draws = Number(room?.draws || 0);
 		els.scoreDisplay.innerHTML = [
-			`<span>${formatPlayerIdentity(hostName)}: ${hostScore}</span>`,
-			`<span>${formatPlayerIdentity(secondName)}: ${secondScore}</span>`,
-			`<span>Draws: ${draws}</span>`,
+			`<span class="score-line"><span class="score-player">${formatPlayerIdentity(hostName, getIdentitySource(room?.hostUid))}</span><span class="score-value">${hostScore}</span></span>`,
+			`<span class="score-line"><span class="score-player">${formatPlayerIdentity(secondName, getIdentitySource(secondUid))}</span><span class="score-value">${secondScore}</span></span>`,
+			`<span class="score-line"><span class="score-player">Draws</span><span class="score-value">${draws}</span></span>`,
 		].join('');
 	}
 
@@ -533,17 +567,18 @@
 		const spectatorView = Boolean(state.spectating || !role);
 		const myName = getDisplayName(state.user);
 		const otherName = role === 'X' ? (room.oName || 'Waiting...') : role === 'O' ? (room.xName || 'Waiting...') : `${room.xName || 'Waiting'} / ${room.oName || 'Waiting'}`;
+		const secondUid = getSecondPlayerUid(room);
 		if (els.roomCode) els.roomCode.textContent = state.roomId;
 		if (spectatorView) {
 			if (els.myUserLabel) els.myUserLabel.textContent = 'Player 1 (Host):';
 			if (els.otherUserLabel) els.otherUserLabel.textContent = 'Player 2:';
-			if (els.myUserDisplay) els.myUserDisplay.innerHTML = formatPlayerIdentity(getHostName(room));
-			if (els.otherUserDisplay) els.otherUserDisplay.innerHTML = formatPlayerIdentity(getSecondPlayerName(room));
+			if (els.myUserDisplay) els.myUserDisplay.innerHTML = formatPlayerIdentity(getHostName(room), getIdentitySource(room?.hostUid));
+			if (els.otherUserDisplay) els.otherUserDisplay.innerHTML = formatPlayerIdentity(getSecondPlayerName(room), getIdentitySource(secondUid));
 		} else {
 			if (els.myUserLabel) els.myUserLabel.textContent = 'You:';
 			if (els.otherUserLabel) els.otherUserLabel.textContent = 'Other Player:';
-			if (els.myUserDisplay) els.myUserDisplay.innerHTML = formatPlayerIdentity(role ? `${myName} (${role})` : myName, state.user);
-			if (els.otherUserDisplay) els.otherUserDisplay.innerHTML = formatPlayerIdentity(otherName);
+			if (els.myUserDisplay) els.myUserDisplay.innerHTML = formatPlayerIdentity(role ? `${myName} (${role})` : myName, getIdentitySource(state.user?.uid));
+			if (els.otherUserDisplay) els.otherUserDisplay.innerHTML = formatPlayerIdentity(otherName, getIdentitySource(role === 'X' ? room?.oUid : room?.xUid));
 		}
 
 		if (room.winner === 'draw') {
@@ -930,10 +965,10 @@
 				const messages = [];
 				snap.forEach((doc) => messages.push(doc.data() || {}));
 				els.chatLog.innerHTML = messages.map((msg) => {
-					const author = formatPlayerIdentity(msg.authorName || 'Player', msg.authorProfile || null);
+					const author = formatPlayerIdentity(msg.authorName || 'Player', getIdentitySource(msg.authorUid, msg.authorProfile || null));
 					const text = escapeHtml(msg.text || '');
 					const time = formatTime(msg.createdAt);
-					return `<div class="chat-item"><span class="chat-author">${author}</span><span class="chat-time">${time}</span><p>${text}</p></div>`;
+					return `<div class="chat-item"><div class="chat-row"><span class="chat-author">${author}</span><span class="chat-time">${time}</span></div><p>${text}</p></div>`;
 				}).join('');
 				els.chatLog.scrollTop = els.chatLog.scrollHeight;
 				syncChatPanelHeight();
