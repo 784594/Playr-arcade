@@ -188,6 +188,24 @@
 		return uid ? `${safe}` : safe;
 	}
 
+	function getProgressionApi() {
+		return window.PlayrProgression && typeof window.PlayrProgression.formatIdentityMarkup === 'function'
+			? window.PlayrProgression
+			: null;
+	}
+
+	function formatPlayerIdentity(name, userLike = null, options = {}) {
+		const api = getProgressionApi();
+		if (!api) {
+			return escapeHtml(normalizeName(name || 'Player'));
+		}
+		return api.formatIdentityMarkup(name, {
+			record: userLike || null,
+			compact: true,
+			...options,
+		});
+	}
+
 	function getRoomPlayerName(room, role) {
 		if (!room) return 'Player';
 		if (role === 'X') return room.xName || 'X player';
@@ -229,8 +247,8 @@
 		const secondScore = getPlayerScore(room, secondUid);
 		const draws = Number(room?.draws || 0);
 		els.scoreDisplay.innerHTML = [
-			`<span>${escapeHtml(hostName)}: ${hostScore}</span>`,
-			`<span>${escapeHtml(secondName)}: ${secondScore}</span>`,
+			`<span>${formatPlayerIdentity(hostName)}: ${hostScore}</span>`,
+			`<span>${formatPlayerIdentity(secondName)}: ${secondScore}</span>`,
 			`<span>Draws: ${draws}</span>`,
 		].join('');
 	}
@@ -454,9 +472,10 @@
 			if (room.turn !== role) return false;
 			return !board[index];
 		};
+		const adminCanSelectCells = Boolean(state.adminPanelOpen && state.adminSelectingCell && isCurrentUserOwner());
 
 		els.board.innerHTML = board.map((mark, index) => {
-			const disabled = canPlay(index) ? '' : 'disabled';
+			const disabled = canPlay(index) || adminCanSelectCells ? '' : 'disabled';
 			const selectedAdminCell = state.adminSelectedCellIndex === index ? ' admin-selected' : '';
 			const cls = mark ? `cell marked ${mark === 'X' ? 'mark-x' : 'mark-o'}${selectedAdminCell}` : `cell${selectedAdminCell}`;
 			return `<button type="button" class="${cls}" data-cell-index="${index}" ${disabled}>${escapeHtml(mark || '')}</button>`;
@@ -494,8 +513,8 @@
 			if (els.myUserLabel) els.myUserLabel.textContent = 'You:';
 			if (els.otherUserLabel) els.otherUserLabel.textContent = 'Other Player:';
 			if (els.roomCode) els.roomCode.textContent = state.roomId;
-			if (els.myUserDisplay) els.myUserDisplay.textContent = getDisplayName(state.user);
-			if (els.otherUserDisplay) els.otherUserDisplay.textContent = 'Loading...';
+			if (els.myUserDisplay) els.myUserDisplay.innerHTML = formatPlayerIdentity(getDisplayName(state.user), state.user);
+			if (els.otherUserDisplay) els.otherUserDisplay.innerHTML = formatPlayerIdentity('Loading...');
 			if (els.turnDisplay) els.turnDisplay.textContent = '--';
 			renderScoreLines(null);
 			if (els.rematchBtn) els.rematchBtn.disabled = true;
@@ -518,13 +537,13 @@
 		if (spectatorView) {
 			if (els.myUserLabel) els.myUserLabel.textContent = 'Player 1 (Host):';
 			if (els.otherUserLabel) els.otherUserLabel.textContent = 'Player 2:';
-			if (els.myUserDisplay) els.myUserDisplay.textContent = getHostName(room);
-			if (els.otherUserDisplay) els.otherUserDisplay.textContent = getSecondPlayerName(room);
+			if (els.myUserDisplay) els.myUserDisplay.innerHTML = formatPlayerIdentity(getHostName(room));
+			if (els.otherUserDisplay) els.otherUserDisplay.innerHTML = formatPlayerIdentity(getSecondPlayerName(room));
 		} else {
 			if (els.myUserLabel) els.myUserLabel.textContent = 'You:';
 			if (els.otherUserLabel) els.otherUserLabel.textContent = 'Other Player:';
-			if (els.myUserDisplay) els.myUserDisplay.textContent = role ? `${myName} (${role})` : myName;
-			if (els.otherUserDisplay) els.otherUserDisplay.textContent = otherName;
+			if (els.myUserDisplay) els.myUserDisplay.innerHTML = formatPlayerIdentity(role ? `${myName} (${role})` : myName, state.user);
+			if (els.otherUserDisplay) els.otherUserDisplay.innerHTML = formatPlayerIdentity(otherName);
 		}
 
 		if (room.winner === 'draw') {
@@ -825,6 +844,9 @@
 			adminLastOverrideAt: null,
 			adminLastOverrideBy: '',
 		}, { merge: false });
+		if (window.PlayrProgression?.grantRoomCreatedXp) {
+			window.PlayrProgression.grantRoomCreatedXp();
+		}
 		return roomId;
 	}
 
@@ -908,7 +930,7 @@
 				const messages = [];
 				snap.forEach((doc) => messages.push(doc.data() || {}));
 				els.chatLog.innerHTML = messages.map((msg) => {
-					const author = escapeHtml(msg.authorName || 'Player');
+					const author = formatPlayerIdentity(msg.authorName || 'Player', msg.authorProfile || null);
 					const text = escapeHtml(msg.text || '');
 					const time = formatTime(msg.createdAt);
 					return `<div class="chat-item"><span class="chat-author">${author}</span><span class="chat-time">${time}</span><p>${text}</p></div>`;
@@ -1149,6 +1171,9 @@
 				updatedAt: window.firebase.firestore.FieldValue.serverTimestamp(),
 			}, { merge: true });
 		});
+		if (window.PlayrProgression?.grantRoomStartedXp) {
+			window.PlayrProgression.grantRoomStartedXp(2);
+		}
 		setStatus('Coin toss started. Assigning X and O...');
 	}
 
@@ -1190,6 +1215,9 @@
 		await roomMessagesRef(state.roomId).add({
 			authorUid: state.user.uid,
 			authorName: getDisplayName(state.user),
+			authorProfile: window.PlayrAuth && typeof window.PlayrAuth.getCurrentUser === 'function'
+				? window.PlayrAuth.getCurrentUser()
+				: null,
 			text,
 			createdAt: window.firebase.firestore.FieldValue.serverTimestamp(),
 		});

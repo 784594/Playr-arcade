@@ -112,6 +112,14 @@ a {
   justify-content: center;
 }
 
+.notification-button-glyph {
+  width: auto;
+  height: auto;
+  font-size: 1.05rem;
+  line-height: 1;
+  color: #edf4ff;
+}
+
 .notification-button-icon svg {
   width: 18px;
   height: 18px;
