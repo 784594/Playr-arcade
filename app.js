@@ -176,6 +176,7 @@ const AUTH_STORAGE_KEYS = {
 
 // Admin rights are bound to explicit trusted UIDs, never to display names.
 const OWNER_ADMIN_UIDS = new Set([]);
+const OWNER_VIP_IDENTIFIERS = new Set(['owner@playr.io']);
 
 const firebaseConfig = {
   apiKey: 'AIzaSyAIpLxF3vwcLL_aez4db2HlxkftJBkbTRE',
@@ -355,8 +356,52 @@ function normalizeDisplayNameForLookup(displayName) {
   return canonicalizeDisplayName(displayName).toLowerCase();
 }
 
+function normalizeAccountIdentifier(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function normalizeRoleName(role) {
+  return String(role || '').trim().toLowerCase();
+}
+
+function buildAccountRoles({ roles = [], isVip = false, identifierType = 'unknown', identifier = '' } = {}) {
+  const merged = new Set(
+    Array.isArray(roles)
+      ? roles.map(normalizeRoleName).filter(Boolean)
+      : [],
+  );
+
+  if (isVip) {
+    merged.add('vip');
+  }
+
+  if (identifierType === 'email' && OWNER_VIP_IDENTIFIERS.has(normalizeAccountIdentifier(identifier))) {
+    merged.add('vip');
+  }
+
+  return Array.from(merged);
+}
+
+function hasAccountRole(account, roleName) {
+  const targetRole = normalizeRoleName(roleName);
+  if (!targetRole) return false;
+
+  const roles = buildAccountRoles({
+    roles: account?.roles,
+    isVip: account?.isVip,
+    identifierType: account?.identifierType,
+    identifier: account?.identifier,
+  });
+
+  return roles.includes(targetRole);
+}
+
 function isCurrentAccountAdmin(account = getCurrentAccount()) {
   return Boolean(account?.uid && OWNER_ADMIN_UIDS.has(account.uid));
+}
+
+function isCurrentAccountVip(account = getCurrentAccount()) {
+  return hasAccountRole(account, 'vip');
 }
 
 function normalizeForModeration(displayName) {
@@ -475,6 +520,15 @@ async function reserveDisplayNameForUid(displayName, uid, identifierType = 'unkn
   const ownerFlag = false;
 
   await firebaseDb.runTransaction(async (transaction) => {
+    const existingProfile = await transaction.get(profileRef);
+    const existingProfileData = existingProfile.exists ? (existingProfile.data() || {}) : {};
+    const roles = buildAccountRoles({
+      roles: existingProfileData.roles,
+      isVip: existingProfileData.isVip,
+      identifierType,
+      identifier: identifierValue,
+    });
+    const vipFlag = roles.includes('vip');
     const existing = await transaction.get(displayNameRef);
     const existingUid = existing.exists ? existing.data()?.uid : null;
 
@@ -487,6 +541,8 @@ async function reserveDisplayNameForUid(displayName, uid, identifierType = 'unkn
       displayName,
       normalized,
       isAdmin: ownerFlag,
+      isVip: vipFlag,
+      roles,
       createdAt: existing.exists ? (existing.data()?.createdAt || timestamp) : timestamp,
       updatedAt: timestamp,
     }, { merge: true });
@@ -498,6 +554,8 @@ async function reserveDisplayNameForUid(displayName, uid, identifierType = 'unkn
       identifierType,
       identifier: identifierValue || null,
       isAdmin: ownerFlag,
+      isVip: vipFlag,
+      roles,
       updatedAt: timestamp,
       createdAt: timestamp,
     }, { merge: true });
@@ -1394,12 +1452,20 @@ function getCurrentAccount() {
   const displayName = storedProfile.displayName
     || user.displayName
     || createDisplayNameFromIdentifier({ type: identifierType, value: identifier });
+  const roles = buildAccountRoles({
+    roles: storedProfile.roles,
+    isVip: storedProfile.isVip,
+    identifierType,
+    identifier,
+  });
 
   return {
     uid: user.uid,
     identifier,
     identifierType,
     displayName,
+    roles,
+    isVip: roles.includes('vip'),
     verified: {
       email: Boolean(user.emailVerified),
       phone: Boolean(user.phoneNumber),
@@ -1420,6 +1486,12 @@ function persistCurrentProfile(displayNameOverride = null) {
     || previous.displayName
     || createDisplayNameFromIdentifier({ type: identifierType, value: identifier }),
   ).slice(0, 24);
+  const roles = buildAccountRoles({
+    roles: previous.roles,
+    isVip: previous.isVip,
+    identifierType,
+    identifier,
+  });
 
   authState.profiles[user.uid] = {
     ...previous,
@@ -1427,6 +1499,8 @@ function persistCurrentProfile(displayNameOverride = null) {
     displayName,
     identifier,
     identifierType,
+    roles,
+    isVip: roles.includes('vip'),
     updatedAt: Date.now(),
     createdAt: previous.createdAt || Date.now(),
   };
@@ -1450,6 +1524,8 @@ function syncLegacyAuthState() {
       identifier: account.identifier,
       verified: isAccountVerified(account),
       isAdmin: isCurrentAccountAdmin(account),
+      isVip: isCurrentAccountVip(account),
+      roles: account.roles || [],
     }),
   );
 }
@@ -1458,11 +1534,15 @@ function exposePlayrAuth() {
   const account = getCurrentAccount();
   const verified = isAccountVerified(account);
   const isAdmin = isCurrentAccountAdmin(account);
+  const isVip = isCurrentAccountVip(account);
+  const roles = account?.roles || [];
 
   window.PlayrAuth = {
     isLoggedIn: Boolean(account),
     isVerified: verified,
     isAdmin,
+    isVip,
+    roles,
     user: account
       ? {
           displayName: account.displayName,
@@ -1470,6 +1550,8 @@ function exposePlayrAuth() {
           identifierType: account.identifierType,
           verified,
           isAdmin,
+          isVip,
+          roles,
         }
       : null,
     getCurrentUser() {
@@ -1481,6 +1563,8 @@ function exposePlayrAuth() {
         identifierType: liveAccount.identifierType,
         verified: isAccountVerified(liveAccount),
         isAdmin: isCurrentAccountAdmin(liveAccount),
+        isVip: isCurrentAccountVip(liveAccount),
+        roles: liveAccount.roles || [],
       };
     },
     openAuthModal() {
@@ -1497,6 +1581,12 @@ function exposePlayrAuth() {
     canAccessAdminControls() {
       return isCurrentAccountAdmin();
     },
+    hasRole(roleName) {
+      return hasAccountRole(getCurrentAccount(), roleName);
+    },
+    shouldShowAds() {
+      return !isCurrentAccountVip();
+    },
   };
 
   window.dispatchEvent(new CustomEvent('playr-auth-changed', {
@@ -1504,8 +1594,53 @@ function exposePlayrAuth() {
       isLoggedIn: Boolean(account),
       isVerified: verified,
       isAdmin,
+      isVip,
+      roles,
     },
   }));
+}
+
+async function syncCurrentAccountRolesToFirestore() {
+  const account = getCurrentAccount();
+  if (!account?.uid || !firebaseDb) return;
+
+  const profile = authState.profiles[account.uid] || {};
+  const roles = buildAccountRoles({
+    roles: profile.roles,
+    isVip: profile.isVip,
+    identifierType: account.identifierType,
+    identifier: account.identifier,
+  });
+  const vipFlag = roles.includes('vip');
+
+  authState.profiles[account.uid] = {
+    ...profile,
+    uid: account.uid,
+    displayName: account.displayName,
+    identifier: account.identifier,
+    identifierType: account.identifierType,
+    roles,
+    isVip: vipFlag,
+    updatedAt: Date.now(),
+    createdAt: profile.createdAt || Date.now(),
+  };
+  persistProfiles(authState.profiles);
+
+  try {
+    const timestamp = window.firebase.firestore.FieldValue.serverTimestamp();
+    await firebaseDb.collection(USER_PROFILE_COLLECTION).doc(account.uid).set({
+      uid: account.uid,
+      displayName: account.displayName,
+      normalizedDisplayName: normalizeDisplayNameForLookup(account.displayName),
+      identifier: account.identifier,
+      identifierType: account.identifierType,
+      roles,
+      isVip: vipFlag,
+      updatedAt: timestamp,
+    }, { merge: true });
+  } catch {
+    // Keep the local VIP cache even if Firestore sync is temporarily unavailable.
+  }
 }
 
 function setAuthStatus(message, tone = 'info') {
@@ -1744,16 +1879,28 @@ async function updateDisplayNameFromSettings() {
         throw { code: 'auth/display-name-taken' };
       }
 
+      const profileRef = firebaseDb.collection(USER_PROFILE_COLLECTION).doc(user.uid);
+      const profileSnapshot = await transaction.get(profileRef);
+      const existingProfileData = profileSnapshot.exists ? (profileSnapshot.data() || {}) : {};
+      const roles = buildAccountRoles({
+        roles: existingProfileData.roles,
+        isVip: existingProfileData.isVip,
+        identifierType,
+        identifier,
+      });
+      const vipFlag = roles.includes('vip');
+
       transaction.set(newRef, {
         uid: user.uid,
         displayName: cleaned,
         normalized,
         isAdmin: false,
+        isVip: vipFlag,
+        roles,
         createdAt: newSnapshot.exists ? (newSnapshot.data()?.createdAt || timestamp) : timestamp,
         updatedAt: timestamp,
       }, { merge: true });
 
-      const profileRef = firebaseDb.collection(USER_PROFILE_COLLECTION).doc(user.uid);
       transaction.set(profileRef, {
         uid: user.uid,
         displayName: cleaned,
@@ -1761,6 +1908,8 @@ async function updateDisplayNameFromSettings() {
         identifier,
         identifierType,
         isAdmin: false,
+        isVip: vipFlag,
+        roles,
         updatedAt: timestamp,
       }, { merge: true });
 
@@ -2890,6 +3039,7 @@ function init() {
 
       if (user) {
         persistCurrentProfile();
+        void syncCurrentAccountRolesToFirestore();
       }
       syncLegacyAuthState();
       exposePlayrAuth();
