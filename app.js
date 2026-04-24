@@ -436,7 +436,7 @@ function renderNotificationsDropdown() {
     actions.className = 'notification-item-actions';
     const link = document.createElement('a');
     link.className = 'button secondary';
-    link.href = `/updates.html#${encodeURIComponent(String(notice.id || ''))}`;
+    link.href = `/updates#${encodeURIComponent(String(notice.id || ''))}`;
     link.textContent = 'Learn more';
     actions.appendChild(link);
 
@@ -1063,7 +1063,7 @@ function buildSinglePlayerGame(entry, index) {
     : null;
   
   const resolvedSlug = SINGLE_PLAYER_SLUG_ALIASES[entry.id] || entry.id;
-  const launchUrl = `games/single-player/${resolvedSlug}/index.html`;
+  const launchUrl = `/games/single-player/${resolvedSlug}`;
   
   return {
     id: entry.id,
@@ -1098,7 +1098,7 @@ function buildSinglePlayerGame(entry, index) {
 
 function buildTwoPlayerGame(entry, index) {
   const launchUrl = MULTIPLAYER_IMPLEMENTED_IDS.has(entry.id)
-    ? `games/two-player/${entry.id}/index.html`
+    ? `/games/two-player/${entry.id}`
     : null;
 
   return {

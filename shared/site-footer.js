@@ -35,9 +35,9 @@
       '    <p class="site-footer-copy">Quick browser games, clean competition, and clear site policies.</p>',
       '  </div>',
       '  <nav class="site-footer-links" aria-label="Site information">',
-      '    <a href="/about.html">About</a>',
-      '    <a href="/contact.html">Contact</a>',
-      '    <a href="/privacy.html">Privacy Policy</a>',
+      '    <a href="/about">About</a>',
+      '    <a href="/contact">Contact</a>',
+      '    <a href="/privacy">Privacy Policy</a>',
       '  </nav>',
       '</div>',
     ].join('');

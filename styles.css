@@ -992,8 +992,8 @@ a {
   overflow-x: auto;
 }
 
-.topnav a,
-.topnav button {
+.topnav a:not(.chip-button),
+.topnav button:not(.chip-button) {
   color: var(--muted);
   min-height: 34px;
   padding: 0 11px;
@@ -1533,6 +1533,9 @@ a {
 }
 
 .chip-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 38px;
   border-radius: 999px;
   border: 1px solid rgba(124, 240, 197, 0.32);

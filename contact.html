@@ -2,53 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta http-equiv="refresh" content="0; url=/contact/" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Contact PlayR with questions, suggestions, or bug reports." />
-  <title>Contact PlayR</title>
-  <link rel="stylesheet" href="styles.css" />
-  <script src="/shared/ads.js"></script>
-  <script defer src="/shared/site-footer.js"></script>
+  <title>Redirecting to /contact</title>
+  <link rel="canonical" href="/contact/" />
+  <script>
+    window.location.replace(`/contact/${window.location.search || ''}${window.location.hash || ''}`);
+  </script>
 </head>
-<body class="info-page">
-  <div class="page-shell">
-    <header class="topbar info-topbar">
-      <a class="brand" href="/index.html" aria-label="Back to PlayR home">
-        <span class="brand-mark">
-          <img class="brand-logo" src="images/background-removed-background-removed.png" alt="PlayR logo" />
-        </span>
-        <span class="brand-copy">
-          <strong>PlayR</strong>
-          <small>Unblocked Competitive Arcade</small>
-        </span>
-      </a>
-      <nav class="topnav info-nav" aria-label="Information pages">
-        <a class="chip-button" href="/about.html">About</a>
-        <a class="chip-button" href="/contact.html">Contact</a>
-        <a class="chip-button" href="/privacy.html">Privacy Policy</a>
-      </nav>
-    </header>
-
-    <main class="info-shell">
-      <section class="info-hero panel-card panel-glow">
-        <p class="eyebrow">Contact</p>
-        <h1>Questions, suggestions, and bug reports are always welcome.</h1>
-        <p>Have a question, suggestion, or found a bug?</p>
-      </section>
-
-      <section class="info-grid single-column">
-        <article class="info-card panel-card">
-          <h2>Reach Out Anytime</h2>
-          <p>Feel free to reach out anytime:</p>
-          <p class="contact-email">
-            <a href="mailto:playrarcade@gmail.com">playrarcade@gmail.com</a>
-          </p>
-          <div class="info-actions">
-            <a class="button primary" href="mailto:playrarcade@gmail.com">Email PlayR</a>
-            <a class="button secondary" href="/privacy.html">Privacy Policy</a>
-          </div>
-        </article>
-      </section>
-    </main>
-  </div>
+<body>
+  <p>Redirecting to <a href="/contact/">/contact</a>...</p>
 </body>
 </html>

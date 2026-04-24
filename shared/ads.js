@@ -348,7 +348,7 @@
   function getReferralLink(profile) {
     const code = profile?.progression?.referral?.code || '';
     if (!code) return '';
-    return `${window.location.origin}/index.html?ref=${encodeURIComponent(code)}`;
+    return `${window.location.origin}/?ref=${encodeURIComponent(code)}`;
   }
 
   function injectSharedStyles() {

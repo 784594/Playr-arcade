@@ -389,7 +389,7 @@ function initEvents() {
   });
 
   dom.homeBtn.addEventListener('click', () => {
-    window.location.href = '../../../index.html';
+    window.location.href = '/';
   });
 
   if (dom.adminInjectBtn) dom.adminInjectBtn.addEventListener('click', injectAdminScore);
@@ -411,3 +411,4 @@ function init() {
 }
 
 init();
+

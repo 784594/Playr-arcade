@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-24-clean-urls',
+      title: 'Cleaner page URLs are live',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-24T18:00:00-04:00',
+      summary: 'Information pages now use cleaner folder-based URLs, and the header pills on those pages now match the main site style.',
+      details: [
+        'About, Contact, Privacy, and Updates now open on clean routes like /about and /updates.',
+        'Legacy .html links still forward to the new destinations so old bookmarks keep working.',
+        'The information-page navigation pills now match the homepage button styling more closely.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-23-notification-popover-fix',
       title: 'Notification bell popover refined',
       category: 'update',
