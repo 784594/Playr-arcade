@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-24-overscroll-easter-egg',
+      title: 'Overscroll flash cleaned up',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-24T18:45:00-04:00',
+      summary: 'Overscroll now matches the site background instead of flashing white, and the homepage has a tiny top-edge Easter egg.',
+      details: [
+        'The root page background now matches the site gradient so overscroll feels consistent across pages.',
+        'A subtle top-only Easter egg can appear on the homepage when someone keeps nudging past the upper scroll limit.',
+        'The effect is throttled and non-blocking so it stays playful instead of distracting.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-24-home-url-and-updates-nav-fix',
       title: 'Homepage URL and updates header refined',
       category: 'update',

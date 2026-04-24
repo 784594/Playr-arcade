@@ -174,6 +174,15 @@ const AUTH_STORAGE_KEYS = {
   adminOverrides: 'playrAdminOverrides',
 };
 const SITE_NOTICE_STORAGE_KEY = 'playrSiteNoticeReadStateV1';
+const OVERSCROLL_EASTER_EGG_MESSAGES = [
+  'nothing to see here 👀 (yet)',
+  'still sealed up here 👀',
+  'top secret area... not quite ready 👀',
+];
+const OVERSCROLL_EASTER_EGG_TOP_THRESHOLD = 2;
+const OVERSCROLL_EASTER_EGG_COOLDOWN_MS = 7000;
+const OVERSCROLL_EASTER_EGG_DELAY_MS = 180;
+const OVERSCROLL_EASTER_EGG_VISIBLE_MS = 1800;
 
 // Admin rights are bound to explicit trusted UIDs, never to display names.
 const OWNER_ADMIN_UIDS = new Set([]);
@@ -1296,6 +1305,7 @@ const featuredRotation = document.getElementById('featuredRotation');
 const featuredStatus = document.getElementById('featuredStatus');
 const featuredMode = document.getElementById('featuredMode');
 const featuredGameCard = document.getElementById('featuredGameCard');
+const overscrollEasterEgg = document.getElementById('overscrollEasterEgg');
 const hasMineUi = Boolean(
   mineBoard
   && mineState
@@ -1325,7 +1335,143 @@ const uiState = {
   librarySearchQuery: '',
   featuredGameId: null,
   featuredLaunchUrl: null,
+  lastScrollY: typeof window !== 'undefined' ? window.scrollY : 0,
+  scrollDirection: 'idle',
 };
+
+function isHomeRoute() {
+  const path = String(window.location.pathname || '/');
+  return path === '/' || path === '/index.html';
+}
+
+function initOverscrollEasterEgg() {
+  if (!overscrollEasterEgg || !isHomeRoute()) {
+    return () => {};
+  }
+
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let lastTriggeredAt = 0;
+  let showDelayTimer = 0;
+  let hideTimer = 0;
+  let visible = false;
+
+  function clearTimers() {
+    window.clearTimeout(showDelayTimer);
+    window.clearTimeout(hideTimer);
+    showDelayTimer = 0;
+    hideTimer = 0;
+  }
+
+  function hideToast() {
+    visible = false;
+    overscrollEasterEgg.classList.remove('visible');
+  }
+
+  function chooseMessage() {
+    const index = Math.floor(Math.random() * OVERSCROLL_EASTER_EGG_MESSAGES.length);
+    return OVERSCROLL_EASTER_EGG_MESSAGES[index] || OVERSCROLL_EASTER_EGG_MESSAGES[0];
+  }
+
+  function isAtTop() {
+    return (window.scrollY || window.pageYOffset || 0) <= OVERSCROLL_EASTER_EGG_TOP_THRESHOLD;
+  }
+
+  function canTrigger() {
+    return Date.now() - lastTriggeredAt >= OVERSCROLL_EASTER_EGG_COOLDOWN_MS;
+  }
+
+  function scheduleToast() {
+    if (visible || showDelayTimer || !canTrigger()) {
+      return;
+    }
+
+    lastTriggeredAt = Date.now();
+    showDelayTimer = window.setTimeout(() => {
+      showDelayTimer = 0;
+      overscrollEasterEgg.textContent = chooseMessage();
+      overscrollEasterEgg.classList.add('visible');
+      visible = true;
+      hideTimer = window.setTimeout(() => {
+        hideTimer = 0;
+        hideToast();
+      }, OVERSCROLL_EASTER_EGG_VISIBLE_MS);
+    }, OVERSCROLL_EASTER_EGG_DELAY_MS);
+  }
+
+  function updateScrollDirection() {
+    const currentY = window.scrollY || window.pageYOffset || 0;
+    if (currentY < uiState.lastScrollY) {
+      uiState.scrollDirection = 'up';
+    } else if (currentY > uiState.lastScrollY) {
+      uiState.scrollDirection = 'down';
+    }
+    uiState.lastScrollY = currentY;
+  }
+
+  function maybeTriggerFromOverscroll(direction) {
+    uiState.scrollDirection = direction;
+    if (!isAtTop() || uiState.scrollDirection !== 'up') {
+      return;
+    }
+    scheduleToast();
+  }
+
+  function handleScroll() {
+    updateScrollDirection();
+    if (!isAtTop() && visible) {
+      hideToast();
+    }
+  }
+
+  function handleWheel(event) {
+    if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
+      return;
+    }
+    if (event.deltaY < 0) {
+      maybeTriggerFromOverscroll('up');
+    } else if (event.deltaY > 0) {
+      uiState.scrollDirection = 'down';
+    }
+  }
+
+  function handleTouchStart(event) {
+    const touch = event.touches?.[0];
+    if (!touch) return;
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+  }
+
+  function handleTouchMove(event) {
+    const touch = event.touches?.[0];
+    if (!touch) return;
+
+    const deltaX = touch.clientX - touchStartX;
+    const deltaY = touch.clientY - touchStartY;
+    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+      return;
+    }
+    if (deltaY > 14) {
+      maybeTriggerFromOverscroll('up');
+    } else if (deltaY < -14) {
+      uiState.scrollDirection = 'down';
+    }
+  }
+
+  window.addEventListener('scroll', handleScroll, { passive: true });
+  window.addEventListener('wheel', handleWheel, { passive: true });
+  window.addEventListener('touchstart', handleTouchStart, { passive: true });
+  window.addEventListener('touchmove', handleTouchMove, { passive: true });
+
+  return () => {
+    clearTimers();
+    hideToast();
+    window.removeEventListener('scroll', handleScroll);
+    window.removeEventListener('wheel', handleWheel);
+    window.removeEventListener('touchstart', handleTouchStart);
+    window.removeEventListener('touchmove', handleTouchMove);
+  };
+}
 
 const authState = {
   profiles: readStoredProfiles(),
@@ -3419,6 +3565,7 @@ function setLeaderboardPanelVisible(visible) {
 }
 
 function init() {
+  const cleanupOverscrollEasterEgg = initOverscrollEasterEgg();
   hydrateLeaderboardGames();
   applyPersistedAdminOverrides();
 
@@ -3968,6 +4115,8 @@ function init() {
       toggleMineFlag(Number(cellButton.dataset.index));
     });
   }
+
+  window.addEventListener('pagehide', cleanupOverscrollEasterEgg, { once: true });
 }
 
 init();
