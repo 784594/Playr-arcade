@@ -372,6 +372,20 @@ function syncSiteNoticeBell() {
   }
 }
 
+function positionNotificationsDropdown() {
+  if (!notificationsDropdown || !notificationsBellBtn || notificationsDropdown.hidden) return;
+
+  const rect = notificationsBellBtn.getBoundingClientRect();
+  const panelWidth = Math.min(360, Math.max(260, window.innerWidth - 24));
+  const left = Math.max(12, Math.min(rect.right - panelWidth, window.innerWidth - panelWidth - 12));
+  const top = Math.min(rect.bottom + 12, window.innerHeight - 24);
+
+  notificationsDropdown.style.width = `min(92vw, ${panelWidth}px)`;
+  notificationsDropdown.style.left = `${left}px`;
+  notificationsDropdown.style.top = `${top}px`;
+  notificationsDropdown.style.right = 'auto';
+}
+
 function closeNotificationsDropdown() {
   uiState.notificationsOpen = false;
   if (notificationsDropdown) notificationsDropdown.hidden = true;
@@ -381,7 +395,7 @@ function closeNotificationsDropdown() {
 function renderNotificationsDropdown() {
   if (!notificationsList || !notificationsEmpty) return;
 
-  const notices = getPublicSiteNotices().slice(0, 4);
+  const notices = getPublicSiteNotices().slice(0, 1);
   notificationsList.innerHTML = '';
 
   if (!notices.length) {
@@ -438,6 +452,7 @@ function openNotificationsDropdown() {
   uiState.notificationsOpen = true;
   notificationsDropdown.hidden = false;
   renderNotificationsDropdown();
+  positionNotificationsDropdown();
   markPublicSiteNoticesRead(getPublicSiteNotices().map((notice) => notice.id));
   syncSiteNoticeBell();
 }
@@ -3713,11 +3728,30 @@ function init() {
     }
   });
 
+  document.addEventListener('pointerdown', (event) => {
+    const target = event.target;
+    if (!uiState.notificationsOpen) return;
+    if (notificationsDropdown?.contains(target) || notificationsBellBtn?.contains(target)) return;
+    closeNotificationsDropdown();
+  });
+
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && uiState.notificationsOpen) {
       closeNotificationsDropdown();
     }
   });
+
+  window.addEventListener('resize', () => {
+    if (uiState.notificationsOpen) {
+      positionNotificationsDropdown();
+    }
+  });
+
+  window.addEventListener('scroll', () => {
+    if (uiState.notificationsOpen) {
+      positionNotificationsDropdown();
+    }
+  }, { passive: true });
 
   if (authOverlay) {
     authOverlay.addEventListener('click', (event) => {

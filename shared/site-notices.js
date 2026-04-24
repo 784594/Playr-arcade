@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-23-notification-popover-fix',
+      title: 'Notification bell popover refined',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-23T23:35:00-04:00',
+      summary: 'The bell now opens as a compact floating panel that no longer stretches the header, and it shows only the newest update.',
+      details: [
+        'The notification popover now floats independently so the header keeps its original size and shape.',
+        'The bell now highlights only the latest public update instead of a stack of older notices.',
+        'Clicking outside the panel closes it cleanly.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-23-update-process',
       title: 'Update tracking is now part of every release',
       category: 'system',
