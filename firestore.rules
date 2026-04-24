@@ -9,6 +9,10 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    function isTrustedOwner() {
+      return signedIn() && request.auth.token.email == 'owner@playr.io';
+    }
+
     function normalizedName(value) {
       return value.lower();
     }
@@ -53,21 +57,340 @@ service cloud.firestore {
 
     function validTttRoomId(roomId) {
       return roomId is string
-        && roomId.matches('^ttt-.+$');
+        && roomId.matches('^ttt-[a-z0-9]{8,16}$');
     }
 
     function validCraftRoomId(roomId) {
       return roomId is string
-        && roomId.matches('^inf-.+$');
+        && (
+          roomId.matches('^INF[A-Z0-9]{5,12}$')
+          || roomId.matches('^inf-[a-z0-9]{4,16}$')
+        );
     }
 
     function validBattleshipRoomId(roomId) {
       return roomId is string
-        && roomId.matches('^bnf-.+$');
+        && roomId.matches('^bnf-[a-z0-9]{6,16}$');
     }
 
-    // Public read so login-by-display-name and suggestions work.
-    // Write limited to the account owner.
+    function validPresenceDoc() {
+      return request.resource.data.keys().hasOnly(['uid', 'name', 'x', 'y', 'color', 'updatedAt', 'active'])
+        && request.resource.data.uid is string
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1
+        && request.resource.data.name.size() <= 24
+        && request.resource.data.x is number
+        && request.resource.data.y is number
+        && request.resource.data.color is string
+        && request.resource.data.color.size() <= 16
+        && request.resource.data.active is bool;
+    }
+
+    function validTttMessage() {
+      return request.resource.data.keys().hasOnly(['authorUid', 'authorName', 'authorProfile', 'text', 'createdAt'])
+        && request.resource.data.authorUid is string
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.authorName is string
+        && request.resource.data.authorName.size() >= 1
+        && request.resource.data.authorName.size() <= 24
+        && request.resource.data.text is string
+        && request.resource.data.text.size() >= 1
+        && request.resource.data.text.size() <= 220
+        && (
+          request.resource.data.authorProfile == null
+          || request.resource.data.authorProfile is map
+        );
+    }
+
+    function tttRoomFields() {
+      return [
+        'roomId',
+        'status',
+        'board',
+        'turn',
+        'winner',
+        'xUid',
+        'xName',
+        'oUid',
+        'oName',
+        'hostUid',
+        'hostName',
+        'playerScores',
+        'xScore',
+        'oScore',
+        'draws',
+        'roundNumber',
+        'scoreRound',
+        'rematchVotes',
+        'createdAt',
+        'updatedAt',
+        'adminLastOverrideAt',
+        'adminLastOverrideBy',
+        'moderation',
+        'coinTossAt'
+      ];
+    }
+
+    function validTttBoard(board) {
+      return board is list
+        && board.size() == 9
+        && board[0] is string
+        && board[1] is string
+        && board[2] is string
+        && board[3] is string
+        && board[4] is string
+        && board[5] is string
+        && board[6] is string
+        && board[7] is string
+        && board[8] is string;
+    }
+
+    function validTttRoomCreate(roomId) {
+      return request.resource.data.keys().hasOnly(tttRoomFields())
+        && request.resource.data.roomId == roomId
+        && request.resource.data.status == 'waiting'
+        && validTttBoard(request.resource.data.board)
+        && request.resource.data.turn == 'X'
+        && request.resource.data.winner == ''
+        && request.resource.data.xUid == request.auth.uid
+        && request.resource.data.oUid == ''
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.xName is string
+        && request.resource.data.hostName is string
+        && request.resource.data.oName is string
+        && request.resource.data.playerScores is map
+        && request.resource.data.xScore is int
+        && request.resource.data.oScore is int
+        && request.resource.data.draws is int
+        && request.resource.data.roundNumber is int
+        && request.resource.data.scoreRound is int
+        && request.resource.data.rematchVotes is map
+        && request.resource.data.adminLastOverrideBy is string;
+    }
+
+    function tttIsCurrentPlayer() {
+      return resource.data.xUid == request.auth.uid || resource.data.oUid == request.auth.uid;
+    }
+
+    function tttIsJoiningPlayer() {
+      return !tttIsCurrentPlayer()
+        && (
+          (resource.data.xUid == '' && request.resource.data.xUid == request.auth.uid)
+          || (resource.data.oUid == '' && request.resource.data.oUid == request.auth.uid)
+        );
+    }
+
+    function validTttParticipantUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return request.resource.data.keys().hasOnly(tttRoomFields())
+        && request.resource.data.roomId == resource.data.roomId
+        && request.resource.data.hostUid == resource.data.hostUid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && validTttBoard(request.resource.data.board)
+        && request.resource.data.xUid == resource.data.xUid
+        && request.resource.data.oUid == resource.data.oUid
+        && request.resource.data.hostName == resource.data.hostName
+        && changed.hasOnly([
+          'status',
+          'board',
+          'turn',
+          'winner',
+          'xName',
+          'oName',
+          'playerScores',
+          'xScore',
+          'oScore',
+          'draws',
+          'roundNumber',
+          'scoreRound',
+          'rematchVotes',
+          'updatedAt',
+          'coinTossAt'
+        ]);
+    }
+
+    function validTttJoinUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return request.resource.data.keys().hasOnly(tttRoomFields())
+        && request.resource.data.roomId == resource.data.roomId
+        && request.resource.data.hostUid == resource.data.hostUid
+        && request.resource.data.hostName == resource.data.hostName
+        && request.resource.data.createdAt == resource.data.createdAt
+        && validTttBoard(request.resource.data.board)
+        && changed.hasOnly([
+          'xUid',
+          'xName',
+          'oUid',
+          'oName',
+          'playerScores',
+          'status',
+          'updatedAt'
+        ])
+        && (
+          (resource.data.xUid == '' && request.resource.data.xUid == request.auth.uid && request.resource.data.oUid == resource.data.oUid)
+          || (resource.data.oUid == '' && request.resource.data.oUid == request.auth.uid && request.resource.data.xUid == resource.data.xUid)
+          || (resource.data.xUid == request.auth.uid && request.resource.data.xUid == resource.data.xUid)
+          || (resource.data.oUid == request.auth.uid && request.resource.data.oUid == resource.data.oUid)
+        );
+    }
+
+    function validTttHostUpdate() {
+      return request.resource.data.keys().hasOnly(tttRoomFields())
+        && request.resource.data.roomId == resource.data.roomId
+        && request.resource.data.hostUid == resource.data.hostUid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && validTttBoard(request.resource.data.board);
+    }
+
+    function craftRoomFields() {
+      return [
+        'roomId',
+        'ownerUid',
+        'ownerName',
+        'status',
+        'updatedAt',
+        'workspaceNodes',
+        'participants',
+        'leader',
+        'lastCraftedName',
+        'lastCraftedBy',
+        'lastCraftedByName',
+        'lastCraftedAt'
+      ];
+    }
+
+    function validCraftRoomCreate(roomId) {
+      return request.resource.data.keys().hasOnly(craftRoomFields())
+        && request.resource.data.roomId == roomId
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerName is string
+        && request.resource.data.status == 'waiting'
+        && request.resource.data.updatedAt is number
+        && request.resource.data.workspaceNodes is list
+        && request.resource.data.participants is map
+        && request.resource.data.participants.keys().hasOnly([request.auth.uid])
+        && request.resource.data.leader == request.auth.uid;
+    }
+
+    function craftIsParticipant() {
+      return resource.data.participants.keys().hasAny([request.auth.uid]);
+    }
+
+    function validCraftRoomUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let participantChanged = request.resource.data.participants.diff(resource.data.participants).affectedKeys();
+      return request.resource.data.keys().hasOnly(craftRoomFields())
+        && request.resource.data.roomId == resource.data.roomId
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.ownerName == resource.data.ownerName
+        && request.resource.data.leader == resource.data.leader
+        && request.resource.data.participants.keys().hasAll(resource.data.participants.keys())
+        && request.resource.data.participants.keys().size() <= 5
+        && participantChanged.hasOnly([request.auth.uid])
+        && changed.hasOnly([
+          'status',
+          'updatedAt',
+          'workspaceNodes',
+          'participants',
+          'lastCraftedName',
+          'lastCraftedBy',
+          'lastCraftedByName',
+          'lastCraftedAt'
+        ])
+        && (
+          craftIsParticipant()
+          || (
+            !resource.data.participants.keys().hasAny([request.auth.uid])
+            && request.resource.data.participants.keys().hasAny([request.auth.uid])
+          )
+        );
+    }
+
+    function battleshipRoomFields() {
+      return [
+        'hostUid',
+        'hostName',
+        'guestUid',
+        'guestName',
+        'phase',
+        'turnUid',
+        'turnDeadlineAt',
+        'placementDeadlineAt',
+        'winnerUid',
+        'winnerName',
+        'boards',
+        'eventLog',
+        'createdAt',
+        'updatedAt'
+      ];
+    }
+
+    function validBattleshipRoomCreate() {
+      return request.resource.data.keys().hasOnly(battleshipRoomFields())
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.hostName is string
+        && request.resource.data.guestUid == ''
+        && request.resource.data.guestName is string
+        && request.resource.data.phase == 'lobby'
+        && request.resource.data.turnUid == ''
+        && request.resource.data.turnDeadlineAt is int
+        && request.resource.data.placementDeadlineAt is int
+        && request.resource.data.winnerUid == ''
+        && request.resource.data.winnerName == ''
+        && request.resource.data.boards is map
+        && request.resource.data.boards.keys().hasOnly([request.auth.uid])
+        && request.resource.data.eventLog is list;
+    }
+
+    function battleshipIsParticipant() {
+      return resource.data.hostUid == request.auth.uid || resource.data.guestUid == request.auth.uid;
+    }
+
+    function battleshipIsJoiner() {
+      return resource.data.guestUid == '' && request.resource.data.guestUid == request.auth.uid;
+    }
+
+    function validBattleshipParticipantUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return request.resource.data.keys().hasOnly(battleshipRoomFields())
+        && request.resource.data.hostUid == resource.data.hostUid
+        && request.resource.data.hostName == resource.data.hostName
+        && request.resource.data.guestUid == resource.data.guestUid
+        && request.resource.data.guestName == resource.data.guestName
+        && request.resource.data.createdAt == resource.data.createdAt
+        && changed.hasOnly([
+          'phase',
+          'turnUid',
+          'turnDeadlineAt',
+          'placementDeadlineAt',
+          'winnerUid',
+          'winnerName',
+          'boards',
+          'eventLog',
+          'updatedAt'
+        ]);
+    }
+
+    function validBattleshipJoinUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return request.resource.data.keys().hasOnly(battleshipRoomFields())
+        && request.resource.data.hostUid == resource.data.hostUid
+        && request.resource.data.hostName == resource.data.hostName
+        && request.resource.data.createdAt == resource.data.createdAt
+        && changed.hasOnly([
+          'guestUid',
+          'guestName',
+          'phase',
+          'placementDeadlineAt',
+          'boards',
+          'eventLog',
+          'updatedAt'
+        ])
+        && resource.data.guestUid == ''
+        && request.resource.data.guestUid == request.auth.uid;
+    }
+
     match /displayNames/{normalized} {
       allow read: if true;
       allow create: if signedIn()
@@ -81,8 +404,6 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.uid == request.auth.uid;
     }
 
-    // Public read supports display-name lookup by uid.
-    // Users can only write their own profile document.
     match /userProfiles/{uid} {
       allow read: if true;
       allow create: if isOwner(uid) && validUserProfileDoc(uid);
@@ -92,54 +413,63 @@ service cloud.firestore {
       allow delete: if isOwner(uid);
     }
 
-    // Tic-Tac-Toe rooms: only signed-in users can read/write.
     match /tttRooms/{roomId} {
-      allow read, write: if signedIn() && validTttRoomId(roomId);
-
-      match /presence/{uid} {
-        allow read, write: if signedIn() && validTttRoomId(roomId);
-      }
+      allow read: if signedIn() && validTttRoomId(roomId);
+      allow create: if signedIn() && validTttRoomId(roomId) && validTttRoomCreate(roomId);
+      allow update: if signedIn() && validTttRoomId(roomId) && (
+        (isTrustedOwner() && validTttHostUpdate())
+        || (resource.data.hostUid == request.auth.uid && validTttHostUpdate())
+        || (tttIsCurrentPlayer() && validTttParticipantUpdate())
+        || (tttIsJoiningPlayer() && validTttJoinUpdate())
+      );
+      allow delete: if false;
 
       match /messages/{messageId} {
-        allow read, write: if signedIn() && validTttRoomId(roomId);
+        allow read: if signedIn() && validTttRoomId(roomId);
+        allow create: if signedIn() && validTttRoomId(roomId) && validTttMessage();
+        allow update, delete: if false;
       }
     }
 
-    // Infinite Craft multiplayer rooms.
     match /craftRooms/{roomId} {
-      allow read, write: if signedIn() && validCraftRoomId(roomId);
+      allow read: if signedIn() && validCraftRoomId(roomId);
+      allow create: if signedIn() && validCraftRoomId(roomId) && validCraftRoomCreate(roomId);
+      allow update: if signedIn() && validCraftRoomId(roomId) && validCraftRoomUpdate();
+      allow delete: if false;
 
       match /presence/{uid} {
-        allow read, write: if signedIn() && validCraftRoomId(roomId);
-      }
-
-      match /messages/{messageId} {
-        allow read, write: if signedIn() && validCraftRoomId(roomId);
+        allow read: if signedIn() && validCraftRoomId(roomId);
+        allow create, update: if signedIn() && validCraftRoomId(roomId) && request.auth.uid == uid && validPresenceDoc();
+        allow delete: if signedIn() && validCraftRoomId(roomId) && request.auth.uid == uid;
       }
     }
 
-    // Battleship - Neon Fleet rooms.
     match /battleshipRooms/{roomId} {
-      allow read, write: if signedIn() && validBattleshipRoomId(roomId);
-
-      match /players/{uid} {
-        allow read, write: if signedIn() && validBattleshipRoomId(roomId);
-      }
-
-      match /boards/{uid} {
-        allow read, write: if signedIn() && validBattleshipRoomId(roomId);
-      }
-
-      match /moves/{moveId} {
-        allow read, write: if signedIn() && validBattleshipRoomId(roomId);
-      }
+      allow read: if signedIn() && validBattleshipRoomId(roomId);
+      allow create: if signedIn() && validBattleshipRoomId(roomId) && validBattleshipRoomCreate();
+      allow update: if signedIn() && validBattleshipRoomId(roomId) && (
+        (isTrustedOwner() && request.resource.data.keys().hasOnly(battleshipRoomFields()))
+        || (battleshipIsParticipant() && validBattleshipParticipantUpdate())
+        || (battleshipIsJoiner() && validBattleshipJoinUpdate())
+      );
+      allow delete: if false;
 
       match /presence/{uid} {
-        allow read, write: if signedIn() && validBattleshipRoomId(roomId);
+        allow read: if signedIn() && validBattleshipRoomId(roomId);
+        allow create, update: if signedIn() && validBattleshipRoomId(roomId) && request.auth.uid == uid && validPresenceDoc();
+        allow delete: if signedIn() && validBattleshipRoomId(roomId) && request.auth.uid == uid;
       }
 
       match /messages/{messageId} {
-        allow read, write: if signedIn() && validBattleshipRoomId(roomId);
+        allow read: if signedIn() && validBattleshipRoomId(roomId);
+        allow create: if signedIn()
+          && validBattleshipRoomId(roomId)
+          && request.resource.data.keys().hasOnly(['uid', 'text', 'createdAt'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() >= 1
+          && request.resource.data.text.size() <= 220;
+        allow update, delete: if false;
       }
     }
   }
