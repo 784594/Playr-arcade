@@ -15,6 +15,7 @@ Generated from origin/main on 2026-04-23 21:14:00 -04:00.
 - Keep this file for quick human-readable history.
 - Use `commit-history.csv` for full commit metadata.
 - Use `file-last-change.csv` to see latest change date per file.
+- 2026-04-23: Added standalone About, Contact, and Privacy Policy pages for AdSense/site trust requirements, added a homepage contact/legal section with quick links, and injected a shared footer across site pages so those links stay reachable from the arcade and game modules. Files: `about.html`, `contact.html`, `privacy.html`, `shared/site-footer.js`, `index.html`, `styles.css`, `games/index.html`, `games/single-player/*/index.html`, `games/two-player/*/index.html`.
 - 2026-04-23: Added a managed shared ad loader plus VIP ad suppression, and auto-assign the `vip` role to `owner@playr.io` so that account can browse ad-free while the rest of the site still loads AdSense normally. Files: `shared/ads.js`, `app.js`, `index.html`, `games/index.html`, `games/single-player/*/index.html`, `games/two-player/*/index.html`.
 - 2026-04-23: Added the root `ads.txt` publisher declaration for Google AdSense so crawlers can verify PlayR's authorized seller account. Files: `ads.txt`.
 - 2026-04-23: Added the Google AdSense Auto ads loader snippet to the `<head>` of every HTML entry page across the site so ads can be served consistently once AdSense is enabled. Files: `index.html`, `games/index.html`, `games/single-player/*/index.html`, `games/two-player/*/index.html`.
