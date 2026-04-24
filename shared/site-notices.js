@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-24-xp-system-overhaul',
+      title: 'XP progression has been rebalanced',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-24T20:10:00-04:00',
+      summary: 'PlayR now uses a flatter level curve, session-based XP, softer anti-AFK scaling, and referral rewards that match the new progression plan.',
+      details: [
+        'Levels now follow the new fixed XP table instead of the older steep scaling curve.',
+        'XP comes from active game sessions with time-based multipliers and Top 100 leaderboard bonuses applied at session end.',
+        'Anti-AFK checks now scale penalties gradually and can pause XP after repeated suspicious behavior.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-24-overscroll-easter-egg',
       title: 'Overscroll flash cleaned up',
       category: 'update',

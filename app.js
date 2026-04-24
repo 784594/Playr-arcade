@@ -1979,7 +1979,7 @@ function exposePlayrAuth() {
     },
     canAppearOnLeaderboard() {
       const current = getCurrentAccount();
-      return Boolean(current && isAccountVerified(current));
+      return Boolean(current && isAccountVerified(current) && !current.progression?.leaderboardRestricted);
     },
     canAccessAdminControls() {
       return isCurrentAccountAdmin();

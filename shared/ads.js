@@ -5,24 +5,39 @@
   const LEGACY_USER_STORAGE_KEY = 'playrCurrentUser';
   const PENDING_REFERRAL_STORAGE_KEY = 'playrPendingReferralCode';
   const TRUSTED_VIP_IDENTIFIERS = new Set(['owner@playr.io']);
-  const LEVEL_SEED_THRESHOLDS = [0, 100, 250, 450, 700];
   const LEVEL_BADGE_GROUP_SIZE = 10;
-  const ACTIVE_TICK_MS = 15000;
-  const IDLE_TIMEOUT_MS = 15000;
-  const ACTIVE_XP_PER_MINUTE = 10;
-  const MULTIPLAYER_XP_PER_MINUTE = 5;
-  const ROOM_DAILY_CAP = 50;
-  const DAILY_ACTIVITY_BONUSES = [
-    { minutes: 10, xp: 20 },
-    { minutes: 30, xp: 40 },
-    { minutes: 60, xp: 80 },
+  const ACTIVE_TICK_MS = 5000;
+  const ACTIVE_WINDOW_MS = 10000;
+  const SESSION_IDLE_TIMEOUT_MS = 30000;
+  const BASE_XP_PER_MINUTE = 60;
+  const SESSION_MIN_DURATION_MS = 3 * 60 * 1000;
+  const SESSION_STEADY_DURATION_MS = 10 * 60 * 1000;
+  const SESSION_BONUS_DURATION_MS = 20 * 60 * 1000;
+  const ANTI_AFK_STAGE_WINDOW_MS = 5 * 60 * 1000;
+  const ANTI_AFK_EVENT_WINDOW_MS = 5 * 60 * 1000;
+  const WARNING_COOLDOWN_MS = 60 * 60 * 1000;
+  const POINTER_MOVE_SAMPLE_MS = 250;
+  const MAX_ACTIVITY_EVENTS = 240;
+  const MAILBOX_STORAGE_KEY = 'playrMailboxV1';
+  const XP_PAUSED_MESSAGE = 'Unusual activity detected — XP paused.';
+  const LEADERBOARD_BONUS_RANKS = [
+    { min: 1, max: 10, multiplier: 1.25 },
+    { min: 11, max: 25, multiplier: 1.2 },
+    { min: 26, max: 50, multiplier: 1.15 },
+    { min: 51, max: 100, multiplier: 1.1 },
   ];
+  const AFK_REASON_MESSAGES = {
+    constant: 'Constant input pattern detected',
+    stillMouse: 'No mouse movement over extended period',
+    repetitive: 'Repetitive interaction behavior',
+    lowDiversity: 'Low interaction diversity over time',
+  };
   const REFERRAL_TIERS = [
-    { count: 1, xp: 50, badgeId: 'referral-1', label: 'Recruiter I', flair: 'Recruiter I' },
-    { count: 3, xp: 150, badgeId: 'referral-3', label: 'Recruiter II', flair: 'Referral Flair' },
-    { count: 5, xp: 300, badgeId: 'referral-5', label: 'Recruiter III', flair: 'Animated Recruiter' },
-    { count: 10, xp: 600, badgeId: 'referral-10', label: 'Recruiter IV', flair: 'Referral Legend' },
-    { count: 25, xp: 1500, badgeId: 'referral-25', label: 'Recruiter V', flair: 'Elite Recruiter' },
+    { count: 1, xp: 50, badgeId: 'referral-1', label: 'Recruiter I', flair: '', title: '' },
+    { count: 3, xp: 150, badgeId: '', label: '', flair: 'Recruiter Flair', title: '' },
+    { count: 5, xp: 300, badgeId: 'referral-5', label: 'Animated Recruiter', flair: '', title: '' },
+    { count: 10, xp: 600, badgeId: '', label: '', flair: '', title: 'Referral Legend' },
+    { count: 25, xp: 1500, badgeId: 'referral-25', label: 'Exclusive Cosmetic', flair: '', title: '' },
   ];
   const BADGE_ASSET_PATHS = {
     vip: '',
@@ -43,7 +58,12 @@
 
   const activityState = {
     lastInputAt: 0,
+    lastPointerMoveAt: 0,
+    lastPointerMoveSampleAt: 0,
     tickHandle: null,
+    eventLog: [],
+    session: null,
+    leaderboardRank: null,
   };
 
   function normalizeIdentifier(value) {
@@ -154,13 +174,26 @@
     return String(window.location.pathname || '').includes('/games/two-player/');
   }
 
-  function getLevelThresholds(targetLevel = 100) {
-    const thresholds = [...LEVEL_SEED_THRESHOLDS];
-    let previousIncrement = thresholds[thresholds.length - 1] - thresholds[thresholds.length - 2];
+  function getXpRequiredForLevel(level) {
+    const safeLevel = Math.max(1, Math.floor(Number(level) || 1));
+    if (safeLevel >= 100) return 15000;
+    if (safeLevel === 50) return 8200;
+    if (safeLevel >= 51) return 8300 + ((safeLevel - 51) * 100);
+    if (safeLevel === 25) return 2700;
+    if (safeLevel >= 26) return 2920 + ((safeLevel - 26) * 220);
+    if (safeLevel === 10) return 900;
+    if (safeLevel >= 11) return 1020 + ((safeLevel - 11) * 120);
+    if (safeLevel >= 6) return 420 + ((safeLevel - 6) * 120);
+    return 80 + ((safeLevel - 1) * 40);
+  }
 
-    while (thresholds.length < targetLevel) {
-      previousIncrement = Math.max(100, Math.round((previousIncrement * 1.2) / 25) * 25);
-      thresholds.push(thresholds[thresholds.length - 1] + previousIncrement);
+  function getLevelThresholds(targetLevel = 100) {
+    const cappedTarget = Math.max(1, Math.floor(Number(targetLevel) || 1));
+    const thresholds = [0];
+
+    while (thresholds.length < cappedTarget) {
+      const sourceLevel = thresholds.length;
+      thresholds.push(thresholds[thresholds.length - 1] + getXpRequiredForLevel(sourceLevel));
     }
 
     return thresholds;
@@ -218,9 +251,9 @@
     const activeSecondsByDay = daily.activeSecondsByDay && typeof daily.activeSecondsByDay === 'object' ? daily.activeSecondsByDay : {};
     const multiplayerSecondsByDay = daily.multiplayerSecondsByDay && typeof daily.multiplayerSecondsByDay === 'object' ? daily.multiplayerSecondsByDay : {};
     const roomXpByDay = daily.roomXpByDay && typeof daily.roomXpByDay === 'object' ? daily.roomXpByDay : {};
-    const activityBonusesClaimed = daily.activityBonusesClaimed && typeof daily.activityBonusesClaimed === 'object' ? daily.activityBonusesClaimed : {};
     const referralsRewarded = Array.isArray(referral.rewardedTiers) ? referral.rewardedTiers : [];
     const distinctDaysPlayed = Array.isArray(progression.distinctDaysPlayed) ? progression.distinctDaysPlayed : [];
+    const afk = progression.afk && typeof progression.afk === 'object' ? progression.afk : {};
     const xp = Math.max(0, Number(progression.xp) || 0);
     const levelInfo = getLevelInfoFromXp(xp);
 
@@ -237,7 +270,15 @@
         activeSecondsByDay,
         multiplayerSecondsByDay,
         roomXpByDay,
-        activityBonusesClaimed,
+      },
+      afk: {
+        warningCooldownUntil: Math.max(0, Number(afk.warningCooldownUntil) || 0),
+        leaderboardRestricted: Boolean(afk.leaderboardRestricted),
+        leaderboardRestrictionReason: String(afk.leaderboardRestrictionReason || ''),
+        leaderboardRestrictionAt: Math.max(0, Number(afk.leaderboardRestrictionAt) || 0),
+        lastReason: String(afk.lastReason || ''),
+        lastStageReached: Math.max(0, Number(afk.lastStageReached) || 0),
+        lastFlaggedGame: String(afk.lastFlaggedGame || ''),
       },
       referral: {
         code: String(referral.code || createReferralCode(record, merged)),
@@ -460,6 +501,64 @@
         color: #dce8ff;
         line-height: 1.6;
       }
+      .playr-afk-warning-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 5001;
+        display: grid;
+        place-items: center;
+        padding: 20px;
+        background: rgba(4, 9, 18, 0.76);
+        backdrop-filter: blur(6px);
+      }
+      .playr-afk-warning-overlay[hidden] {
+        display: none !important;
+      }
+      .playr-afk-warning-card {
+        width: min(520px, 100%);
+        padding: 24px;
+        border-radius: 24px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background:
+          radial-gradient(circle at top left, rgba(255, 114, 138, 0.18), transparent 34%),
+          radial-gradient(circle at bottom right, rgba(122, 167, 255, 0.18), transparent 34%),
+          rgba(9, 15, 29, 0.96);
+        color: #f5f9ff;
+        box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
+      }
+      .playr-afk-warning-label {
+        margin: 0 0 8px;
+        color: #ffb6c2;
+        font-size: 0.76rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+      .playr-afk-warning-card h3 {
+        margin: 0 0 10px;
+        font-size: 1.5rem;
+      }
+      .playr-afk-warning-card p {
+        margin: 0;
+        color: #d7e4ff;
+        line-height: 1.65;
+      }
+      .playr-afk-warning-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 18px;
+      }
+      .playr-afk-warning-btn {
+        min-height: 44px;
+        padding: 0 18px;
+        border-radius: 999px;
+        border: 1px solid rgba(124, 240, 197, 0.28);
+        background: linear-gradient(135deg, rgba(124, 240, 197, 0.94), rgba(216, 255, 132, 0.92));
+        color: #06101b;
+        font: inherit;
+        font-weight: 800;
+        cursor: pointer;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -503,6 +602,335 @@
     }, 2800);
   }
 
+  function ensureAfkWarningOverlay() {
+    injectSharedStyles();
+    let overlay = document.getElementById('playr-afk-warning-overlay');
+    if (overlay) return overlay;
+    overlay = document.createElement('div');
+    overlay.id = 'playr-afk-warning-overlay';
+    overlay.className = 'playr-afk-warning-overlay';
+    overlay.hidden = true;
+    overlay.innerHTML = `
+      <div class="playr-afk-warning-card" role="dialog" aria-modal="true" aria-labelledby="playrAfkWarningTitle">
+        <p class="playr-afk-warning-label">XP Warning</p>
+        <h3 id="playrAfkWarningTitle">Unusual activity detected</h3>
+        <p id="playrAfkWarningBody">${escapeHtml(XP_PAUSED_MESSAGE)}</p>
+        <div class="playr-afk-warning-actions">
+          <button class="playr-afk-warning-btn" id="playrAfkWarningOkBtn" type="button">OK</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    return overlay;
+  }
+
+  function readMailbox() {
+    const stored = readJsonStorage(MAILBOX_STORAGE_KEY);
+    return stored && typeof stored === 'object' ? stored : {};
+  }
+
+  function writeMailbox(mailbox) {
+    writeJsonStorage(MAILBOX_STORAGE_KEY, mailbox || {});
+  }
+
+  function getMailboxKeyForRecord(record) {
+    if (record?.uid) return `user:${record.uid}`;
+    if (record?.identifier) return `identifier:${normalizeIdentifier(record.identifier)}`;
+    return 'guest';
+  }
+
+  function appendMailboxMessage(recipientKey, message) {
+    const safeKey = String(recipientKey || '').trim();
+    if (!safeKey) return;
+    const mailbox = readMailbox();
+    const current = Array.isArray(mailbox[safeKey]) ? mailbox[safeKey] : [];
+    current.unshift({
+      ...message,
+      id: String(message?.id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+      createdAt: Number(message?.createdAt) || Date.now(),
+    });
+    mailbox[safeKey] = current.slice(0, 50);
+    writeMailbox(mailbox);
+  }
+
+  function getCurrentGameName() {
+    const root = document.getElementById('gameRoot');
+    const dataTitle = String(root?.dataset?.gameTitle || '').trim();
+    if (dataTitle) return dataTitle;
+    return String(document.title || 'PlayR Game').replace(/\s*\|\s*PlayR\s*$/i, '').trim() || 'PlayR Game';
+  }
+
+  function getSessionMultiplier(durationMs) {
+    const safeDuration = Math.max(0, Number(durationMs) || 0);
+    if (safeDuration < SESSION_MIN_DURATION_MS) return 0;
+    if (safeDuration < SESSION_STEADY_DURATION_MS) return 0.8;
+    if (safeDuration < SESSION_BONUS_DURATION_MS) return 1;
+    return 1.1;
+  }
+
+  function getLeaderboardMultiplier(rank) {
+    const safeRank = Math.floor(Number(rank) || 0);
+    if (!safeRank) return 1;
+    const match = LEADERBOARD_BONUS_RANKS.find((entry) => safeRank >= entry.min && safeRank <= entry.max);
+    return match ? match.multiplier : 1;
+  }
+
+  function trimActivityLog(now = Date.now()) {
+    const cutoff = now - ANTI_AFK_EVENT_WINDOW_MS;
+    activityState.eventLog = activityState.eventLog.filter((entry) => entry && entry.time >= cutoff).slice(-MAX_ACTIVITY_EVENTS);
+  }
+
+  function trackActivityEvent(type, event = null) {
+    const now = Date.now();
+    const safeType = String(type || '').trim();
+    if (!safeType) return;
+    if (safeType === 'pointermove' && now - activityState.lastPointerMoveSampleAt < POINTER_MOVE_SAMPLE_MS) {
+      return;
+    }
+
+    if (safeType === 'pointermove') {
+      activityState.lastPointerMoveSampleAt = now;
+      activityState.lastPointerMoveAt = now;
+    }
+
+    activityState.eventLog.push({
+      type: safeType,
+      time: now,
+      x: Number(event?.clientX),
+      y: Number(event?.clientY),
+    });
+    trimActivityLog(now);
+  }
+
+  function getActivityAssessment(now = Date.now()) {
+    trimActivityLog(now);
+    const recentEvents = activityState.eventLog.filter((entry) => entry.time >= now - ANTI_AFK_EVENT_WINDOW_MS);
+    const nonMoveEvents = recentEvents.filter((entry) => entry.type !== 'pointermove');
+    const moveEvents = recentEvents.filter((entry) => entry.type === 'pointermove');
+    const clickishEvents = recentEvents.filter((entry) => ['click', 'pointerdown', 'keydown', 'touchstart'].includes(entry.type));
+    const uniqueTypes = new Set(recentEvents.map((entry) => entry.type));
+    const positionKeys = new Set(
+      recentEvents
+        .filter((entry) => Number.isFinite(entry.x) && Number.isFinite(entry.y))
+        .map((entry) => `${Math.round(entry.x / 24)}:${Math.round(entry.y / 24)}`),
+    );
+
+    if (recentEvents.length < 20) {
+      return { suspicious: false, reason: '', reasonCode: '', recentEvents };
+    }
+
+    const clickIntervals = [];
+    for (let index = 1; index < clickishEvents.length; index += 1) {
+      clickIntervals.push(clickishEvents[index].time - clickishEvents[index - 1].time);
+    }
+
+    if (clickIntervals.length >= 12) {
+      const average = clickIntervals.reduce((sum, value) => sum + value, 0) / clickIntervals.length;
+      const variance = clickIntervals.reduce((sum, value) => sum + ((value - average) ** 2), 0) / clickIntervals.length;
+      const deviation = Math.sqrt(variance);
+      if (average <= 2500 && deviation <= 45) {
+        return { suspicious: true, reason: AFK_REASON_MESSAGES.constant, reasonCode: 'constant', recentEvents };
+      }
+    }
+
+    if (moveEvents.length === 0 && nonMoveEvents.length >= 24 && (now - activityState.lastPointerMoveAt) >= ANTI_AFK_EVENT_WINDOW_MS) {
+      return { suspicious: true, reason: AFK_REASON_MESSAGES.stillMouse, reasonCode: 'stillMouse', recentEvents };
+    }
+
+    if (uniqueTypes.size <= 2 && nonMoveEvents.length >= 36 && positionKeys.size <= 3) {
+      return { suspicious: true, reason: AFK_REASON_MESSAGES.repetitive, reasonCode: 'repetitive', recentEvents };
+    }
+
+    if (recentEvents.length >= 48 && (uniqueTypes.size <= 2 || positionKeys.size <= 2)) {
+      return { suspicious: true, reason: AFK_REASON_MESSAGES.lowDiversity, reasonCode: 'lowDiversity', recentEvents };
+    }
+
+    return { suspicious: false, reason: '', reasonCode: '', recentEvents };
+  }
+
+  function getCurrentSessionDuration(now = Date.now()) {
+    if (!activityState.session?.startedAt) return 0;
+    return Math.max(0, now - activityState.session.startedAt);
+  }
+
+  function startSession(record, now = Date.now()) {
+    activityState.session = {
+      startedAt: now,
+      lastActiveAt: now,
+      hasInteraction: false,
+      earnedBaseXp: 0,
+      awardedXp: 0,
+      warningShown: false,
+      stage3Handled: false,
+      stage4Handled: false,
+      suspiciousSince: 0,
+      currentStage: 0,
+      currentReason: '',
+      gameName: getCurrentGameName(),
+      leaderboardRank: Number(activityState.leaderboardRank) || 0,
+    };
+  }
+
+  function getCurrentSession(record, now = Date.now()) {
+    if (!activityState.session) {
+      startSession(record, now);
+    }
+    return activityState.session;
+  }
+
+  function getAfkStage(session, assessment, now = Date.now()) {
+    if (!session || !assessment?.suspicious) {
+      if (session) {
+        session.suspiciousSince = 0;
+        session.currentReason = '';
+        session.currentStage = 0;
+      }
+      return { stage: 0, reason: '', reasonCode: '' };
+    }
+
+    if (!session.suspiciousSince) {
+      session.suspiciousSince = now;
+    }
+    session.currentReason = assessment.reason;
+
+    const suspiciousDuration = now - session.suspiciousSince;
+    let stage = 0;
+    if (suspiciousDuration >= (ANTI_AFK_STAGE_WINDOW_MS * 4)) {
+      stage = 4;
+    } else if (suspiciousDuration >= (ANTI_AFK_STAGE_WINDOW_MS * 3)) {
+      stage = 3;
+    } else if (suspiciousDuration >= (ANTI_AFK_STAGE_WINDOW_MS * 2)) {
+      stage = 2;
+    } else if (suspiciousDuration >= ANTI_AFK_STAGE_WINDOW_MS) {
+      stage = 1;
+    }
+
+    session.currentStage = stage;
+    return {
+      stage,
+      reason: assessment.reason,
+      reasonCode: assessment.reasonCode,
+    };
+  }
+
+  function getActivityMultiplier(stage) {
+    if (stage >= 3) return 0;
+    if (stage === 2) return 0.5;
+    if (stage === 1) return 0.75;
+    return 1;
+  }
+
+  function saveProfileAndEmit(record, key, profiles, profile) {
+    profiles[key] = profile;
+    writeProfiles(profiles);
+    emitProgressionChange(record, profile);
+  }
+
+  function reportAfkWarning(record, profile, reason, gameName) {
+    const username = normalizeName(record?.displayName || profile?.displayName || 'Player');
+    const safeGameName = String(gameName || getCurrentGameName() || 'PlayR Game');
+    const safeReason = String(reason || AFK_REASON_MESSAGES.lowDiversity);
+
+    appendMailboxMessage(getMailboxKeyForRecord(record), {
+      subject: XP_PAUSED_MESSAGE,
+      body: XP_PAUSED_MESSAGE,
+      type: 'system-warning',
+      reason: safeReason,
+      gameName: safeGameName,
+    });
+
+    appendMailboxMessage('owner@playr.io', {
+      subject: 'AFK progression flag',
+      body: `Flagged user: ${username}\nGame flagged: ${safeGameName}\nReason: ${safeReason}`,
+      type: 'moderation-copy',
+      reason: safeReason,
+      gameName: safeGameName,
+      flaggedUser: username,
+    });
+  }
+
+  function showAfkWarningModal(record, reason, onAcknowledge) {
+    const overlay = ensureAfkWarningOverlay();
+    const body = overlay.querySelector('#playrAfkWarningBody');
+    const button = overlay.querySelector('#playrAfkWarningOkBtn');
+    if (body) {
+      body.textContent = `${XP_PAUSED_MESSAGE} ${String(reason || AFK_REASON_MESSAGES.lowDiversity)}.`;
+    }
+    overlay.hidden = false;
+
+    const close = () => {
+      overlay.hidden = true;
+      button?.removeEventListener('click', handleClick);
+      if (typeof onAcknowledge === 'function') {
+        onAcknowledge();
+      }
+    };
+
+    const handleClick = () => close();
+    button?.addEventListener('click', handleClick, { once: true });
+  }
+
+  function maybeHandleAfkEnforcement(record, key, profiles, profile, session, stageInfo, now = Date.now()) {
+    if (!record || !profile || !session) return;
+
+    if (stageInfo.stage >= 3 && !session.stage3Handled) {
+      session.stage3Handled = true;
+      profile.progression.afk.lastReason = stageInfo.reason;
+      profile.progression.afk.lastStageReached = Math.max(profile.progression.afk.lastStageReached || 0, 3);
+      profile.progression.afk.lastFlaggedGame = session.gameName;
+      reportAfkWarning(record, profile, stageInfo.reason, session.gameName);
+
+      const cooldownUntil = Number(profile.progression.afk.warningCooldownUntil) || 0;
+      if (!session.warningShown && now >= cooldownUntil) {
+        session.warningShown = true;
+        showAfkWarningModal(record, stageInfo.reason, () => {
+          const latest = getOrCreateProfile(record);
+          if (!latest) return;
+          const liveProfile = ensureProfileShape(latest.profiles[latest.key], record);
+          liveProfile.progression.afk.warningCooldownUntil = Date.now() + WARNING_COOLDOWN_MS;
+          liveProfile.updatedAt = Date.now();
+          saveProfileAndEmit(record, latest.key, latest.profiles, liveProfile);
+        });
+      }
+      profile.updatedAt = now;
+      saveProfileAndEmit(record, key, profiles, profile);
+    }
+
+    if (stageInfo.stage >= 4 && !session.stage4Handled) {
+      session.stage4Handled = true;
+      profile.progression.afk.leaderboardRestricted = true;
+      profile.progression.afk.leaderboardRestrictionReason = stageInfo.reason || AFK_REASON_MESSAGES.lowDiversity;
+      profile.progression.afk.leaderboardRestrictionAt = now;
+      profile.progression.afk.lastStageReached = 4;
+      profile.updatedAt = now;
+      saveProfileAndEmit(record, key, profiles, profile);
+    }
+  }
+
+  function finalizeSession(record, reason = 'ended', now = Date.now()) {
+    if (!record || !activityState.session) return null;
+    const session = activityState.session;
+    const durationMs = Math.max(0, now - session.startedAt);
+    const sessionMultiplier = getSessionMultiplier(durationMs);
+    const leaderboardMultiplier = getLeaderboardMultiplier(session.leaderboardRank);
+    const finalAwardedXp = Math.floor(session.earnedBaseXp * sessionMultiplier * leaderboardMultiplier);
+    const delta = Math.max(0, finalAwardedXp - session.awardedXp);
+
+    if (delta > 0) {
+      awardXp(record, delta, `session-${reason}`, { notifyLevelUp: true });
+    }
+
+    activityState.session = null;
+    activityState.eventLog = [];
+    activityState.lastPointerMoveAt = 0;
+    activityState.lastPointerMoveSampleAt = 0;
+    return {
+      durationMs,
+      finalAwardedXp,
+      reason,
+    };
+  }
+
   function getLevelBadgeTheme(levelInfo) {
     if (levelInfo.level >= 31) return { id: 'mythic', label: 'Mythic', emoji: '✦' };
     if (levelInfo.level >= 21) return { id: 'elite', label: 'Elite', emoji: '⬢' };
@@ -538,7 +966,7 @@
     }
 
     REFERRAL_TIERS.forEach((tier) => {
-      if (safeProfile.progression.referral.qualifiedCount >= tier.count && !revoked.has(tier.badgeId)) {
+      if (tier.badgeId && safeProfile.progression.referral.qualifiedCount >= tier.count && !revoked.has(tier.badgeId)) {
         badges.push({
           id: tier.badgeId,
           tone: 'referral',
@@ -620,6 +1048,8 @@
       qualifiedReferrals: safeProfile.progression.referral.qualifiedCount,
       title: safeProfile.progression.cosmetics.title,
       flair: safeProfile.progression.cosmetics.flair,
+      leaderboardRestricted: Boolean(safeProfile.progression.afk.leaderboardRestricted),
+      warningCooldownUntil: safeProfile.progression.afk.warningCooldownUntil || 0,
       badges: getVisibleBadges(record, safeProfile),
       badgeAssets: safeProfile.progression.badgeAssets,
     };
@@ -663,14 +1093,21 @@
       REFERRAL_TIERS.forEach((tier) => {
         if (referrerProfile.progression.referral.qualifiedCount >= tier.count && !referrerProfile.progression.referral.rewardedTiers.includes(tier.count)) {
           referrerProfile.progression.referral.rewardedTiers.push(tier.count);
-          referrerProfile.progression.cosmetics.badges.push({
-            id: tier.badgeId,
-            label: tier.label,
-            title: `${tier.count} qualified referrals`,
-            emoji: '✧',
-            assetPath: referrerProfile.progression.badgeAssets.referral[tier.badgeId] || '',
-          });
-          referrerProfile.progression.cosmetics.flair = tier.flair;
+          if (tier.badgeId && tier.label) {
+            referrerProfile.progression.cosmetics.badges.push({
+              id: tier.badgeId,
+              label: tier.label,
+              title: `${tier.count} qualified referrals`,
+              emoji: '✧',
+              assetPath: referrerProfile.progression.badgeAssets.referral[tier.badgeId] || '',
+            });
+          }
+          if (tier.flair) {
+            referrerProfile.progression.cosmetics.flair = tier.flair;
+          }
+          if (tier.title) {
+            referrerProfile.progression.cosmetics.title = tier.title;
+          }
           referrerProfile.progression.xp += tier.xp;
         }
       });
@@ -726,15 +1163,6 @@
     profile.progression.daily.activeSecondsByDay[dayKey] = Math.max(0, Number(profile.progression.daily.activeSecondsByDay[dayKey]) || 0) + safeSeconds;
     addDistinctPlayDay(profile, dayKey);
 
-    DAILY_ACTIVITY_BONUSES.forEach((bonus) => {
-      const activeMinutes = Math.floor((profile.progression.daily.activeSecondsByDay[dayKey] || 0) / 60);
-      const claimedKey = `${dayKey}:${bonus.minutes}`;
-      if (activeMinutes >= bonus.minutes && !profile.progression.daily.activityBonusesClaimed[claimedKey]) {
-        profile.progression.daily.activityBonusesClaimed[claimedKey] = true;
-        profile.progression.xp += bonus.xp;
-      }
-    });
-
     profiles[key] = profile;
     writeProfiles(profiles);
     maybeApplyReferralQualification(profile);
@@ -743,21 +1171,7 @@
   }
 
   function grantRoomXp(record, amount) {
-    const created = getOrCreateProfile(record);
-    if (!created) return null;
-    const { key, profiles } = created;
-    const profile = ensureProfileShape(profiles[key], record);
-    const dayKey = getCurrentDateKey();
-    const grantedToday = Math.max(0, Number(profile.progression.daily.roomXpByDay[dayKey]) || 0);
-    const remaining = Math.max(0, ROOM_DAILY_CAP - grantedToday);
-    const applied = Math.min(Math.max(0, Number(amount) || 0), remaining);
-    if (!applied) return getProgressionSnapshot(record, profile);
-
-    profile.progression.daily.roomXpByDay[dayKey] = grantedToday + applied;
-    profile.progression.xp += applied;
-    profiles[key] = profile;
-    writeProfiles(profiles);
-    emitProgressionChange(record, profile);
+    const profile = record ? getProfileForRecord(record) : null;
     return getProgressionSnapshot(record, profile);
   }
 
@@ -801,20 +1215,67 @@
     if (!isGameplayPage()) return;
     const record = getCurrentRecord();
     if (!record) return;
-    const elapsedSinceInput = Date.now() - activityState.lastInputAt;
-    if (elapsedSinceInput > IDLE_TIMEOUT_MS) return;
+    const now = Date.now();
+    const session = getCurrentSession(record, now);
+    const inactivityElapsed = session.hasInteraction
+      ? now - activityState.lastInputAt
+      : now - session.startedAt;
 
-    const focusMultiplier = document.visibilityState === 'visible' && document.hasFocus() ? 1 : 0.5;
-    const multiplayerBonus = isMultiplayerPage() ? MULTIPLAYER_XP_PER_MINUTE : 0;
+    if (inactivityElapsed > SESSION_IDLE_TIMEOUT_MS) {
+      finalizeSession(record, 'idle', now);
+      return;
+    }
+
+    if (!session.hasInteraction || (now - activityState.lastInputAt) > ACTIVE_WINDOW_MS) {
+      return;
+    }
+
+    const created = getOrCreateProfile(record);
+    if (!created) return;
+    const { key, profiles } = created;
+    const profile = ensureProfileShape(profiles[key], record);
+    const assessment = getActivityAssessment(now);
+    const stageInfo = getAfkStage(session, assessment, now);
+    const activityMultiplier = getActivityMultiplier(stageInfo.stage);
     const minuteShare = ACTIVE_TICK_MS / 60000;
-    const gainedXp = ((ACTIVE_XP_PER_MINUTE + multiplayerBonus) * minuteShare) * focusMultiplier;
+    const baseTickXp = BASE_XP_PER_MINUTE * minuteShare * activityMultiplier;
 
     addActivitySeconds(record, ACTIVE_TICK_MS / 1000, { multiplayer: isMultiplayerPage() });
-    awardXp(record, gainedXp, 'active-play');
+    session.earnedBaseXp += baseTickXp;
+    session.lastActiveAt = now;
+    session.leaderboardRank = Number(activityState.leaderboardRank) || session.leaderboardRank || 0;
+
+    maybeHandleAfkEnforcement(record, key, profiles, profile, session, stageInfo, now);
+
+    const sessionMultiplier = getSessionMultiplier(getCurrentSessionDuration(now));
+    const projectedXp = Math.floor(session.earnedBaseXp * sessionMultiplier);
+    const delta = Math.max(0, projectedXp - session.awardedXp);
+    if (delta > 0) {
+      awardXp(record, delta, 'active-play', { notifyLevelUp: true });
+      session.awardedXp += delta;
+    }
   }
 
-  function noteInputActivity() {
-    activityState.lastInputAt = Date.now();
+  function noteInputActivity(event = null, options = {}) {
+    const now = Number(options.forceTimestamp) || Date.now();
+    activityState.lastInputAt = now;
+    if (options.silent) return;
+
+    const eventType = String(options.type || event?.type || '').trim();
+    if (eventType) {
+      trackActivityEvent(eventType, event);
+    }
+
+    if (isGameplayPage()) {
+      const record = getCurrentRecord();
+      if (record && !activityState.session) {
+        startSession(record, now);
+      }
+      if (activityState.session) {
+        activityState.session.hasInteraction = true;
+        activityState.session.lastActiveAt = now;
+      }
+    }
   }
 
   function startActivityTracking() {
@@ -822,12 +1283,27 @@
     captureReferralFromUrl();
     applyPendingReferralToCurrentUser();
 
-    ['pointerdown', 'keydown', 'touchstart', 'mousedown', 'wheel', 'click'].forEach((eventName) => {
+    [
+      'pointerdown',
+      'keydown',
+      'touchstart',
+      'mousedown',
+      'wheel',
+      'click',
+      'pointermove',
+    ].forEach((eventName) => {
       window.addEventListener(eventName, noteInputActivity, { passive: true });
     });
 
     if (!activityState.tickHandle) {
       activityState.tickHandle = window.setInterval(handleActivityTick, ACTIVE_TICK_MS);
+    }
+
+    if (isGameplayPage()) {
+      const record = getCurrentRecord();
+      if (record) {
+        startSession(record);
+      }
     }
   }
 
@@ -961,12 +1437,22 @@
       if (!isOwnerRecord(record)) return null;
       return adjustXp(record, amount, options);
     },
+    setLeaderboardRank(rank) {
+      const safeRank = Math.max(0, Math.floor(Number(rank) || 0));
+      activityState.leaderboardRank = safeRank;
+      if (activityState.session) {
+        activityState.session.leaderboardRank = safeRank;
+      }
+      return safeRank;
+    },
+    getLeaderboardRank() {
+      return Math.max(0, Math.floor(Number(activityState.leaderboardRank) || 0));
+    },
     grantRoomCreatedXp() {
-      return grantRoomXp(getCurrentRecord(), 5);
+      return grantRoomXp(getCurrentRecord(), 0);
     },
     grantRoomStartedXp(playerCount = 2) {
-      const extraPlayers = Math.max(0, Number(playerCount) - 1);
-      return grantRoomXp(getCurrentRecord(), 15 + (extraPlayers * 3));
+      return grantRoomXp(getCurrentRecord(), 0);
     },
     noteInputActivity,
   };
@@ -983,6 +1469,12 @@
 
   refreshAdsState();
   startActivityTracking();
+
+  window.addEventListener('pagehide', () => {
+    if (isGameplayPage()) {
+      finalizeSession(getCurrentRecord(), 'pagehide', Date.now());
+    }
+  });
 
   window.addEventListener('playr-auth-changed', () => {
     refreshAdsState();
