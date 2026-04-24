@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-24-infinite-craft-room-creation-bug',
+      title: 'Infinite Craft Rooms Creation Bug Patched',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-24T21:45:00-04:00',
+      summary: 'Firestore room rules now consistently validate multiplayer room prefixes so Infinite Craft rooms can be secured without drifting from the Tic-Tac-Toe setup.',
+      details: [
+        'Tic-Tac-Toe room documents now only allow IDs that begin with ttt-.',
+        'Infinite Craft room documents now only allow IDs that begin with inf-.',
+        'Messages and presence subcollections for both room types now follow the same authenticated access checks as their parent rooms.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-24-tic-tac-toe-ui-bug-fixes',
       title: 'Bug fixes to Tic Tac Toe UI',
       category: 'update',
