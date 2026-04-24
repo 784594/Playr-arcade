@@ -7,6 +7,7 @@
   <title>PlayR</title>
   <link rel="stylesheet" href="styles.css" />
   <script src="/shared/ads.js"></script>
+  <script src="/shared/site-notices.js"></script>
   <script defer src="/shared/site-footer.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -35,6 +36,34 @@
         </nav>
         <button class="chip-button support-tab-button" type="button" id="supportBtn">Support Me</button>
         <button class="button secondary login-button" type="button" id="loginBtn">Log in</button>
+        <div class="notifications-shell">
+          <button
+            class="chip-button notification-button"
+            type="button"
+            id="notificationsBellBtn"
+            aria-label="Open site updates and notices"
+            aria-expanded="false"
+            aria-haspopup="true"
+          >
+            <span class="notification-button-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                <path d="M12 3.75a4.25 4.25 0 0 0-4.25 4.25v1.01c0 .87-.25 1.72-.72 2.46l-1.2 1.89a1.75 1.75 0 0 0 1.48 2.69h9.38a1.75 1.75 0 0 0 1.48-2.69l-1.2-1.89a4.57 4.57 0 0 1-.72-2.46V8A4.25 4.25 0 0 0 12 3.75Zm0 17.5a2.77 2.77 0 0 1-2.56-1.71h5.12A2.77 2.77 0 0 1 12 21.25Z"></path>
+              </svg>
+            </span>
+            <span class="notification-dot" id="notificationsUnreadDot" hidden></span>
+          </button>
+          <section class="notification-dropdown panel-card" id="notificationsDropdown" hidden>
+            <div class="notification-dropdown-header">
+              <div>
+                <p class="panel-label">Information center</p>
+                <h3>Latest updates</h3>
+              </div>
+              <a class="button secondary notification-view-all" href="/updates.html">View all</a>
+            </div>
+            <div class="notification-list" id="notificationsList"></div>
+            <p class="settings-muted notification-empty" id="notificationsEmpty" hidden>No public notices right now.</p>
+          </section>
+        </div>
       </div>
     </header>
 

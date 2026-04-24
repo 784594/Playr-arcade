@@ -1,0 +1,73 @@
+(function () {
+  window.PlayrSiteNotices = [
+    {
+      id: 'site-notice-2026-04-23-update-process',
+      title: 'Update tracking is now part of every release',
+      category: 'system',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-23T23:20:00-04:00',
+      summary: 'PlayR now pairs each user-facing release with a public update notice and changelog entry so maintenance stays visible.',
+      details: [
+        'User-visible releases now get a matching public notice in the site bell.',
+        'The repo instructions now require update-log entries alongside real site changes.',
+        'Public notices stay generic and never include private account or moderation details.',
+      ],
+    },
+    {
+      id: 'site-notice-2026-04-23-2048-admin',
+      title: '2048 owner tools and movement fix',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-23T22:43:09-04:00',
+      summary: 'Added owner-only 2048 board tools and fixed a double-input issue that could make tiles jump unexpectedly.',
+      details: [
+        'Owner account can now add or remove custom 2048 tiles from an in-game admin panel.',
+        'The main account settings modal now includes an owner-only XP adjustment panel.',
+        'A duplicate keydown handling issue was fixed so one keypress no longer triggers two moves.',
+      ],
+    },
+    {
+      id: 'site-notice-2026-04-23-site-trust-pages',
+      title: 'Site policy and contact pages are live',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-23T20:20:33-04:00',
+      summary: 'PlayR now has dedicated About, Contact, and Privacy pages linked across the site for easier trust and support access.',
+      details: [
+        'Added separate About, Contact, and Privacy pages.',
+        'Added a footer and homepage legal/contact shortcuts so key information is easier to reach.',
+      ],
+    },
+    {
+      id: 'site-notice-2026-04-23-vip-ad-free',
+      title: 'VIP ad-free support is active',
+      category: 'system',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-23T20:02:20-04:00',
+      summary: 'The site now supports VIP ad suppression, which also powers account-based perk handling moving forward.',
+      details: [
+        'VIP accounts can browse without managed ads.',
+        'The owner email is recognized as VIP automatically.',
+        'This groundwork also supports future account perks and notice targeting.',
+      ],
+    },
+    {
+      id: 'site-notice-2026-04-23-pacman-frogger-polish',
+      title: 'Arcade polish update shipped',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-23T21:10:47-04:00',
+      summary: 'Several games received quality updates, including Pac-Man, Frogger, Flappy Bird, Sudoku, and Infinite Craft room fixes.',
+      details: [
+        'Pac-Man now uses the updated maze and refined ghost behavior.',
+        'Frogger, Flappy Bird, and Sudoku received gameplay and UI polish.',
+        'Infinite Craft room creation was aligned with the allowed Firestore collection.',
+      ],
+    },
+  ];
+})();

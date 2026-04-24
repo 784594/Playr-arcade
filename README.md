@@ -25,9 +25,10 @@ Open `index.html` in a browser. The site is fully static and does not require a 
 Use this flow any time you edit files and want the live site updated:
 
 1. Save your file changes.
-2. Update the logs in `updates/` (required for every future change):
+2. Update the logs and public notice feed (required for every future change):
    - Append a short summary in `updates/logs.md`
    - Refresh `updates/commit-history.csv` and `updates/file-last-change.csv` when needed
+   - Add or refresh the matching small public-facing notification in `shared/site-notices.js` for any user-visible change, warning, maintenance notice, or ban/system announcement that should appear in the header bell
 3. Commit and push to `main`:
 
 ```bash
@@ -44,7 +45,8 @@ git push origin main
 - Every update/file change must be recorded in `updates/logs.md`.
 - Keep log entries concise and include date, what changed, and affected files/features.
 - If a commit is pushed, make sure logs are updated in the same commit whenever possible.
-- Exception: do not add entries to `updates/` for admin-panel-only changes.
+- Every user-visible release, warning, maintenance event, or public moderation/system message must also get a short safe summary in `shared/site-notices.js` so it appears in the site notification bell.
+- Keep notification summaries public-safe and generic. Never place passwords, personal email addresses, private moderation evidence, internal-only notes, or account-specific private actions in `shared/site-notices.js`.
 
 If `git` is not recognized in your terminal on Windows, run Git with a full path:
 

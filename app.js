@@ -173,6 +173,7 @@ const AUTH_STORAGE_KEYS = {
   legacyUser: 'playrCurrentUser',
   adminOverrides: 'playrAdminOverrides',
 };
+const SITE_NOTICE_STORAGE_KEY = 'playrSiteNoticeReadStateV1';
 
 // Admin rights are bound to explicit trusted UIDs, never to display names.
 const OWNER_ADMIN_UIDS = new Set([]);
@@ -308,6 +309,146 @@ function formatPlayerIdentityMarkup(name, options = {}) {
       .replace(/'/g, '&#39;');
   }
   return api.formatIdentityMarkup(name, options);
+}
+
+function readSiteNoticeState() {
+  try {
+    const raw = localStorage.getItem(SITE_NOTICE_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    const readIds = Array.isArray(parsed?.readIds)
+      ? parsed.readIds.map((value) => String(value || '').trim()).filter(Boolean)
+      : [];
+    return { readIds };
+  } catch {
+    return { readIds: [] };
+  }
+}
+
+function persistSiteNoticeState(state) {
+  localStorage.setItem(SITE_NOTICE_STORAGE_KEY, JSON.stringify({
+    readIds: Array.from(new Set(Array.isArray(state?.readIds) ? state.readIds : [])),
+  }));
+}
+
+function getPublicSiteNotices() {
+  const notices = Array.isArray(window.PlayrSiteNotices) ? window.PlayrSiteNotices : [];
+  return notices
+    .filter((notice) => notice && String(notice.audience || 'public') === 'public')
+    .sort((left, right) => new Date(right.publishedAt || 0).getTime() - new Date(left.publishedAt || 0).getTime());
+}
+
+function formatSiteNoticeDate(dateValue) {
+  const stamp = new Date(dateValue || '');
+  if (Number.isNaN(stamp.getTime())) return 'Recent';
+  return stamp.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function markPublicSiteNoticesRead(noticeIds = []) {
+  const ids = noticeIds.map((value) => String(value || '').trim()).filter(Boolean);
+  if (!ids.length) return;
+  const state = readSiteNoticeState();
+  persistSiteNoticeState({
+    readIds: [...state.readIds, ...ids],
+  });
+}
+
+function hasUnreadSiteNotices() {
+  const readSet = new Set(readSiteNoticeState().readIds);
+  return getPublicSiteNotices().some((notice) => !readSet.has(String(notice.id || '')));
+}
+
+function syncSiteNoticeBell() {
+  const hasUnread = hasUnreadSiteNotices();
+  if (notificationsUnreadDot) {
+    notificationsUnreadDot.hidden = !hasUnread;
+  }
+  if (notificationsBellBtn) {
+    notificationsBellBtn.setAttribute('aria-expanded', uiState.notificationsOpen ? 'true' : 'false');
+    notificationsBellBtn.dataset.unread = hasUnread ? 'true' : 'false';
+  }
+}
+
+function closeNotificationsDropdown() {
+  uiState.notificationsOpen = false;
+  if (notificationsDropdown) notificationsDropdown.hidden = true;
+  syncSiteNoticeBell();
+}
+
+function renderNotificationsDropdown() {
+  if (!notificationsList || !notificationsEmpty) return;
+
+  const notices = getPublicSiteNotices().slice(0, 4);
+  notificationsList.innerHTML = '';
+
+  if (!notices.length) {
+    notificationsEmpty.hidden = false;
+    syncSiteNoticeBell();
+    return;
+  }
+
+  notificationsEmpty.hidden = true;
+
+  notices.forEach((notice) => {
+    const article = document.createElement('article');
+    article.className = 'notification-item';
+
+    const top = document.createElement('div');
+    top.className = 'notification-item-top';
+
+    const titleWrap = document.createElement('div');
+    const title = document.createElement('h4');
+    title.textContent = String(notice.title || 'Site notice');
+    const summary = document.createElement('p');
+    summary.textContent = String(notice.summary || '');
+    titleWrap.append(title, summary);
+
+    const meta = document.createElement('div');
+    meta.className = 'notification-meta';
+    const tag = document.createElement('span');
+    tag.className = 'notification-tag';
+    tag.textContent = String(notice.category || 'Notice');
+    const date = document.createElement('span');
+    date.className = 'notification-date';
+    date.textContent = formatSiteNoticeDate(notice.publishedAt);
+    meta.append(tag, date);
+
+    top.append(titleWrap, meta);
+
+    const actions = document.createElement('div');
+    actions.className = 'notification-item-actions';
+    const link = document.createElement('a');
+    link.className = 'button secondary';
+    link.href = `/updates.html#${encodeURIComponent(String(notice.id || ''))}`;
+    link.textContent = 'Learn more';
+    actions.appendChild(link);
+
+    article.append(top, actions);
+    notificationsList.appendChild(article);
+  });
+
+  syncSiteNoticeBell();
+}
+
+function openNotificationsDropdown() {
+  if (!notificationsDropdown) return;
+  uiState.notificationsOpen = true;
+  notificationsDropdown.hidden = false;
+  renderNotificationsDropdown();
+  markPublicSiteNoticesRead(getPublicSiteNotices().map((notice) => notice.id));
+  syncSiteNoticeBell();
+}
+
+function toggleNotificationsDropdown() {
+  if (!notificationsDropdown) return;
+  if (uiState.notificationsOpen) {
+    closeNotificationsDropdown();
+    return;
+  }
+  openNotificationsDropdown();
 }
 
 function findProfileByDisplayName(displayName) {
@@ -1066,6 +1207,11 @@ const scoreSaveBody = document.getElementById('scoreSaveBody');
 const saveScoreLoginBtn = document.getElementById('saveScoreLoginBtn');
 const dismissScorePanelBtn = document.getElementById('dismissScorePanelBtn');
 const loginBtn = document.getElementById('loginBtn');
+const notificationsBellBtn = document.getElementById('notificationsBellBtn');
+const notificationsUnreadDot = document.getElementById('notificationsUnreadDot');
+const notificationsDropdown = document.getElementById('notificationsDropdown');
+const notificationsList = document.getElementById('notificationsList');
+const notificationsEmpty = document.getElementById('notificationsEmpty');
 const authOverlay = document.getElementById('authOverlay');
 const authCloseBtn = document.getElementById('authCloseBtn');
 const authTitle = document.getElementById('authTitle');
@@ -1160,6 +1306,7 @@ const uiState = {
   activeLeaderboardRange: 'daily',
   expandedLeaderboardByGame: {},
   adminPanelByGame: {},
+  notificationsOpen: false,
   librarySearchQuery: '',
   featuredGameId: null,
   featuredLaunchUrl: null,
@@ -3291,6 +3438,8 @@ function init() {
   renderPublishingPreview();
   renderAuthUi();
   renderSettingsProgression(getCurrentAccount());
+  renderNotificationsDropdown();
+  syncSiteNoticeBell();
   syncControlStates();
   syncFeaturedGameToActiveTab();
   refreshGameViews();
@@ -3341,6 +3490,7 @@ function init() {
   if (supportBtn) {
     supportBtn.addEventListener('click', () => {
       setSupportPanelVisible(true);
+      closeNotificationsDropdown();
     });
   }
 
@@ -3506,6 +3656,10 @@ function init() {
       refreshGameViews();
       renderSettingsProgression(getCurrentAccount());
     }
+    if (event.key === SITE_NOTICE_STORAGE_KEY) {
+      renderNotificationsDropdown();
+      syncSiteNoticeBell();
+    }
   });
 
   if (dismissScorePanelBtn) {
@@ -3536,9 +3690,34 @@ function init() {
     loginBtn.addEventListener('click', loginAction);
   }
 
+  if (notificationsBellBtn) {
+    notificationsBellBtn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      toggleNotificationsDropdown();
+    });
+  }
+
+  if (notificationsDropdown) {
+    notificationsDropdown.addEventListener('click', (event) => {
+      event.stopPropagation();
+    });
+  }
+
   if (authCloseBtn) {
     authCloseBtn.addEventListener('click', closeAuthOverlay);
   }
+
+  document.addEventListener('click', () => {
+    if (uiState.notificationsOpen) {
+      closeNotificationsDropdown();
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && uiState.notificationsOpen) {
+      closeNotificationsDropdown();
+    }
+  });
 
   if (authOverlay) {
     authOverlay.addEventListener('click', (event) => {
