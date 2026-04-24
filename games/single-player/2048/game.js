@@ -1,5 +1,6 @@
 (() => {
 	const size = 4;
+	const OWNER_IDENTIFIER = 'owner@playr.io';
 	const boardElement = document.getElementById('gameBoard');
 	const tilesLayer = document.getElementById('tilesLayer');
 	const statusElement = document.getElementById('gameStatus');
@@ -9,8 +10,25 @@
 	const overlayTextElement = document.getElementById('overlayText');
 	const restartButton = document.getElementById('restartButton');
 	const overlayRestartButton = document.getElementById('overlayRestartButton');
+	const adminTools = document.getElementById('adminTools');
+	const adminModeBtn = document.getElementById('adminModeBtn');
+	const adminInfo = document.getElementById('adminInfo');
+	const adminValueInput = document.getElementById('adminValueInput');
+	const adminAddTileBtn = document.getElementById('adminAddTileBtn');
+	const adminRemoveTileBtn = document.getElementById('adminRemoveTileBtn');
+	const adminSelection = document.getElementById('adminSelection');
 
-	if (!boardElement || !tilesLayer || !statusElement || !overlayElement || !overlayLabelElement || !overlayScoreElement || !overlayTextElement || !restartButton || !overlayRestartButton) {
+	if (
+		!boardElement
+		|| !tilesLayer
+		|| !statusElement
+		|| !overlayElement
+		|| !overlayLabelElement
+		|| !overlayScoreElement
+		|| !overlayTextElement
+		|| !restartButton
+		|| !overlayRestartButton
+	) {
 		return;
 	}
 
@@ -25,18 +43,52 @@
 		256: { bg: '#48c9bd', fg: '#031c18' },
 		512: { bg: '#4db8e8', fg: '#041b2b' },
 		1024: { bg: '#4a9ef2', fg: '#04192a' },
-		2048: { bg: '#7cf0c5', fg: '#03231b' }
+		2048: { bg: '#7cf0c5', fg: '#03231b' },
 	};
 
 	const tileElements = new Map();
+	const selectionLayer = document.createElement('div');
+	const selectionHighlight = document.createElement('div');
+	selectionLayer.className = 'selection-layer';
+	selectionHighlight.className = 'selection-highlight';
+	selectionLayer.appendChild(selectionHighlight);
+	boardElement.insertBefore(selectionLayer, overlayElement);
+
 	const state = {
 		tiles: [],
 		nextTileId: 0,
 		score: 0,
 		won: false,
 		over: false,
-		swipeStart: null
+		swipeStart: null,
+		adminEnabled: false,
+		selectedCell: null,
 	};
+
+	function normalizeIdentifier(value) {
+		return String(value || '').trim().toLowerCase();
+	}
+
+	function getStoredLegacyUser() {
+		try {
+			const raw = localStorage.getItem('playrCurrentUser');
+			return raw ? JSON.parse(raw) : null;
+		} catch {
+			return null;
+		}
+	}
+
+	function getCurrentRecord() {
+		if (window.PlayrProgression && typeof window.PlayrProgression.getCurrentRecord === 'function') {
+			return window.PlayrProgression.getCurrentRecord();
+		}
+		return getStoredLegacyUser();
+	}
+
+	function isOwnerUser() {
+		const record = getCurrentRecord();
+		return normalizeIdentifier(record?.identifier) === OWNER_IDENTIFIER;
+	}
 
 	function createTile(value, row, column, options = {}) {
 		return {
@@ -45,7 +97,7 @@
 			row,
 			column,
 			justSpawned: Boolean(options.justSpawned),
-			justMerged: Boolean(options.justMerged)
+			justMerged: Boolean(options.justMerged),
 		};
 	}
 
@@ -59,7 +111,8 @@
 			return tileColors[value];
 		}
 
-		const exponent = Math.round(Math.log2(value));
+		const safeValue = Math.max(2, Number(value) || 2);
+		const exponent = Math.round(Math.log2(safeValue));
 		const hue = (35 + exponent * 18) % 360;
 		return { bg: `hsl(${hue} 78% 58%)`, fg: '#f9f6f2' };
 	}
@@ -74,15 +127,29 @@
 		const bounds = tilesLayer.getBoundingClientRect();
 		const gapSize = getGapSize();
 		const cellSize = Math.max((Math.min(bounds.width, bounds.height) - gapSize * (size - 1)) / size, 0);
-		return { cellSize, gapSize };
+		return { cellSize, gapSize, bounds };
 	}
 
 	function positionFor(row, column, layout) {
 		const step = layout.cellSize + layout.gapSize;
 		return {
 			x: column * step,
-			y: row * step
+			y: row * step,
 		};
+	}
+
+	function renderSelection(layout = getLayout()) {
+		const selected = state.selectedCell;
+		if (!selected || !state.adminEnabled || !isOwnerUser()) {
+			selectionHighlight.classList.remove('visible');
+			return;
+		}
+
+		const position = positionFor(selected.row, selected.column, layout);
+		selectionHighlight.style.width = `${layout.cellSize}px`;
+		selectionHighlight.style.height = `${layout.cellSize}px`;
+		selectionHighlight.style.transform = `translate3d(${position.x}px, ${position.y}px, 0)`;
+		selectionHighlight.classList.add('visible');
 	}
 
 	function getEmptyCells() {
@@ -128,7 +195,7 @@
 
 			if (direction === 'right') {
 				return rightTile.column - leftTile.column;
-		}
+			}
 
 			if (direction === 'up') {
 				return leftTile.row - rightTile.row;
@@ -177,7 +244,7 @@
 						row: target.row,
 						column: target.column,
 						justMerged: true,
-						justSpawned: false
+						justSpawned: false,
 					});
 					scoreGain += mergedValue;
 					changed = true;
@@ -191,7 +258,7 @@
 					row: target.row,
 					column: target.column,
 					justMerged: false,
-					justSpawned: false
+					justSpawned: false,
 				});
 				if (currentMoved) {
 					changed = true;
@@ -228,12 +295,56 @@
 		return false;
 	}
 
+	function getTileAt(row, column) {
+		return state.tiles.find((tile) => tile.row === row && tile.column === column) || null;
+	}
+
+	function recalculateStateFlags() {
+		state.score = Math.max(0, Math.trunc(Number(state.score) || 0));
+		state.won = state.tiles.some((tile) => tile.value >= 2048);
+		state.over = state.tiles.length > 0 && !canMove();
+	}
+
 	function formatStatus() {
 		if (state.won) {
 			return `Score: ${state.score} | 2048 reached`;
 		}
 
 		return `Score: ${state.score}`;
+	}
+
+	function syncAdminUi() {
+		if (!adminTools || !adminModeBtn || !adminInfo || !adminValueInput || !adminAddTileBtn || !adminRemoveTileBtn || !adminSelection) {
+			return;
+		}
+
+		const owner = isOwnerUser();
+		if (!owner) {
+			state.adminEnabled = false;
+			state.selectedCell = null;
+			adminTools.hidden = true;
+			renderSelection();
+			return;
+		}
+
+		adminTools.hidden = false;
+		adminModeBtn.textContent = state.adminEnabled ? 'Disable Admin' : 'Enable Admin';
+		adminValueInput.disabled = !state.adminEnabled;
+		adminAddTileBtn.disabled = !state.adminEnabled || !state.selectedCell;
+		adminRemoveTileBtn.disabled = !state.adminEnabled || !state.selectedCell;
+
+		if (!state.adminEnabled) {
+			adminInfo.textContent = 'Admin disabled. Enable it to click a cell and edit the board.';
+		} else {
+			adminInfo.textContent = 'Admin enabled. Click a cell to target it, then add/update or remove a tile.';
+		}
+
+		if (!state.selectedCell) {
+			adminSelection.textContent = 'No cell selected.';
+		} else {
+			const tile = getTileAt(state.selectedCell.row, state.selectedCell.column);
+			adminSelection.textContent = `Selected row ${state.selectedCell.row + 1}, column ${state.selectedCell.column + 1}${tile ? ` | current: ${tile.value}` : ' | empty cell'}`;
+		}
 	}
 
 	function render() {
@@ -298,6 +409,8 @@
 		}
 
 		statusElement.textContent = formatStatus();
+		syncAdminUi();
+		renderSelection(layout);
 
 		if (state.over) {
 			overlayLabelElement.textContent = 'You lost';
@@ -316,6 +429,7 @@
 		state.won = false;
 		state.over = false;
 		state.swipeStart = null;
+		state.selectedCell = null;
 		overlayElement.classList.add('hidden');
 		spawnTile();
 		spawnTile();
@@ -331,7 +445,7 @@
 	}
 
 	function move(direction) {
-		if (state.over) {
+		if (state.over || state.adminEnabled) {
 			return;
 		}
 
@@ -343,21 +457,17 @@
 
 		state.tiles = result.nextTiles;
 		state.score += result.scoreGain;
-		for (const tile of state.tiles) {
-			if (tile.value >= 2048) {
-				state.won = true;
-			}
-		}
-
+		recalculateStateFlags();
 		spawnTile();
-		if (!canMove()) {
-			state.over = true;
-		}
-
+		recalculateStateFlags();
 		render();
 	}
 
 	function handleKeydown(event) {
+		if (state.adminEnabled || event.defaultPrevented) {
+			return;
+		}
+
 		const key = event.key.toLowerCase();
 		const directionMap = {
 			arrowleft: 'left',
@@ -367,7 +477,7 @@
 			arrowup: 'up',
 			w: 'up',
 			arrowdown: 'down',
-			s: 'down'
+			s: 'down',
 		};
 
 		const direction = directionMap[key];
@@ -384,7 +494,7 @@
 	}
 
 	function endSwipe(point) {
-		if (!state.swipeStart) {
+		if (!state.swipeStart || state.adminEnabled) {
 			return;
 		}
 
@@ -405,10 +515,83 @@
 		move(deltaY > 0 ? 'down' : 'up');
 	}
 
+	function getCellFromPoint(clientX, clientY) {
+		const layout = getLayout();
+		const x = clientX - layout.bounds.left;
+		const y = clientY - layout.bounds.top;
+		const step = layout.cellSize + layout.gapSize;
+		const column = Math.max(0, Math.min(size - 1, Math.floor(x / step)));
+		const row = Math.max(0, Math.min(size - 1, Math.floor(y / step)));
+		return { row, column };
+	}
+
+	function selectCellFromEvent(event) {
+		if (!state.adminEnabled || !isOwnerUser()) {
+			return;
+		}
+
+		state.selectedCell = getCellFromPoint(event.clientX, event.clientY);
+		render();
+	}
+
+	function parseAdminValue() {
+		return Math.max(1, Math.trunc(Number(adminValueInput?.value) || 0));
+	}
+
+	function applySelectedTileValue() {
+		if (!state.adminEnabled || !state.selectedCell) {
+			return;
+		}
+
+		const nextValue = parseAdminValue();
+		if (!nextValue) {
+			return;
+		}
+
+		if (adminValueInput) {
+			adminValueInput.value = String(nextValue);
+		}
+
+		const existingTile = getTileAt(state.selectedCell.row, state.selectedCell.column);
+		const previousValue = existingTile ? existingTile.value : 0;
+
+		if (existingTile) {
+			existingTile.value = nextValue;
+			existingTile.justMerged = false;
+			existingTile.justSpawned = false;
+		} else {
+			state.tiles.push(createTile(nextValue, state.selectedCell.row, state.selectedCell.column, { justSpawned: true }));
+		}
+
+		state.score = Math.max(0, state.score - previousValue + nextValue);
+		recalculateStateFlags();
+		render();
+	}
+
+	function removeSelectedTile() {
+		if (!state.adminEnabled || !state.selectedCell) {
+			return;
+		}
+
+		const tile = getTileAt(state.selectedCell.row, state.selectedCell.column);
+		if (!tile) {
+			render();
+			return;
+		}
+
+		state.tiles = state.tiles.filter((entry) => entry.id !== tile.id);
+		state.score = Math.max(0, state.score - tile.value);
+		recalculateStateFlags();
+		render();
+	}
+
 	boardElement.addEventListener('keydown', handleKeydown);
 	document.addEventListener('keydown', handleKeydown);
 	boardElement.addEventListener('pointerdown', (event) => {
 		if (event.pointerType === 'mouse' && event.button !== 0) {
+			return;
+		}
+		if (state.adminEnabled) {
 			return;
 		}
 
@@ -422,6 +605,10 @@
 		}
 	});
 	boardElement.addEventListener('pointerup', (event) => {
+		if (state.adminEnabled) {
+			selectCellFromEvent(event);
+			return;
+		}
 		endSwipe({ clientX: event.clientX, clientY: event.clientY });
 	});
 	boardElement.addEventListener('pointercancel', () => {
@@ -441,6 +628,48 @@
 		event.stopPropagation();
 	});
 	window.addEventListener('resize', render);
+
+	if (adminModeBtn) {
+		adminModeBtn.addEventListener('click', () => {
+			if (!isOwnerUser()) {
+				state.adminEnabled = false;
+				syncAdminUi();
+				return;
+			}
+
+			state.adminEnabled = !state.adminEnabled;
+			if (!state.adminEnabled) {
+				state.selectedCell = null;
+			}
+			render();
+		});
+	}
+
+	if (adminAddTileBtn) {
+		adminAddTileBtn.addEventListener('click', applySelectedTileValue);
+	}
+
+	if (adminRemoveTileBtn) {
+		adminRemoveTileBtn.addEventListener('click', removeSelectedTile);
+	}
+
+	window.addEventListener('playr-auth-changed', () => {
+		if (!isOwnerUser()) {
+			state.adminEnabled = false;
+			state.selectedCell = null;
+		}
+		render();
+	});
+
+	window.addEventListener('storage', (event) => {
+		if (event.key === 'playrCurrentUser' || event.key === 'playrProfiles') {
+			if (!isOwnerUser()) {
+				state.adminEnabled = false;
+				state.selectedCell = null;
+			}
+			render();
+		}
+	});
 
 	restartGame();
 })();

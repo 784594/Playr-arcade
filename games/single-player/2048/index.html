@@ -42,6 +42,21 @@
           <li>Reach 2048 or keep going for a higher tile.</li>
         </ul>
         <button class="restart-button" id="restartButton" type="button">Restart</button>
+
+        <section class="admin-tools" id="adminTools" hidden>
+          <h2>Admin Panel</h2>
+          <p class="hint" id="adminInfo">Owner-only controls. Enable admin mode to select a cell and edit the board.</p>
+          <div class="admin-grid">
+            <button class="admin-btn" id="adminModeBtn" type="button">Enable Admin</button>
+          </div>
+          <label class="admin-label" for="adminValueInput">Custom tile value</label>
+          <input id="adminValueInput" class="admin-input" type="number" min="1" step="1" value="2" disabled />
+          <div class="admin-grid">
+            <button class="admin-btn" id="adminAddTileBtn" type="button" disabled>Add / Update Selected Cell</button>
+            <button class="admin-btn" id="adminRemoveTileBtn" type="button" disabled>Remove Selected Cell</button>
+          </div>
+          <p class="hint admin-selection" id="adminSelection">No cell selected.</p>
+        </section>
       </aside>
 
       <article class="play-area">

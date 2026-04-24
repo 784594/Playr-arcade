@@ -140,6 +140,7 @@
         <div class="leaderboard-filters" id="leaderboardRangeFilters" aria-label="Leaderboard range filters">
           <button class="chip-button active" type="button" data-range="daily">Daily</button>
           <button class="chip-button" type="button" data-range="all-time">All-time</button>
+          <button class="chip-button" type="button" data-range="most-xp">Most XP</button>
           <button class="chip-button" type="button" data-range="your-stats">Your stats</button>
           <button class="chip-button" type="button" data-range="donation">Donation leaderboard</button>
         </div>
@@ -289,6 +290,50 @@
             <button class="button secondary" type="button" id="settingsLogoutBtn">Log out</button>
           </section>
 
+          <section class="settings-card">
+            <h4>XP & Level</h4>
+            <div class="settings-progress-header">
+              <strong id="settingsXpLevel">Level 1</strong>
+              <span id="settingsXpTotal">0 XP</span>
+            </div>
+            <div class="settings-progress-bar">
+              <span id="settingsXpProgress"></span>
+            </div>
+            <p class="settings-muted" id="settingsXpProgressLabel">0 / 100 XP</p>
+            <div class="settings-stats-grid">
+              <div>
+                <span>Active today</span>
+                <strong id="settingsActiveToday">0 min</strong>
+              </div>
+              <div>
+                <span>Multiplayer today</span>
+                <strong id="settingsMultiplayerToday">0 min</strong>
+              </div>
+            </div>
+            <p class="settings-warning">Gameplay XP currently rewards active input-driven play. Idle time does not count, and multiplayer pages can earn a social-play boost.</p>
+          </section>
+
+          <section class="settings-card">
+            <h4>Referrals</h4>
+            <div class="settings-stats-grid">
+              <div>
+                <span>Referral code</span>
+                <strong id="settingsReferralCode">--</strong>
+              </div>
+              <div>
+                <span>Qualified referrals</span>
+                <strong id="settingsQualifiedReferrals">0</strong>
+              </div>
+            </div>
+            <label class="auth-label" for="settingsReferralLink">Your referral link</label>
+            <div class="settings-copy-row">
+              <input id="settingsReferralLink" class="auth-input" type="text" readonly placeholder="Referral link will appear here" />
+              <button class="button secondary" type="button" id="settingsReferralCopyBtn">Copy</button>
+            </div>
+            <div class="settings-tier-list" id="settingsReferralRewards"></div>
+            <p class="settings-warning">Qualified referrals must reach Level 5, play on 3 different days, and log at least 30 active minutes before rewards count.</p>
+          </section>
+
           <section class="settings-card" id="adminSettingsCard" hidden>
             <h4>Admin abuse panel</h4>
             <p class="settings-warning">Owner only. These controls can inject impossible leaderboard entries for testing or admin override.</p>
@@ -315,6 +360,19 @@
               <button class="button secondary" type="button" id="adminResetScoresBtn">Reset scores (selected game)</button>
               <button class="button secondary" type="button" id="adminRevertScoresBtn">Revert scores (selected game)</button>
               <button class="button secondary" type="button" id="adminPurgeUnknownAccountsBtn">Purge unknown accounts</button>
+            </div>
+          </section>
+
+          <section class="settings-card" id="ownerXpSettingsCard" hidden>
+            <h4>Owner XP panel</h4>
+            <p class="settings-warning">Owner-only controls for adjusting your own XP without touching anyone else’s profile.</p>
+
+            <label class="auth-label" for="ownerXpAmountInput">XP amount</label>
+            <input id="ownerXpAmountInput" class="auth-input" type="number" min="1" step="1" value="100" />
+
+            <div class="settings-inline-actions">
+              <button class="button secondary" type="button" id="ownerXpAddBtn">Add XP</button>
+              <button class="button secondary" type="button" id="ownerXpRemoveBtn">Remove XP</button>
             </div>
           </section>
         </div>

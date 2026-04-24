@@ -265,6 +265,60 @@ function persistProfiles(profiles) {
   localStorage.setItem(AUTH_STORAGE_KEYS.profiles, JSON.stringify(profiles || {}));
 }
 
+function getProgressionApi() {
+  return window.PlayrProgression && typeof window.PlayrProgression.getProgressionSnapshot === 'function'
+    ? window.PlayrProgression
+    : null;
+}
+
+function getProgressionSnapshotForAccount(account = getCurrentAccount()) {
+  const api = getProgressionApi();
+  if (!api || !account) {
+    return {
+      xp: 0,
+      level: 1,
+      currentThreshold: 0,
+      nextThreshold: 100,
+      xpToNextLevel: 100,
+      progress: 0,
+      totalActiveMinutes: 0,
+      totalMultiplayerMinutes: 0,
+      activeTodayMinutes: 0,
+      multiplayerTodayMinutes: 0,
+      referralCode: '',
+      referralLink: '',
+      qualifiedReferrals: 0,
+      badges: [],
+      title: '',
+      flair: '',
+      badgeAssets: { vip: '', levelGroups: {}, referral: {} },
+    };
+  }
+  return api.getProgressionSnapshot(account);
+}
+
+function formatPlayerIdentityMarkup(name, options = {}) {
+  const api = getProgressionApi();
+  if (!api || typeof api.formatIdentityMarkup !== 'function') {
+    return String(name || 'Player')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+  return api.formatIdentityMarkup(name, options);
+}
+
+function findProfileByDisplayName(displayName) {
+  const normalized = normalizeDisplayNameForLookup(displayName);
+  if (!normalized) return null;
+  return Object.values(authState.profiles).find((profile) => {
+    if (!profile) return false;
+    return normalizeDisplayNameForLookup(profile.displayName) === normalized;
+  }) || null;
+}
+
 function normalizeIdentifier(rawValue) {
   const value = String(rawValue || '').trim();
   if (!value) return null;
@@ -402,6 +456,14 @@ function isCurrentAccountAdmin(account = getCurrentAccount()) {
 
 function isCurrentAccountVip(account = getCurrentAccount()) {
   return hasAccountRole(account, 'vip');
+}
+
+function isOwnerAccount(account = getCurrentAccount()) {
+  return Boolean(
+    account
+    && account.identifierType === 'email'
+    && OWNER_VIP_IDENTIFIERS.has(normalizeAccountIdentifier(account.identifier)),
+  );
 }
 
 function normalizeForModeration(displayName) {
@@ -1037,7 +1099,22 @@ const settingsNewPasswordInput = document.getElementById('settingsNewPasswordInp
 const settingsUpdatePasswordBtn = document.getElementById('settingsUpdatePasswordBtn');
 const settingsShowPasswordsToggle = document.getElementById('settingsShowPasswordsToggle');
 const settingsLogoutBtn = document.getElementById('settingsLogoutBtn');
+const settingsXpLevel = document.getElementById('settingsXpLevel');
+const settingsXpTotal = document.getElementById('settingsXpTotal');
+const settingsXpProgress = document.getElementById('settingsXpProgress');
+const settingsXpProgressLabel = document.getElementById('settingsXpProgressLabel');
+const settingsActiveToday = document.getElementById('settingsActiveToday');
+const settingsMultiplayerToday = document.getElementById('settingsMultiplayerToday');
+const settingsReferralCode = document.getElementById('settingsReferralCode');
+const settingsReferralLink = document.getElementById('settingsReferralLink');
+const settingsReferralCopyBtn = document.getElementById('settingsReferralCopyBtn');
+const settingsQualifiedReferrals = document.getElementById('settingsQualifiedReferrals');
+const settingsReferralRewards = document.getElementById('settingsReferralRewards');
 const adminSettingsCard = document.getElementById('adminSettingsCard');
+const ownerXpSettingsCard = document.getElementById('ownerXpSettingsCard');
+const ownerXpAmountInput = document.getElementById('ownerXpAmountInput');
+const ownerXpAddBtn = document.getElementById('ownerXpAddBtn');
+const ownerXpRemoveBtn = document.getElementById('ownerXpRemoveBtn');
 const adminGameSelect = document.getElementById('adminGameSelect');
 const adminRankInput = document.getElementById('adminRankInput');
 const adminPlayerInput = document.getElementById('adminPlayerInput');
@@ -1458,8 +1535,7 @@ function getCurrentAccount() {
     identifierType,
     identifier,
   });
-
-  return {
+  const baseAccount = {
     uid: user.uid,
     identifier,
     identifierType,
@@ -1470,6 +1546,12 @@ function getCurrentAccount() {
       email: Boolean(user.emailVerified),
       phone: Boolean(user.phoneNumber),
     },
+  };
+  const progression = getProgressionSnapshotForAccount(baseAccount);
+
+  return {
+    ...baseAccount,
+    progression,
   };
 }
 
@@ -1520,12 +1602,15 @@ function syncLegacyAuthState() {
   localStorage.setItem(
     AUTH_STORAGE_KEYS.legacyUser,
     JSON.stringify({
+      uid: account.uid,
       displayName: account.displayName,
       identifier: account.identifier,
+      identifierType: account.identifierType,
       verified: isAccountVerified(account),
       isAdmin: isCurrentAccountAdmin(account),
       isVip: isCurrentAccountVip(account),
       roles: account.roles || [],
+      progression: account.progression || null,
     }),
   );
 }
@@ -1545,6 +1630,7 @@ function exposePlayrAuth() {
     roles,
     user: account
       ? {
+          uid: account.uid,
           displayName: account.displayName,
           identifier: account.identifier,
           identifierType: account.identifierType,
@@ -1552,12 +1638,14 @@ function exposePlayrAuth() {
           isAdmin,
           isVip,
           roles,
+          progression: account.progression || null,
         }
       : null,
     getCurrentUser() {
       const liveAccount = getCurrentAccount();
       if (!liveAccount) return null;
       return {
+        uid: liveAccount.uid,
         displayName: liveAccount.displayName,
         identifier: liveAccount.identifier,
         identifierType: liveAccount.identifierType,
@@ -1565,7 +1653,14 @@ function exposePlayrAuth() {
         isAdmin: isCurrentAccountAdmin(liveAccount),
         isVip: isCurrentAccountVip(liveAccount),
         roles: liveAccount.roles || [],
+        progression: liveAccount.progression || null,
       };
+    },
+    getProgressionSnapshot() {
+      return getProgressionSnapshotForAccount(getCurrentAccount());
+    },
+    formatIdentityMarkup(name, options = {}) {
+      return formatPlayerIdentityMarkup(name, options);
     },
     openAuthModal() {
       setAuthMode('login');
@@ -1789,6 +1884,37 @@ function setSettingsStatus(message, tone = 'info') {
   settingsStatus.style.color = tone === 'danger' ? '#ff9cb1' : tone === 'success' ? '#9ff5cb' : '#d2e5ff';
 }
 
+function renderSettingsProgression(account = getCurrentAccount()) {
+  const progression = getProgressionSnapshotForAccount(account);
+  if (settingsXpLevel) settingsXpLevel.textContent = `Level ${progression.level}`;
+  if (settingsXpTotal) settingsXpTotal.textContent = `${Math.round(progression.xp)} XP`;
+  if (settingsXpProgress) settingsXpProgress.style.width = `${Math.round((progression.progress || 0) * 100)}%`;
+  if (settingsXpProgressLabel) {
+    settingsXpProgressLabel.textContent = `${Math.round(progression.xp)} / ${Math.round(progression.nextThreshold)} XP`;
+  }
+  if (settingsActiveToday) settingsActiveToday.textContent = `${progression.activeTodayMinutes} min`;
+  if (settingsMultiplayerToday) settingsMultiplayerToday.textContent = `${progression.multiplayerTodayMinutes} min`;
+  if (settingsReferralCode) settingsReferralCode.textContent = progression.referralCode || '--';
+  if (settingsReferralLink) settingsReferralLink.value = progression.referralLink || '';
+  if (settingsQualifiedReferrals) {
+    settingsQualifiedReferrals.textContent = String(progression.qualifiedReferrals || 0);
+  }
+  if (settingsReferralRewards) {
+    settingsReferralRewards.innerHTML = [
+      { count: 1, reward: '+50 XP + Recruiter I' },
+      { count: 3, reward: '+150 XP + profile flair' },
+      { count: 5, reward: '+300 XP + animated badge' },
+      { count: 10, reward: '+600 XP + special title' },
+      { count: 25, reward: '+1500 XP + exclusive cosmetic' },
+    ].map((tier) => `
+      <div class="settings-tier-row ${progression.qualifiedReferrals >= tier.count ? 'claimed' : ''}">
+        <strong>${tier.count}</strong>
+        <span>${tier.reward}</span>
+      </div>
+    `).join('');
+  }
+}
+
 function openSettingsOverlay() {
   const account = getCurrentAccount();
   if (!account) {
@@ -1802,14 +1928,22 @@ function openSettingsOverlay() {
   if (settingsNewPasswordInput) settingsNewPasswordInput.value = '';
   if (settingsShowPasswordsToggle) settingsShowPasswordsToggle.checked = false;
   setSettingsPasswordVisibility(false);
+  renderSettingsProgression(account);
 
   const isAdmin = isCurrentAccountAdmin(account);
+  const isOwner = isOwnerAccount(account);
   if (adminSettingsCard) {
     adminSettingsCard.hidden = !isAdmin;
+  }
+  if (ownerXpSettingsCard) {
+    ownerXpSettingsCard.hidden = !isOwner;
   }
   if (isAdmin) {
     populateAdminGameSelect();
     seedAdminFormDefaults();
+  }
+  if (isOwner && ownerXpAmountInput) {
+    ownerXpAmountInput.value = String(Math.max(1, Math.trunc(Number(ownerXpAmountInput.value) || 100)));
   }
 
   if (settingsOverlay) settingsOverlay.hidden = false;
@@ -1971,6 +2105,38 @@ async function updatePasswordFromSettings() {
     }
     setSettingsStatus(getFirebaseAuthErrorMessage(error, 'Could not update password.'), 'danger');
   }
+}
+
+function updateOwnerXpFromSettings(direction = 'add') {
+  const account = getCurrentAccount();
+  if (!account) {
+    setSettingsStatus('Log in first to change XP.', 'danger');
+    return;
+  }
+
+  if (!isOwnerAccount(account)) {
+    setSettingsStatus('This XP panel is restricted to the owner account.', 'danger');
+    return;
+  }
+
+  const rawAmount = Math.trunc(Number(ownerXpAmountInput?.value) || 0);
+  if (rawAmount <= 0) {
+    setSettingsStatus('Enter an XP amount greater than 0.', 'danger');
+    return;
+  }
+
+  const delta = direction === 'remove' ? -rawAmount : rawAmount;
+  const snapshot = window.PlayrProgression?.adjustCurrentXp?.(delta, { notifyLevelUp: delta > 0 });
+  if (!snapshot) {
+    setSettingsStatus('Could not update XP right now.', 'danger');
+    return;
+  }
+
+  renderSettingsProgression(getCurrentAccount());
+  setSettingsStatus(
+    delta > 0 ? `Added ${rawAmount} XP to your account.` : `Removed ${rawAmount} XP from your account.`,
+    'success',
+  );
 }
 
 async function logoutFromSettings() {
@@ -2795,7 +2961,69 @@ function renderGames() {
 
 function renderLeaderboard() {
   const eligibleGames = games.filter((game) => game.leaderboardEligible && Array.isArray(game.leaderboardTop100) && game.leaderboardTop100.length > 0);
-  
+
+  if (uiState.activeLeaderboardRange === 'most-xp') {
+    const currentAccount = getCurrentAccount();
+    const currentProgression = getProgressionSnapshotForAccount(currentAccount);
+    const rows = Array.from({ length: 10 }, (_, index) => {
+      if (index === 0 && currentAccount) {
+        return {
+          rank: 1,
+          player: currentAccount.displayName,
+          xp: Math.round(currentProgression.xp),
+          level: currentProgression.level,
+          profile: currentAccount,
+          detail: 'Live local progression preview',
+        };
+      }
+      return {
+        rank: index + 1,
+        player: `Player ${index + 1}`,
+        xp: 5000 - (index * 375),
+        level: Math.max(1, 12 - index),
+        profile: null,
+        detail: 'Ready for backend hookup',
+      };
+    });
+
+    leaderboardCard.innerHTML = `
+      <div class="leaderboard-header">
+        <div>
+          <p class="panel-label">Progression leaderboard</p>
+          <h3>Most XP</h3>
+          <p>This board is staged and UI-ready. It will rank accounts by total XP once the shared backend feed is connected.</p>
+        </div>
+        <div>
+          <span class="tag warn">Prepared now</span>
+        </div>
+      </div>
+      <p class="leaderboard-summary">Showing the planned top 10 layout with rank, XP, and level.</p>
+      <div class="table-wrap">
+        <table class="leaderboard-table">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Player</th>
+              <th>Total XP</th>
+              <th>Level</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map((row) => `
+              <tr>
+                <td class="rank">#${row.rank}</td>
+                <td>${formatPlayerIdentityMarkup(row.player, { record: row.profile || findProfileByDisplayName(row.player), compact: true })}</td>
+                <td>${row.xp.toLocaleString()}</td>
+                <td>Level ${row.level}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+    return;
+  }
+
   if (uiState.activeLeaderboardRange === 'donation') {
     leaderboardCard.innerHTML = `
       <div class="leaderboard-header">
@@ -2930,7 +3158,7 @@ function renderLeaderboard() {
                   (row) => `
                     <tr>
                       <td class="rank">#${row.rank}</td>
-                      <td>${row.player}</td>
+                      <td>${formatPlayerIdentityMarkup(row.player, { record: findProfileByDisplayName(row.player), compact: true })}</td>
                       <td>${row.value}</td>
                       <td>${row.detail}</td>
                     </tr>
@@ -2942,7 +3170,7 @@ function renderLeaderboard() {
         </div>
       </div>
       <div class="leaderboard-player-footer">
-        <strong>Your Scores:</strong> ${currentName}
+        <strong>Your Scores:</strong> ${formatPlayerIdentityMarkup(currentName, { record: currentAccount, compact: true })}
         <span>${game.id === 'cookie-clicker' ? 'Cookies Clicked' : 'Score'}: ${currentAccount ? (game.currentPlayer?.value || 'n/a') : 'Login required'}</span>
         ${currentAccount && game.currentPlayer?.secondaryValue != null ? `<span>CPC: ${game.currentPlayer.secondaryValue}</span>` : ''}
         <span>Position: ${currentAccount ? `#${game.currentPlayer?.rank || 'n/a'}` : 'Login required'}</span>
@@ -2967,6 +3195,8 @@ function updateLeaderboardAbout() {
     leaderboardAbout.textContent = 'Daily view highlights each game\'s strongest runs from the current day.';
   } else if (uiState.activeLeaderboardRange === 'all-time') {
     leaderboardAbout.textContent = 'All-time view keeps persistent records for long-term competition.';
+  } else if (uiState.activeLeaderboardRange === 'most-xp') {
+    leaderboardAbout.textContent = 'Most XP is staged for the progression system and will rank total experience with levels shown beside each name.';
   } else if (uiState.activeLeaderboardRange === 'your-stats') {
     const account = getCurrentAccount();
     if (!account) {
@@ -2985,7 +3215,12 @@ function refreshGameViews() {
   renderGames();
   const filteredGames = getFilteredGames();
   const eligibleGames = games.filter((game) => game.leaderboardEligible && Array.isArray(game.leaderboardTop100) && game.leaderboardTop100.length > 0);
-  
+
+  if (uiState.activeLeaderboardRange === 'most-xp') {
+    renderLeaderboard();
+    return;
+  }
+
   if (eligibleGames.length === 0 || !uiState.activeGameId) {
     if (eligibleGames.length > 0) {
       uiState.activeGameId = eligibleGames[0].id;
@@ -3044,6 +3279,7 @@ function init() {
       syncLegacyAuthState();
       exposePlayrAuth();
       renderAuthUi();
+      renderSettingsProgression(getCurrentAccount());
       refreshGameViews();
       updateLeaderboardAbout();
     });
@@ -3054,6 +3290,7 @@ function init() {
   renderStats();
   renderPublishingPreview();
   renderAuthUi();
+  renderSettingsProgression(getCurrentAccount());
   syncControlStates();
   syncFeaturedGameToActiveTab();
   refreshGameViews();
@@ -3262,10 +3499,12 @@ function init() {
       || event.key === 'playr.lb.draw-a-perfect-circle'
       || event.key === 'playr.minesweeper.bestTimes.v1'
       || event.key === 'playr.snake.bestScores.v2'
-      || event.key === 'playr-simon-says-board-v1') {
+      || event.key === 'playr-simon-says-board-v1'
+      || event.key === AUTH_STORAGE_KEYS.profiles) {
       hydrateLeaderboardGames();
       applyPersistedAdminOverrides();
       refreshGameViews();
+      renderSettingsProgression(getCurrentAccount());
     }
   });
 
@@ -3360,6 +3599,43 @@ function init() {
       setSettingsPasswordVisibility(Boolean(settingsShowPasswordsToggle.checked));
     });
   }
+
+  if (settingsReferralCopyBtn) {
+    settingsReferralCopyBtn.addEventListener('click', async () => {
+      const link = String(settingsReferralLink?.value || '').trim();
+      if (!link) {
+        setSettingsStatus('Referral link is not ready yet.', 'danger');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(link);
+        setSettingsStatus('Referral link copied.', 'success');
+      } catch {
+        setSettingsStatus('Could not copy the referral link. Try again.', 'danger');
+      }
+    });
+  }
+
+  if (ownerXpAddBtn) {
+    ownerXpAddBtn.addEventListener('click', () => {
+      updateOwnerXpFromSettings('add');
+    });
+  }
+
+  if (ownerXpRemoveBtn) {
+    ownerXpRemoveBtn.addEventListener('click', () => {
+      updateOwnerXpFromSettings('remove');
+    });
+  }
+
+  window.addEventListener('playr-progression-changed', () => {
+    if (!settingsOverlay?.hidden) {
+      renderSettingsProgression(getCurrentAccount());
+    }
+    if (uiState.activeLeaderboardRange === 'most-xp') {
+      renderLeaderboard();
+    }
+  });
 
   if (adminInjectScoreBtn) {
     adminInjectScoreBtn.addEventListener('click', () => {
