@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-24-home-url-and-updates-nav-fix',
+      title: 'Homepage URL and updates header refined',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-24T18:20:00-04:00',
+      summary: 'The homepage now stays on the clean root URL, the updates-page header pills match the shared style better, and the raw log link opens in a new tab.',
+      details: [
+        'The main brand link now returns to / without appending #home.',
+        'Updates-page header buttons now keep the same chip styling as the rest of the site header.',
+        'The raw changelog link now opens in a separate tab instead of replacing the updates page.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-24-clean-urls',
       title: 'Cleaner page URLs are live',
       category: 'update',
