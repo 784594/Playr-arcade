@@ -3,70 +3,159 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Battleship module scaffold for PlayR." />
-  <title>Battleship | PlayR</title>
+  <meta name="description" content="Battleship - Neon Fleet is a live 2-player Firebase battleship duel with room codes, ship placement, and timed turns." />
+  <title>Battleship - Neon Fleet | PlayR</title>
   <link rel="stylesheet" href="../../shared/game-shell.css" />
   <link rel="stylesheet" href="game.css" />
   <script src="/shared/ads.js"></script>
   <script defer src="/shared/site-footer.js"></script>
-  <script defer src="../../shared/game-shell.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
   <script defer src="game.js"></script>
 </head>
 <body>
-  <div class="page" id="gameRoot" data-game-title="Battleship" data-metric="elo_rating" data-direction="desc" data-scope="global">
+  <div class="page" id="gameRoot" data-game-title="Battleship - Neon Fleet" data-metric="none" data-direction="desc" data-scope="global">
     <div class="top">
       <a class="back-link" href="/">Back to hub</a>
       <div class="board-meta">
         <span class="tag">Type: two-player</span>
-        <span class="tag">Controls: Mouse</span>
+        <span class="tag">Room code: bnf-xxxx</span>
+        <span class="tag">Turn timer: 20s</span>
       </div>
     </div>
 
     <header class="header">
-      <p class="tag">PlayR Game Module</p>
-      <h1>Battleship</h1>
+      <p class="tag">PlayR Multiplayer Fleet Command</p>
+      <h1>Battleship - Neon Fleet</h1>
       <div class="meta">
-        <span class="tag">Leaderboard scope: global</span>
-        <span class="tag">Metric: elo_rating</span>
-        <span class="tag">Direction: desc</span>
+        <span class="tag">10x10 hidden grid</span>
+        <span class="tag">Placement + battle phases</span>
+        <span class="tag">Classic rules with neon UI</span>
       </div>
-      <p id="gameStatus">Loading scaffold...</p>
+      <p id="gameStatus">Connecting...</p>
     </header>
 
-    <section class="main-grid">
-      <aside class="panel">
-        <h2>Build Checklist</h2>
-        <ul>
-          <li>Implement game state and rule engine.</li>
-          <li>Add full UI flow for inputs and rounds.</li>
-          <li>Wire score submit + fetch for global rankings.</li>
-          <li>Add anti-cheat validations for submissions.</li>
-        </ul>
-      </aside>
+    <section class="neon-fleet-layout">
+      <article class="play-area fleet-surface">
+        <section id="roomGate" class="room-gate">
+          <h2>Create or Join a Room</h2>
+          <p>Launch a private Battleship - Neon Fleet duel with a friend.</p>
 
-      <article class="play-area">
-        <h2>Game Surface</h2>
+          <div id="gateChoice" class="gate-choice">
+            <button id="createRoomBtn" class="action-btn" type="button">Create a Room</button>
+            <button id="showJoinBtn" class="action-btn" type="button">Join a Room</button>
+          </div>
+
+          <div id="joinFlow" class="gate-flow" hidden>
+            <div class="gate-row grow">
+              <input id="roomIdInput" class="room-input" type="text" maxlength="24" placeholder="Enter room code" autocomplete="off" />
+              <button id="joinRoomBtn" class="action-btn" type="button">Join</button>
+            </div>
+            <p id="roomGateError" class="gate-error" hidden></p>
+            <button id="backToChoiceBtn" class="action-btn secondary" type="button">Back</button>
+          </div>
+        </section>
+
+        <section id="battleHud" class="battle-hud" hidden>
+          <div class="hud-card room-summary">
+            <div class="hud-heading">
+              <div>
+                <p class="kicker">Room</p>
+                <h2 id="roomCodeLabel">bnf-----</h2>
+              </div>
+              <div class="summary-actions">
+                <button id="copyRoomCodeBtn" class="action-btn secondary" type="button">Copy Code</button>
+                <button id="copyInviteBtn" class="action-btn secondary" type="button">Copy Invite Link</button>
+              </div>
+            </div>
+            <div class="summary-grid">
+              <div class="summary-pill">
+                <span class="summary-label">Phase</span>
+                <strong id="phaseLabel">Lobby</strong>
+              </div>
+              <div class="summary-pill">
+                <span class="summary-label">Turn</span>
+                <strong id="turnLabel">Waiting</strong>
+              </div>
+              <div class="summary-pill timer-pill">
+                <span class="summary-label">Timer</span>
+                <strong id="timerLabel">--</strong>
+              </div>
+              <div class="summary-pill">
+                <span class="summary-label">Selected</span>
+                <strong id="selectionLabel">None</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="hud-card player-status-card">
+            <h3>Captains</h3>
+            <div id="playerStatusList" class="player-status-list"></div>
+          </div>
+
+          <div class="hud-card fleet-controls-card">
+            <div class="control-header">
+              <div>
+                <p class="kicker">Command Deck</p>
+                <h3 id="controlTitle">Prepare your fleet</h3>
+              </div>
+              <button id="rotateShipBtn" class="action-btn secondary" type="button">Rotate: Horizontal</button>
+            </div>
+
+            <div id="fleetShipList" class="fleet-ship-list"></div>
+
+            <div class="control-actions">
+              <button id="randomizeFleetBtn" class="action-btn secondary" type="button">Randomize Fleet</button>
+              <button id="clearFleetBtn" class="action-btn secondary" type="button">Clear Fleet</button>
+              <button id="lockFleetBtn" class="action-btn" type="button">Lock Fleet</button>
+            </div>
+
+            <div class="control-actions battle-actions">
+              <button id="radarBtn" class="action-btn secondary" type="button">Radar Ping</button>
+              <button id="confirmAttackBtn" class="action-btn" type="button">Confirm Attack</button>
+            </div>
+
+            <p id="controlHint" class="hint">Place all five ships on your board, then lock in your fleet.</p>
+          </div>
+        </section>
+
+        <section id="battleStage" class="battle-stage" hidden>
+          <article class="board-card own-board-card">
+            <div class="board-card-header">
+              <div>
+                <p class="kicker">Own Board</p>
+                <h2>Your Fleet</h2>
+              </div>
+              <span id="fleetHealthLabel" class="board-chip">Fleet intact</span>
+            </div>
+            <div id="ownBoard" class="board-shell" aria-label="Your board"></div>
+          </article>
+
+          <article class="board-card enemy-board-card">
+            <div class="board-card-header">
+              <div>
+                <p class="kicker">Enemy Tracking</p>
+                <h2>Fog of War</h2>
+              </div>
+              <span id="enemyBoardHint" class="board-chip">Pick a coordinate</span>
+            </div>
+            <div id="enemyBoard" class="board-shell" aria-label="Enemy board"></div>
+          </article>
+        </section>
+
+        <section id="eventPanel" class="event-panel" hidden>
+          <div class="event-panel-header">
+            <div>
+              <p class="kicker">Combat Feed</p>
+              <h3>Recent events</h3>
+            </div>
+            <p id="resultBanner" class="result-banner">Waiting for room activity.</p>
+          </div>
+          <div id="eventLog" class="event-log"></div>
+        </section>
       </article>
-    </section>
-
-    <section class="leaderboard" style="margin-top: 14px;">
-      <h2>Leaderboard Preview</h2>
-      <table class="table" aria-label="Battleship leaderboard preview">
-        <thead>
-          <tr>
-            <th>Rank</th>
-            <th>Player</th>
-            <th>elo_rating</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td>#1</td><td>AtlasOne</td><td>--</td></tr>
-          <tr><td>#2</td><td>ArcRunner</td><td>--</td></tr>
-          <tr><td>#3</td><td>NeonFox</td><td>--</td></tr>
-        </tbody>
-      </table>
     </section>
   </div>
 </body>
 </html>
-

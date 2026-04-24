@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-24-battleship-neon-fleet',
+      title: 'Battleship - Neon Fleet is live',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-24T23:10:00-04:00',
+      summary: 'Battleship now has a full Firebase room flow with timed turns, fleet placement, and a neon two-board command deck instead of the older scaffold page.',
+      details: [
+        'Players can create or join private Battleship rooms with bnf- codes and place fleets before battle begins.',
+        'Matches now use live turn switching, timeout handling, combat logs, and a fog-of-war enemy tracking board.',
+        'Firestore rules now cover the new Battleship room collection with the same authenticated room protections used by the other multiplayer games.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-24-infinite-craft-room-creation-bug',
       title: 'Infinite Craft Rooms Creation Bug Patched',
       category: 'update',

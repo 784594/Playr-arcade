@@ -61,6 +61,11 @@ service cloud.firestore {
         && roomId.matches('^inf-.+$');
     }
 
+    function validBattleshipRoomId(roomId) {
+      return roomId is string
+        && roomId.matches('^bnf-.+$');
+    }
+
     // Public read so login-by-display-name and suggestions work.
     // Write limited to the account owner.
     match /displayNames/{normalized} {
@@ -110,6 +115,31 @@ service cloud.firestore {
 
       match /messages/{messageId} {
         allow read, write: if signedIn() && validCraftRoomId(roomId);
+      }
+    }
+
+    // Battleship - Neon Fleet rooms.
+    match /battleshipRooms/{roomId} {
+      allow read, write: if signedIn() && validBattleshipRoomId(roomId);
+
+      match /players/{uid} {
+        allow read, write: if signedIn() && validBattleshipRoomId(roomId);
+      }
+
+      match /boards/{uid} {
+        allow read, write: if signedIn() && validBattleshipRoomId(roomId);
+      }
+
+      match /moves/{moveId} {
+        allow read, write: if signedIn() && validBattleshipRoomId(roomId);
+      }
+
+      match /presence/{uid} {
+        allow read, write: if signedIn() && validBattleshipRoomId(roomId);
+      }
+
+      match /messages/{messageId} {
+        allow read, write: if signedIn() && validBattleshipRoomId(roomId);
       }
     }
   }
