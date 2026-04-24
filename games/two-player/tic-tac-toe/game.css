@@ -299,6 +299,10 @@
 }
 
 .chat-author {
+	display: inline-flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 6px;
 	font-weight: 700;
 	margin-right: 8px;
 }

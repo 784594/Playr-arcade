@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-24-tic-tac-toe-ui-improvement',
+      title: 'Tic Tac Toe UI Improvement',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-24T20:55:00-04:00',
+      summary: 'Tic-Tac-Toe chat author rows now line up more cleanly, especially when extra inline UI elements appear beside player names.',
+      details: [
+        'Chat author labels now use a tighter inline-flex layout.',
+        'Name rows align more cleanly when badges or other inline markers are present.',
+        'Wrapped author rows keep a more consistent visual rhythm.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-24-minor-bug-fixes',
       title: 'Minor bug fixes',
       category: 'update',
