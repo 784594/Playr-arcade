@@ -4,17 +4,18 @@ Generated from origin/main on 2026-04-23 21:14:00 -04:00.
 
 ## Latest Commits
 
-- `4fa7e9b` | 2026-04-23T21:10:47-04:00 | **784594** | Fix arcade UI issues and wire Pac-Man maze update
-- `3f3f4bd` | 2026-04-20T22:13:39-04:00 | **784594** | Create CNAME
-- `b121416` | 2026-04-20T21:57:15-04:00 | **784594** | Delete CNAME
-- `ceb1437` | 2026-04-20T21:57:04-04:00 | **784594** | Update CNAME
-- `1ff581f` | 2026-04-20T21:55:27-04:00 | **784594** | Create CNAME
+- `4fa7e9b` | 2026-04-23T21:10:47-04:00 | **Playr** | Fix arcade UI issues and wire Pac-Man maze update
+- `3f3f4bd` | 2026-04-20T22:13:39-04:00 | **Playr** | Create CNAME
+- `b121416` | 2026-04-20T21:57:15-04:00 | **Playr** | Delete CNAME
+- `ceb1437` | 2026-04-20T21:57:04-04:00 | **Playr** | Update CNAME
+- `1ff581f` | 2026-04-20T21:55:27-04:00 | **Playr** | Create CNAME
 - `caeabc3` | 2026-04-20T21:52:19-04:00 | **Playr** | Upload Playr project without oversized dataset files
 
 ## Notes
 - Keep this file for quick human-readable history.
 - Use `commit-history.csv` for full commit metadata.
 - Use `file-last-change.csv` to see latest change date per file.
+- 2026-04-24: Minor bug fixes. Re-enabled real overscroll where supported while keeping the PlayR gradient visible behind it, and tuned the homepage Easter egg so it waits for an extra upward pull after the page is already settled at the top instead of firing as soon as users simply reach the top of the page. Files: `styles.css`, `games/shared/game-shell.css`, `games/index.html`, `app.js`, `shared/site-notices.js`, `updates/logs.md`.
 - 2026-04-24: Reworked the root background layers so overscroll no longer flashes white. The main site stylesheet, shared game shell, and game index now all paint their gradients from fixed viewport-backed pseudo-elements and lock down overscroll behavior more aggressively, so pulling too far up, down, left, or right keeps the PlayR gradient visible instead of revealing a white browser canvas. Files: `styles.css`, `games/shared/game-shell.css`, `games/index.html`, `shared/site-notices.js`, `updates/logs.md`.
 - 2026-04-24: Rebuilt the XP progression system around the new fixed level table and session-based earning rules. Active gameplay now ticks every 5 seconds at a 60 XP/min base rate, session multipliers now scale by session length, Top 100 leaderboard bonuses apply at session end, referral rewards now follow the new one-time tier plan, and the old steep generated level curve plus room/daily XP bonuses were removed. Also added a soft anti-AFK system with staged multipliers, a cooldown-based warning modal, local inbox/moderation copies for Stage 3 pauses, and persistent leaderboard restriction support for repeated Stage 4 behavior. Files: `shared/ads.js`, `app.js`, `index.html`, `shared/site-notices.js`, `updates/logs.md`.
 - 2026-04-24: Fixed overscroll flashbang and added an easter egg 👀. The root background now matches the site gradient so top/bottom overscroll no longer flashes white, and the homepage now has a subtle top-only pull Easter egg with randomized messages, fade timing, cooldown, and cleanup. Files: `styles.css`, `index.html`, `app.js`, `shared/site-notices.js`, `updates/logs.md`.

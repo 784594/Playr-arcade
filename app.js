@@ -183,6 +183,9 @@ const OVERSCROLL_EASTER_EGG_TOP_THRESHOLD = 2;
 const OVERSCROLL_EASTER_EGG_COOLDOWN_MS = 7000;
 const OVERSCROLL_EASTER_EGG_DELAY_MS = 180;
 const OVERSCROLL_EASTER_EGG_VISIBLE_MS = 1800;
+const OVERSCROLL_EASTER_EGG_TOP_SETTLE_MS = 140;
+const OVERSCROLL_EASTER_EGG_WHEEL_PULL_THRESHOLD = 70;
+const OVERSCROLL_EASTER_EGG_TOUCH_PULL_THRESHOLD = 54;
 
 // Admin rights are bound to explicit trusted UIDs, never to display names.
 const OWNER_ADMIN_UIDS = new Set([]);
@@ -1355,6 +1358,9 @@ function initOverscrollEasterEgg() {
   let showDelayTimer = 0;
   let hideTimer = 0;
   let visible = false;
+  let topReachedAt = Date.now();
+  let wheelPullDistance = 0;
+  let touchPullDistance = 0;
 
   function clearTimers() {
     window.clearTimeout(showDelayTimer);
@@ -1375,6 +1381,11 @@ function initOverscrollEasterEgg() {
 
   function isAtTop() {
     return (window.scrollY || window.pageYOffset || 0) <= OVERSCROLL_EASTER_EGG_TOP_THRESHOLD;
+  }
+
+  function resetOverscrollAttempt() {
+    wheelPullDistance = 0;
+    touchPullDistance = 0;
   }
 
   function canTrigger() {
@@ -1414,11 +1425,23 @@ function initOverscrollEasterEgg() {
     if (!isAtTop() || uiState.scrollDirection !== 'up') {
       return;
     }
+    if ((Date.now() - topReachedAt) < OVERSCROLL_EASTER_EGG_TOP_SETTLE_MS) {
+      return;
+    }
     scheduleToast();
   }
 
   function handleScroll() {
+    const previousY = uiState.lastScrollY;
     updateScrollDirection();
+    if (isAtTop()) {
+      if (previousY > OVERSCROLL_EASTER_EGG_TOP_THRESHOLD) {
+        topReachedAt = Date.now();
+        resetOverscrollAttempt();
+      }
+    } else {
+      resetOverscrollAttempt();
+    }
     if (!isAtTop() && visible) {
       hideToast();
     }
@@ -1429,9 +1452,17 @@ function initOverscrollEasterEgg() {
       return;
     }
     if (event.deltaY < 0) {
-      maybeTriggerFromOverscroll('up');
+      if (!isAtTop()) {
+        return;
+      }
+      wheelPullDistance += Math.abs(event.deltaY);
+      if (wheelPullDistance >= OVERSCROLL_EASTER_EGG_WHEEL_PULL_THRESHOLD) {
+        wheelPullDistance = 0;
+        maybeTriggerFromOverscroll('up');
+      }
     } else if (event.deltaY > 0) {
       uiState.scrollDirection = 'down';
+      wheelPullDistance = 0;
     }
   }
 
@@ -1452,9 +1483,18 @@ function initOverscrollEasterEgg() {
       return;
     }
     if (deltaY > 14) {
-      maybeTriggerFromOverscroll('up');
+      if (!isAtTop()) {
+        touchPullDistance = 0;
+        return;
+      }
+      touchPullDistance = Math.max(0, deltaY);
+      if (touchPullDistance >= OVERSCROLL_EASTER_EGG_TOUCH_PULL_THRESHOLD) {
+        touchPullDistance = 0;
+        maybeTriggerFromOverscroll('up');
+      }
     } else if (deltaY < -14) {
       uiState.scrollDirection = 'down';
+      touchPullDistance = 0;
     }
   }
 

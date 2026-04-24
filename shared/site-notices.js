@@ -1,17 +1,17 @@
 (function () {
   window.PlayrSiteNotices = [
     {
-      id: 'site-notice-2026-04-24-overscroll-root-fix',
-      title: 'Overscroll background fixed site-wide',
+      id: 'site-notice-2026-04-24-minor-bug-fixes',
+      title: 'Minor bug fixes',
       category: 'update',
       audience: 'public',
       severity: 'info',
-      publishedAt: '2026-04-24T20:30:00-04:00',
-      summary: 'Root backgrounds now stay on the PlayR gradient across the site, including when pages are pulled past their scroll limits.',
+      publishedAt: '2026-04-24T20:40:00-04:00',
+      summary: 'Overscroll behavior and the homepage Easter egg were tuned so the gradient stays visible while the hidden message feels more tied to the extra pull gesture.',
       details: [
-        'Homepage and info pages now use a fixed viewport gradient layer behind the document instead of relying on body paint alone.',
-        'Game pages and the game index now use the same root-layer approach so top, bottom, and sideways overscroll stay on-theme.',
-        'Horizontal overscroll is also suppressed more aggressively to prevent white edge flashes.',
+        'Root backgrounds still stay on the PlayR gradient during overscroll across the main site and game pages.',
+        'Real overscroll is allowed again where the browser supports it instead of being fully suppressed.',
+        'The homepage Easter egg now waits for an extra pull while already resting at the top, so it feels more like an overscroll secret than a normal site banner.',
       ],
     },
     {

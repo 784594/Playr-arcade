@@ -31,7 +31,6 @@ html {
   scroll-behavior: smooth;
   min-height: 100%;
   background: #07101f;
-  overscroll-behavior: none;
 }
 
 body {
@@ -43,7 +42,6 @@ body {
   font-family: "Gill Sans", "Trebuchet MS", "Segoe UI", sans-serif;
   min-height: 100vh;
   overflow-x: hidden;
-  overscroll-behavior: none;
 }
 
 body::before {
