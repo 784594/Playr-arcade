@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-24-overscroll-root-fix',
+      title: 'Overscroll background fixed site-wide',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-24T20:30:00-04:00',
+      summary: 'Root backgrounds now stay on the PlayR gradient across the site, including when pages are pulled past their scroll limits.',
+      details: [
+        'Homepage and info pages now use a fixed viewport gradient layer behind the document instead of relying on body paint alone.',
+        'Game pages and the game index now use the same root-layer approach so top, bottom, and sideways overscroll stay on-theme.',
+        'Horizontal overscroll is also suppressed more aggressively to prevent white edge flashes.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-24-xp-system-overhaul',
       title: 'XP progression has been rebalanced',
       category: 'update',

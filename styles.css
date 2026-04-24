@@ -29,23 +29,38 @@
 
 html {
   scroll-behavior: smooth;
-  background: var(--app-background);
+  min-height: 100%;
+  background: #07101f;
+  overscroll-behavior: none;
 }
 
 body {
+  position: relative;
+  isolation: isolate;
   margin: 0;
   color: var(--text);
-  background: var(--app-background);
-  background-attachment: fixed;
+  background: transparent;
   font-family: "Gill Sans", "Trebuchet MS", "Segoe UI", sans-serif;
   min-height: 100vh;
+  overflow-x: hidden;
+  overscroll-behavior: none;
 }
 
 body::before {
   content: "";
   position: fixed;
+  inset: -18vh -18vw;
+  pointer-events: none;
+  z-index: -2;
+  background: var(--app-background);
+}
+
+body::after {
+  content: "";
+  position: fixed;
   inset: 0;
   pointer-events: none;
+  z-index: -1;
   background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
   background-size: 72px 72px;
