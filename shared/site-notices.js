@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-25-favicon-update',
+      title: 'Favicon Update',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-25T16:55:00-04:00',
+      summary: 'PlayR pages now use the arcade logo as the browser tab icon instead of the default globe fallback.',
+      details: [
+        'The site now applies the PlayR Arcade logo as a shared favicon across pages.',
+        'This keeps the browser tab icon aligned with the main brand instead of relying on the browser default.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-25-multiple-game-ui-updates-and-bug-fixes',
       title: 'Multiple Game UI Updates & Bug fixes',
       category: 'update',

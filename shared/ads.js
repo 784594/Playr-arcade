@@ -1,6 +1,7 @@
 (function () {
   const ADSENSE_SCRIPT_ID = 'playr-adsense-loader';
   const ADSENSE_SRC = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5070133200721707';
+  const PLAYR_FAVICON_PATH = '/images/background-removed-background-removed.png';
   const PROFILE_STORAGE_KEY = 'playrProfiles';
   const LEGACY_USER_STORAGE_KEY = 'playrCurrentUser';
   const PENDING_REFERRAL_STORAGE_KEY = 'playrPendingReferralCode';
@@ -77,6 +78,23 @@
   function normalizeName(value) {
     return String(value || '').trim();
   }
+
+  function ensurePlayrFavicon() {
+    if (typeof document === 'undefined' || !document.head) return;
+    const rels = ['icon', 'shortcut icon', 'apple-touch-icon'];
+    rels.forEach((relValue) => {
+      let link = document.head.querySelector(`link[rel="${relValue}"]`);
+      if (!link) {
+        link = document.createElement('link');
+        link.setAttribute('rel', relValue);
+        document.head.appendChild(link);
+      }
+      link.setAttribute('href', PLAYR_FAVICON_PATH);
+      link.setAttribute('type', 'image/png');
+    });
+  }
+
+  ensurePlayrFavicon();
 
   function escapeHtml(value) {
     return String(value || '')
