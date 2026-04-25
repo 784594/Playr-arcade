@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-25-multiple-game-ui-updates-and-bug-fixes',
+      title: 'Multiple Game UI Updates & Bug fixes',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-25T16:30:00-04:00',
+      summary: 'Battleship and Infinite Craft multiplayer now follow the site room-flow pattern more closely, with cleaner lobby transitions and consistent room-code behavior.',
+      details: [
+        'Battleship now opens on a centered lobby gate over blank boards, then switches into the full room UI only after a room is created or joined.',
+        'The Battleship room summary now sits along the left side with the command deck below it, and the older combat feed panel has been removed.',
+        'Infinite Craft multiplayer now auto-hides its room panel after joining and uses inf- room codes to match the current shared multiplayer naming pattern.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-24-battleship-neon-fleet',
       title: 'Battleship - Neon Fleet is live',
       category: 'update',

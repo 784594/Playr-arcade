@@ -3,6 +3,7 @@
 }
 
 .fleet-surface {
+  position: relative;
   display: grid;
   gap: 16px;
   min-height: min(84vh, 1120px);
@@ -12,8 +13,7 @@
 }
 
 .room-gate,
-.battle-hud,
-.event-panel {
+.battle-hud {
   border: 1px solid rgba(132, 184, 255, 0.18);
   border-radius: 20px;
   background: rgba(12, 20, 37, 0.84);
@@ -21,12 +21,16 @@
 }
 
 .room-gate {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   width: min(100%, 620px);
-  justify-self: center;
   padding: 24px;
   display: grid;
   gap: 14px;
   text-align: center;
+  z-index: 3;
 }
 
 .room-gate h2,
@@ -82,7 +86,10 @@
 .battle-hud {
   padding: 18px;
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr) minmax(320px, 1fr);
+  grid-template-columns: minmax(300px, 0.95fr) minmax(0, 1fr);
+  grid-template-areas:
+    "summary status"
+    "controls status";
   gap: 14px;
 }
 
@@ -94,6 +101,18 @@
     linear-gradient(180deg, rgba(17, 29, 55, 0.92), rgba(8, 16, 31, 0.92)),
     radial-gradient(circle at top right, rgba(111, 239, 255, 0.1), transparent 40%);
   min-width: 0;
+}
+
+.room-summary {
+  grid-area: summary;
+}
+
+.player-status-card {
+  grid-area: status;
+}
+
+.fleet-controls-card {
+  grid-area: controls;
 }
 
 .hud-heading,
@@ -122,6 +141,16 @@
   gap: 10px;
 }
 
+.room-status-banner {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(6, 11, 22, 0.35);
+  color: #dff8ff;
+  line-height: 1.55;
+}
+
 .summary-pill {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
@@ -142,8 +171,7 @@
 }
 
 .player-status-list,
-.fleet-ship-list,
-.event-log {
+.fleet-ship-list {
   display: grid;
   gap: 10px;
 }
@@ -250,6 +278,27 @@
   gap: 16px;
 }
 
+.fleet-surface.is-lobby-view {
+  align-content: stretch;
+}
+
+.fleet-surface.is-lobby-view .battle-stage {
+  min-height: min(72vh, 860px);
+  align-items: stretch;
+}
+
+.fleet-surface.is-lobby-view .board-card {
+  min-height: min(72vh, 860px);
+}
+
+.fleet-surface.is-lobby-view .board-shell {
+  min-height: 100%;
+}
+
+.fleet-surface.is-lobby-view .grid-wrap {
+  height: 100%;
+}
+
 .board-card {
   border: 1px solid rgba(132, 184, 255, 0.18);
   border-radius: 22px;
@@ -274,6 +323,7 @@
 
 .board-shell {
   min-height: 0;
+  height: 100%;
 }
 
 .grid-wrap {
@@ -363,41 +413,6 @@
   line-height: 1;
 }
 
-.event-panel {
-  padding: 16px 18px;
-  display: grid;
-  gap: 14px;
-}
-
-.result-banner {
-  margin: 0;
-  color: #dff8ff;
-  text-align: right;
-  max-width: 340px;
-}
-
-.event-log {
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-}
-
-.event-entry {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 12px 14px;
-  background: rgba(6, 11, 22, 0.34);
-}
-
-.event-entry strong,
-.event-entry span {
-  display: block;
-}
-
-.event-entry span {
-  color: var(--muted);
-  margin-top: 6px;
-  line-height: 1.55;
-}
-
 .room-input,
 .action-btn {
   min-height: 46px;
@@ -467,6 +482,10 @@
 @media (max-width: 1180px) {
   .battle-hud {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "summary"
+      "status"
+      "controls";
   }
 
   .battle-stage {
@@ -477,8 +496,7 @@
 @media (max-width: 760px) {
   .room-gate,
   .battle-hud,
-  .board-card,
-  .event-panel {
+  .board-card {
     padding: 14px;
     border-radius: 18px;
   }

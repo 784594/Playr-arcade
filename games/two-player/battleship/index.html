@@ -37,7 +37,7 @@
     </header>
 
     <section class="neon-fleet-layout">
-      <article class="play-area fleet-surface">
+      <article id="fleetSurface" class="play-area fleet-surface">
         <section id="roomGate" class="room-gate">
           <h2>Create or Join a Room</h2>
           <p>Launch a private Battleship - Neon Fleet duel with a friend.</p>
@@ -87,6 +87,7 @@
                 <strong id="selectionLabel">None</strong>
               </div>
             </div>
+            <p id="resultBanner" class="room-status-banner">Waiting for room activity.</p>
           </div>
 
           <div class="hud-card player-status-card">
@@ -144,16 +145,6 @@
           </article>
         </section>
 
-        <section id="eventPanel" class="event-panel" hidden>
-          <div class="event-panel-header">
-            <div>
-              <p class="kicker">Combat Feed</p>
-              <h3>Recent events</h3>
-            </div>
-            <p id="resultBanner" class="result-banner">Waiting for room activity.</p>
-          </div>
-          <div id="eventLog" class="event-log"></div>
-        </section>
       </article>
     </section>
   </div>

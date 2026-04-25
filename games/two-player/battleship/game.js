@@ -52,6 +52,7 @@
 
   const els = {
     gameStatus: document.getElementById('gameStatus'),
+    fleetSurface: document.getElementById('fleetSurface'),
     roomGate: document.getElementById('roomGate'),
     gateChoice: document.getElementById('gateChoice'),
     joinFlow: document.getElementById('joinFlow'),
@@ -546,6 +547,32 @@
     `).join('');
   }
 
+  function buildLobbyBoardMarkup() {
+    let markup = '<div class="grid-wrap">';
+    markup += '<span class="axis-cell" aria-hidden="true"></span>';
+    for (let col = 0; col < GRID_SIZE; col += 1) {
+      markup += `<span class="axis-cell" aria-hidden="true">${col + 1}</span>`;
+    }
+    for (let row = 0; row < GRID_SIZE; row += 1) {
+      markup += `<span class="axis-cell" aria-hidden="true">${ROW_LABELS[row]}</span>`;
+      for (let col = 0; col < GRID_SIZE; col += 1) {
+        const index = indexFromCell(row, col);
+        markup += `
+          <button
+            class="board-cell"
+            type="button"
+            data-board-type="lobby"
+            data-cell-index="${index}"
+            disabled
+            aria-label="Lobby board ${coordFromIndex(index)}"
+          ><span class="cell-mark"></span></button>
+        `;
+      }
+    }
+    markup += '</div>';
+    return markup;
+  }
+
   function renderBoards(room) {
     if (els.ownBoard) {
       els.ownBoard.innerHTML = buildBoardMarkup('own', room);
@@ -558,14 +585,22 @@
   function renderAll() {
     const room = state.roomData;
     const signedIn = Boolean(state.user);
-    const inRoom = Boolean(room && state.roomId);
+    const inRoom = Boolean(state.roomId);
 
     if (els.roomGate) {
       els.roomGate.hidden = inRoom;
     }
+    if (els.fleetSurface) {
+      els.fleetSurface.classList.toggle('is-lobby-view', !inRoom);
+    }
     if (els.battleHud) els.battleHud.hidden = !inRoom;
-    if (els.battleStage) els.battleStage.hidden = !inRoom;
-    if (els.eventPanel) els.eventPanel.hidden = !inRoom;
+    if (els.battleStage) els.battleStage.hidden = false;
+    if (!inRoom) {
+      if (els.ownBoard) els.ownBoard.innerHTML = buildLobbyBoardMarkup();
+      if (els.enemyBoard) els.enemyBoard.innerHTML = buildLobbyBoardMarkup();
+      if (els.fleetHealthLabel) els.fleetHealthLabel.textContent = 'Awaiting room';
+      if (els.enemyBoardHint) els.enemyBoardHint.textContent = 'Create or join a room';
+    }
     if (els.gateChoice) els.gateChoice.hidden = state.gateMode !== 'choice';
     if (els.joinFlow) els.joinFlow.hidden = state.gateMode !== 'join';
 
@@ -671,6 +706,8 @@
   async function subscribeToRoom(roomId) {
     unsubscribeRoom();
     state.roomId = roomId;
+    state.gateMode = 'choice';
+    setGateError('');
     state.roomUnsub = roomRef(roomId).onSnapshot((snap) => {
       state.roomData = snap.exists ? snap.data() : null;
       if (!snap.exists) {

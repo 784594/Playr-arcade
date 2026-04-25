@@ -344,7 +344,20 @@
 	}
 
 	function normalizeRoomCode(value) {
-		return String(value || '').trim().replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 24);
+		const normalized = String(value || '')
+			.trim()
+			.toLowerCase()
+			.replace(/[^a-z0-9-]/g, '')
+			.slice(0, 24);
+		if (!normalized) return '';
+		if (normalized.startsWith('inf-')) {
+			return normalized;
+		}
+		const compact = normalized.replace(/-/g, '');
+		if (!compact) return '';
+		const suffix = compact.startsWith('inf') ? compact.slice(3) : compact;
+		if (!suffix) return '';
+		return `inf-${suffix.slice(0, 16)}`;
 	}
 
 	function getCurrentUserInfo() {
@@ -750,6 +763,7 @@
 		}
 		if (els.roomCenterPanel) {
 			els.roomCenterPanel.classList.toggle('is-live', inLobby);
+			els.roomCenterPanel.classList.toggle('is-hidden', inLobby);
 		}
 		if (els.roomCodeChip) {
 			els.roomCodeChip.hidden = !(inLobby && isHost);
@@ -1485,7 +1499,7 @@
 		if (state.roomCreatePending) return;
 		state.roomCreatePending = true;
 		try {
-			const roomId = `INF${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+			const roomId = `inf-${Math.random().toString(36).slice(2, 7).toLowerCase()}`;
 			const participant = {
 				name: state.user.displayName || 'Owner',
 				joinedAt: Date.now(),
@@ -1523,7 +1537,7 @@
 			return false;
 		}
 		if (!roomId) {
-			showNotice('Enter a room code');
+			showNotice('Enter a room code like inf-ab12c');
 			return false;
 		}
 		if (state.roomJoinPending) return false;
