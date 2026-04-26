@@ -146,7 +146,7 @@
 
 .battle-layout {
   display: grid;
-  grid-template-columns: minmax(220px, 272px) minmax(540px, 700px) minmax(220px, 272px);
+  grid-template-columns: minmax(210px, 246px) minmax(720px, 900px) minmax(220px, 258px);
   justify-content: center;
   gap: 16px;
   align-items: stretch;
@@ -226,6 +226,30 @@
 .board-chip {
   color: #f6fbff;
   font-size: 1rem;
+}
+
+.room-summary #roomCodeLabel {
+  font-size: 1.18rem;
+}
+
+.room-summary .summary-label,
+.room-summary .kicker {
+  font-size: 0.72rem;
+}
+
+.room-summary .summary-pill strong {
+  font-size: 0.92rem;
+}
+
+.room-summary .room-status-banner {
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.room-summary .action-btn {
+  min-height: 40px;
+  padding: 0 12px;
+  font-size: 0.82rem;
 }
 
 .timer-pill strong {
@@ -377,8 +401,8 @@
 .power-card {
   position: relative;
   display: grid;
-  gap: 10px;
-  min-height: 88px;
+  gap: 8px;
+  min-height: 82px;
   overflow: visible;
 }
 
@@ -396,9 +420,16 @@
   margin: 0;
 }
 
-.power-card .tag {
-  min-width: 46px;
-  text-align: center;
+.power-card .power-count {
+  color: #dff8ff;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.power-card .power-hotkey {
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
 }
 
 .power-card::after {
@@ -442,9 +473,9 @@
 .battle-stage {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 18px;
   min-width: 0;
-  max-width: 700px;
+  max-width: 900px;
 }
 
 .fleet-surface.is-lobby-view {
@@ -744,7 +775,7 @@
 
 @media (max-width: 1380px) {
   .battle-layout {
-    grid-template-columns: minmax(220px, 280px) minmax(0, 700px);
+    grid-template-columns: minmax(210px, 270px) minmax(0, 860px);
   }
 
   .battle-sidebar-right {

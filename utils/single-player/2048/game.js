@@ -227,44 +227,57 @@
 		let changed = false;
 
 		for (let lineIndex = 0; lineIndex < size; lineIndex += 1) {
-			const lineTiles = buildLine(direction, lineIndex);
-			let slotIndex = 0;
+			let lineTiles = buildLine(direction, lineIndex).map((tile) => ({
+				...tile,
+				justMerged: false,
+				justSpawned: false,
+			}));
 
-			for (let index = 0; index < lineTiles.length; index += 1) {
-				const currentTile = lineTiles[index];
-				const nextTile = lineTiles[index + 1];
-				const target = getTargetPosition(direction, lineIndex, slotIndex);
-				const currentMoved = currentTile.row !== target.row || currentTile.column !== target.column;
+			let mergedInPass = true;
+			while (mergedInPass && lineTiles.length > 1) {
+				mergedInPass = false;
+				const nextLine = [];
 
-				if (nextTile && nextTile.value === currentTile.value) {
-					const mergedValue = currentTile.value * 2;
-					nextTiles.push({
+				for (let index = 0; index < lineTiles.length; index += 1) {
+					const currentTile = lineTiles[index];
+					const nextTile = lineTiles[index + 1];
+
+					if (nextTile && nextTile.value === currentTile.value) {
+						const mergedValue = currentTile.value * 2;
+						nextLine.push({
+							...currentTile,
+							value: mergedValue,
+							justMerged: true,
+							justSpawned: false,
+						});
+						scoreGain += mergedValue;
+						changed = true;
+						mergedInPass = true;
+						index += 1;
+						continue;
+					}
+
+					nextLine.push({
 						...currentTile,
-						value: mergedValue,
-						row: target.row,
-						column: target.column,
-						justMerged: true,
 						justSpawned: false,
 					});
-					scoreGain += mergedValue;
-					changed = true;
-					slotIndex += 1;
-					index += 1;
-					continue;
 				}
 
+				lineTiles = nextLine;
+			}
+
+			lineTiles.forEach((tile, slotIndex) => {
+				const target = getTargetPosition(direction, lineIndex, slotIndex);
+				const currentMoved = tile.row !== target.row || tile.column !== target.column;
 				nextTiles.push({
-					...currentTile,
+					...tile,
 					row: target.row,
 					column: target.column,
-					justMerged: false,
-					justSpawned: false,
 				});
 				if (currentMoved) {
 					changed = true;
 				}
-				slotIndex += 1;
-			}
+			});
 		}
 
 		return { nextTiles, scoreGain, changed };

@@ -468,6 +468,21 @@
 		};
 	}
 
+	function buildRoomElementsPayload(nodes = state.workspaceNodes) {
+		const payload = {};
+		(nodes || []).forEach((node) => {
+			const element = state.elementsById.get(String(node.elementId || ''));
+			if (!element || !element.id) return;
+			payload[element.id] = {
+				name: normalizeName(element.name || 'Element'),
+				emoji: String(element.emoji || PLACEHOLDER_EMOJI),
+				tags: Array.isArray(element.tags) ? element.tags.slice(0, 6) : [],
+				wikiId: Number.isFinite(Number(element.wikiId)) ? Number(element.wikiId) : null,
+			};
+		});
+		return payload;
+	}
+
 	function getRoomPlayerCount(room) {
 		const participants = room?.participants || {};
 		return Object.keys(participants).length;
@@ -1447,6 +1462,16 @@
 
 	function renderRoomWorkspaceFromSnapshot(room) {
 		const nodes = sanitizeWorkspaceNodes(room?.workspaceNodes || []);
+		const roomElements = room?.elements && typeof room.elements === 'object' ? room.elements : {};
+		Object.entries(roomElements).forEach(([elementId, element]) => {
+			ensureRemoteElement({
+				id: elementId,
+				name: element?.name || elementId,
+				emoji: element?.emoji || '✨',
+				tags: Array.isArray(element?.tags) ? element.tags : [],
+				wikiId: element?.wikiId,
+			});
+		});
 		state.workspaceNodes = nodes;
 		state.nextNodeId = Math.max(1, ...nodes.map((node) => Number(String(node.id).replace(/\D+/g, '')) || 0)) + 1;
 		for (const node of nodes) {
@@ -1459,6 +1484,7 @@
 		const payload = {
 			roomId: state.roomId,
 			workspaceNodes: state.workspaceNodes.map(workspaceNodeToRoomPayload),
+			elements: buildRoomElementsPayload(),
 			updatedAt: Date.now(),
 			ownerUid: state.roomData?.ownerUid || state.user.uid,
 			ownerName: state.roomData?.ownerName || state.user.displayName || 'Owner',
@@ -1474,8 +1500,8 @@
 		const payload = {
 			uid: state.user.uid,
 			name: state.user.displayName || 'Player',
-			x: Number(extra.x || state.cursorX || 0),
-			y: Number(extra.y || state.cursorY || 0),
+			x: Number(extra.x ?? state.cursorX ?? 0),
+			y: Number(extra.y ?? state.cursorY ?? 0),
 			color: extra.color || state.userColor || '#7cf0c5',
 			updatedAt: Date.now(),
 			active: true,
@@ -1516,6 +1542,7 @@
 				status: 'waiting',
 				updatedAt: Date.now(),
 				workspaceNodes: [],
+				elements: {},
 				participants: { [state.user.uid]: participant },
 				leader: state.user.uid,
 			}, { merge: true });
@@ -1571,6 +1598,7 @@
 				updatedAt: Date.now(),
 				participants: { [state.user.uid]: participant },
 				status: 'active',
+				elements: roomSnapshot?.data()?.elements || {},
 			}, { merge: true });
 			selectRoom(roomId, roomSnapshot?.data() || null);
 			watchRoom(roomId);
@@ -1744,7 +1772,10 @@
 		state.cursorY = event.clientY;
 		if (state.roomId && state.user?.uid && Date.now() - state.cursorSendAt > CURSOR_UPDATE_MS) {
 			state.cursorSendAt = Date.now();
-			void updatePresence({ x: event.clientX, y: event.clientY });
+			const point = els.workspace
+				? workspacePointFromClient(event.clientX, event.clientY)
+				: { x: event.clientX, y: event.clientY };
+			void updatePresence({ x: point.x, y: point.y });
 		}
 		if (!state.drag) return;
 		if (state.drag.type === 'inventory') {

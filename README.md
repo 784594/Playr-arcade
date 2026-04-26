@@ -110,7 +110,7 @@ Recommended fast workflow:
 1. If you already have the current `~1.0M` legacy file, build the next chunk by skipping it:
 
 ```powershell
-node scripts/fetch-infinite-craft-recipes.mjs --source icgg --mode chunk --target-new 2470353 --existing games/single-player/infinite-craft-clone/data/wiki-recipes-lite.json --output data/wiki-recipes-part-2.json --checkpoint data/wiki-recipes-part-2.checkpoint.json
+node scripts/fetch-infinite-craft-recipes.mjs --source icgg --mode chunk --target-new 2470353 --existing utils/single-player/infinite-craft-clone/data/wiki-recipes-lite.json --output data/wiki-recipes-part-2.json --checkpoint data/wiki-recipes-part-2.checkpoint.json
 ```
 
 2. If you want a fresh full rebuild from zero:
@@ -122,7 +122,7 @@ node scripts/fetch-infinite-craft-recipes.mjs --source icgg --mode full --target
 3. If you specifically want the old crawler instead of the fast chunk import:
 
 ```powershell
-node scripts/fetch-infinite-craft-recipes.mjs --source infinibrowser --mode chunk --target-new 1000000 --existing games/single-player/infinite-craft-clone/data/wiki-recipes-part-1.json --output data/wiki-recipes-part-2.json --checkpoint data/wiki-recipes-part-2.checkpoint.json
+node scripts/fetch-infinite-craft-recipes.mjs --source infinibrowser --mode chunk --target-new 1000000 --existing utils/single-player/infinite-craft-clone/data/wiki-recipes-part-1.json --output data/wiki-recipes-part-2.json --checkpoint data/wiki-recipes-part-2.checkpoint.json
 ```
 
 Notes:

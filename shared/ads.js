@@ -7,6 +7,7 @@
   const PENDING_REFERRAL_STORAGE_KEY = 'playrPendingReferralCode';
   const TRUSTED_VIP_IDENTIFIERS = new Set(['owner@playr.io']);
   const LEVEL_BADGE_GROUP_SIZE = 10;
+  const EXTRA_EQUIPPED_BADGE_LIMIT = 2;
   const ACTIVE_TICK_MS = 5000;
   const ACTIVE_WINDOW_MS = 10000;
   const SESSION_IDLE_TIMEOUT_MS = 30000;
@@ -185,11 +186,11 @@
 
   function isGameplayPage() {
     const path = String(window.location.pathname || '');
-    return path.includes('/games/single-player/') || path.includes('/games/two-player/');
+    return path.includes('/utils/single-player/') || path.includes('/utils/two-player/');
   }
 
   function isMultiplayerPage() {
-    return String(window.location.pathname || '').includes('/games/two-player/');
+    return String(window.location.pathname || '').includes('/utils/two-player/');
   }
 
   function getXpRequiredForLevel(level) {
@@ -311,6 +312,9 @@
         revokedBadges,
         title: String(cosmetics.title || ''),
         flair: String(cosmetics.flair || ''),
+        equippedBadgeIds: Array.isArray(cosmetics.equippedBadgeIds)
+          ? cosmetics.equippedBadgeIds.map((value) => String(value || '').trim()).filter(Boolean)
+          : [],
       },
       badgeAssets: {
         vip: String(progression?.badgeAssets?.vip || BADGE_ASSET_PATHS.vip),
@@ -956,7 +960,7 @@
     return { id: 'novice', label: 'Novice', emoji: '●' };
   }
 
-  function getVisibleBadges(record, profile) {
+  function getAvailableBadges(record, profile) {
     const safeProfile = ensureProfileShape(profile, record);
     const levelInfo = getLevelInfoFromXp(safeProfile.progression.xp);
     const revoked = new Set(safeProfile.progression.cosmetics.revokedBadges || []);
@@ -1011,6 +1015,41 @@
     return badges;
   }
 
+  function getEquippedBadgeIds(profile, availableBadges = []) {
+    const safeProfile = ensureProfileShape(profile);
+    const allowedIds = new Set(
+      availableBadges
+        .map((badge) => String(badge?.id || ''))
+        .filter((badgeId) => badgeId && badgeId !== 'level')
+    );
+    const equipped = [];
+    (safeProfile.progression.cosmetics.equippedBadgeIds || []).forEach((badgeId) => {
+      const safeBadgeId = String(badgeId || '').trim();
+      if (!safeBadgeId || !allowedIds.has(safeBadgeId) || equipped.includes(safeBadgeId)) return;
+      if (equipped.length >= EXTRA_EQUIPPED_BADGE_LIMIT) return;
+      equipped.push(safeBadgeId);
+    });
+    return equipped;
+  }
+
+  function getVisibleBadges(record, profile) {
+    const availableBadges = getAvailableBadges(record, profile);
+    const badgeMap = new Map(
+      availableBadges
+        .filter((badge) => badge && badge.id)
+        .map((badge) => [String(badge.id), badge])
+    );
+    const visible = [];
+    if (badgeMap.has('level')) {
+      visible.push(badgeMap.get('level'));
+    }
+    getEquippedBadgeIds(profile, availableBadges).forEach((badgeId) => {
+      const badge = badgeMap.get(badgeId);
+      if (badge) visible.push(badge);
+    });
+    return visible;
+  }
+
   function formatBadgeMarkup(badge) {
     const icon = badge.assetPath
       ? `<img src="${escapeHtml(badge.assetPath)}" alt="" loading="lazy" />`
@@ -1048,6 +1087,8 @@
     const levelInfo = getLevelInfoFromXp(safeProfile.progression.xp);
     const activeToday = safeProfile.progression.daily.activeSecondsByDay[getCurrentDateKey()] || 0;
     const multiplayerToday = safeProfile.progression.daily.multiplayerSecondsByDay[getCurrentDateKey()] || 0;
+    const availableBadges = getAvailableBadges(record, safeProfile);
+    const equippedBadgeIds = getEquippedBadgeIds(safeProfile, availableBadges);
     return {
       displayName: normalizeName(record?.displayName || safeProfile.displayName || 'Player'),
       uid: record?.uid || safeProfile.uid || '',
@@ -1069,8 +1110,32 @@
       leaderboardRestricted: Boolean(safeProfile.progression.afk.leaderboardRestricted),
       warningCooldownUntil: safeProfile.progression.afk.warningCooldownUntil || 0,
       badges: getVisibleBadges(record, safeProfile),
+      availableBadges,
+      equippedBadgeIds,
+      maxExtraBadgeSlots: EXTRA_EQUIPPED_BADGE_LIMIT,
       badgeAssets: safeProfile.progression.badgeAssets,
     };
+  }
+
+  function setEquippedBadges(record = getCurrentRecord(), badgeIds = []) {
+    if (!record) return null;
+    const created = getOrCreateProfile(record);
+    if (!created?.key || !created.profile) return null;
+    const profile = ensureProfileShape(created.profile, record);
+    const availableBadges = getAvailableBadges(record, profile);
+    profile.progression.cosmetics.equippedBadgeIds = getEquippedBadgeIds({
+      ...profile,
+      progression: {
+        ...profile.progression,
+        cosmetics: {
+          ...profile.progression.cosmetics,
+          equippedBadgeIds: Array.isArray(badgeIds) ? badgeIds : [],
+        },
+      },
+    }, availableBadges);
+    const saved = saveProfile(created.key, profile, created.profiles);
+    emitProgressionChange(record, saved);
+    return getProgressionSnapshot(record, saved);
   }
 
   function addDistinctPlayDay(profile, dayKey) {
@@ -1442,6 +1507,9 @@
     },
     formatIdentityMarkup,
     formatBadgeMarkup,
+    setEquippedBadges(badgeIds, record = getCurrentRecord()) {
+      return setEquippedBadges(record, badgeIds);
+    },
     isOwnerRecord(record = getCurrentRecord()) {
       return isOwnerRecord(record);
     },

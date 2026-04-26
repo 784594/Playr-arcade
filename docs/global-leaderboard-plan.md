@@ -62,7 +62,7 @@ Suggested score entry fields:
 - GET /api/leaderboards/:gameSlug?segment=easy&limit=50
 - GET /api/leaderboards/:gameSlug/player/:playerId
 - POST /api/scores/submit
-- GET /api/games/manifest
+- GET /api/utils/manifest
 
 ## Rollout phases
 

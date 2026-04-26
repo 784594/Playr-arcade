@@ -22,12 +22,12 @@ $multi = @(
 $targets = @()
 
 foreach ($id in $single) {
-  $path = Join-Path $root "games\single-player\$id\index.html"
+  $path = Join-Path $root "utils\single-player\$id\index.html"
   if (Test-Path $path) { $targets += $path }
 }
 
 foreach ($id in $multi) {
-  $path = Join-Path $root "games\two-player\$id\index.html"
+  $path = Join-Path $root "utils\two-player\$id\index.html"
   if (Test-Path $path) { $targets += $path }
 }
 

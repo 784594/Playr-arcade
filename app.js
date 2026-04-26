@@ -302,6 +302,9 @@ function getProgressionSnapshotForAccount(account = getCurrentAccount()) {
       referralLink: '',
       qualifiedReferrals: 0,
       badges: [],
+      availableBadges: [],
+      equippedBadgeIds: [],
+      maxExtraBadgeSlots: 2,
       title: '',
       flair: '',
       badgeAssets: { vip: '', levelGroups: {}, referral: {} },
@@ -1075,7 +1078,7 @@ function buildSinglePlayerGame(entry, index) {
     : null;
   
   const resolvedSlug = SINGLE_PLAYER_SLUG_ALIASES[entry.id] || entry.id;
-  const launchUrl = `/games/single-player/${resolvedSlug}`;
+  const launchUrl = `/utils/single-player/${resolvedSlug}`;
   
   return {
     id: entry.id,
@@ -1110,7 +1113,7 @@ function buildSinglePlayerGame(entry, index) {
 
 function buildTwoPlayerGame(entry, index) {
   const launchUrl = MULTIPLAYER_IMPLEMENTED_IDS.has(entry.id)
-    ? `/games/two-player/${entry.id}`
+    ? `/utils/two-player/${entry.id}`
     : null;
 
   return {
@@ -1283,6 +1286,8 @@ const settingsReferralLink = document.getElementById('settingsReferralLink');
 const settingsReferralCopyBtn = document.getElementById('settingsReferralCopyBtn');
 const settingsQualifiedReferrals = document.getElementById('settingsQualifiedReferrals');
 const settingsReferralRewards = document.getElementById('settingsReferralRewards');
+const settingsBadgeSummary = document.getElementById('settingsBadgeSummary');
+const settingsBadgeList = document.getElementById('settingsBadgeList');
 const adminSettingsCard = document.getElementById('adminSettingsCard');
 const ownerXpSettingsCard = document.getElementById('ownerXpSettingsCard');
 const ownerXpAmountInput = document.getElementById('ownerXpAmountInput');
@@ -2232,6 +2237,49 @@ function setSettingsStatus(message, tone = 'info') {
   settingsStatus.style.color = tone === 'danger' ? '#ff9cb1' : tone === 'success' ? '#9ff5cb' : '#d2e5ff';
 }
 
+function renderSettingsBadgeManager(account = getCurrentAccount()) {
+  if (!settingsBadgeSummary || !settingsBadgeList) return;
+  const progression = getProgressionSnapshotForAccount(account);
+  const availableBadges = Array.isArray(progression.availableBadges) ? progression.availableBadges : [];
+  const extraBadges = availableBadges.filter((badge) => badge && badge.id && badge.id !== 'level');
+  const equippedIds = Array.isArray(progression.equippedBadgeIds) ? progression.equippedBadgeIds : [];
+  const equippedSet = new Set(equippedIds);
+
+  settingsBadgeSummary.textContent = `${Math.min(equippedIds.length, 2)}/2 extra tags equipped. Level is always shown by default.`;
+  settingsBadgeList.innerHTML = '';
+
+  if (!extraBadges.length) {
+    const empty = document.createElement('p');
+    empty.className = 'settings-muted';
+    empty.textContent = 'No extra earned tags yet. As you unlock them, you can equip up to 2 here.';
+    settingsBadgeList.appendChild(empty);
+    return;
+  }
+
+  extraBadges.forEach((badge) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `settings-tag-option${equippedSet.has(badge.id) ? ' is-equipped' : ''}`;
+    button.dataset.badgeId = badge.id;
+    button.setAttribute('aria-pressed', equippedSet.has(badge.id) ? 'true' : 'false');
+
+    const preview = document.createElement('span');
+    preview.className = 'settings-tag-option-preview';
+    if (window.PlayrProgression?.formatBadgeMarkup) {
+      preview.innerHTML = window.PlayrProgression.formatBadgeMarkup(badge);
+    } else {
+      preview.textContent = badge.label || badge.id;
+    }
+
+    const stateLabel = document.createElement('span');
+    stateLabel.className = 'settings-tag-option-state';
+    stateLabel.textContent = equippedSet.has(badge.id) ? 'Equipped' : 'Available';
+
+    button.append(preview, stateLabel);
+    settingsBadgeList.appendChild(button);
+  });
+}
+
 function renderSettingsProgression(account = getCurrentAccount()) {
   const progression = getProgressionSnapshotForAccount(account);
   if (settingsXpLevel) settingsXpLevel.textContent = `Level ${progression.level}`;
@@ -2261,6 +2309,48 @@ function renderSettingsProgression(account = getCurrentAccount()) {
       </div>
     `).join('');
   }
+  renderSettingsBadgeManager(account);
+}
+
+function toggleEquippedSettingsBadge(badgeId) {
+  const safeBadgeId = String(badgeId || '').trim();
+  if (!safeBadgeId || safeBadgeId === 'level') return;
+  const account = getCurrentAccount();
+  if (!account) {
+    setSettingsStatus('Log in to manage your tags.', 'danger');
+    return;
+  }
+
+  const progression = getProgressionSnapshotForAccount(account);
+  const availableIds = new Set((progression.availableBadges || []).map((badge) => String(badge?.id || '')));
+  if (!availableIds.has(safeBadgeId)) {
+    setSettingsStatus('That tag is not unlocked on this account.', 'danger');
+    return;
+  }
+
+  const nextEquipped = Array.isArray(progression.equippedBadgeIds) ? [...progression.equippedBadgeIds] : [];
+  const existingIndex = nextEquipped.indexOf(safeBadgeId);
+  if (existingIndex >= 0) {
+    nextEquipped.splice(existingIndex, 1);
+  } else {
+    if (nextEquipped.length >= 2) {
+      setSettingsStatus('You can equip up to 2 extra tags at a time.', 'info');
+      return;
+    }
+    nextEquipped.push(safeBadgeId);
+  }
+
+  const snapshot = window.PlayrProgression?.setEquippedBadges?.(nextEquipped);
+  if (!snapshot) {
+    setSettingsStatus('Could not update equipped tags right now.', 'danger');
+    return;
+  }
+
+  authState.profiles = readStoredProfiles();
+  syncLegacyAuthState();
+  exposePlayrAuth();
+  renderSettingsProgression(getCurrentAccount());
+  setSettingsStatus(existingIndex >= 0 ? 'Tag unequipped.' : 'Tag equipped.', 'success');
 }
 
 function openSettingsOverlay() {
@@ -4013,6 +4103,14 @@ function init() {
       } catch {
         setSettingsStatus('Could not copy the referral link. Try again.', 'danger');
       }
+    });
+  }
+
+  if (settingsBadgeList) {
+    settingsBadgeList.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-badge-id]');
+      if (!button) return;
+      toggleEquippedSettingsBadge(button.getAttribute('data-badge-id') || '');
     });
   }
 

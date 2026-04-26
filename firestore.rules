@@ -272,6 +272,7 @@ service cloud.firestore {
         'status',
         'updatedAt',
         'workspaceNodes',
+        'elements',
         'participants',
         'leader',
         'lastCraftedName',
@@ -289,6 +290,7 @@ service cloud.firestore {
         && request.resource.data.status == 'waiting'
         && request.resource.data.updatedAt is number
         && request.resource.data.workspaceNodes is list
+        && request.resource.data.elements is map
         && request.resource.data.participants is map
         && request.resource.data.participants.keys().hasOnly([request.auth.uid])
         && request.resource.data.leader == request.auth.uid;
@@ -313,6 +315,7 @@ service cloud.firestore {
           'status',
           'updatedAt',
           'workspaceNodes',
+          'elements',
           'participants',
           'lastCraftedName',
           'lastCraftedBy',

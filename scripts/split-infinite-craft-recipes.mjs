@@ -54,7 +54,7 @@ function printUsage() {
     '  --help                    Show help',
     '',
     'Example:',
-    '  node scripts/split-infinite-craft-recipes.mjs --input games/single-player/infinite-craft-clone/data/wiki-recipes-lite.json --input data/wiki-recipes-part-2.json --chunks 4 --out-dir data/infinite-craft-recipes',
+    '  node scripts/split-infinite-craft-recipes.mjs --input utils/single-player/infinite-craft-clone/data/wiki-recipes-lite.json --input data/wiki-recipes-part-2.json --chunks 4 --out-dir data/infinite-craft-recipes',
   ].join('\n'));
 }
 

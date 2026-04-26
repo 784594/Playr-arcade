@@ -951,6 +951,50 @@ a {
   gap: 8px;
 }
 
+.settings-tag-list {
+  display: grid;
+  gap: 10px;
+}
+
+.settings-tag-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 12px;
+  color: #ecf2ff;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.settings-tag-option:hover,
+.settings-tag-option:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(124, 240, 197, 0.32);
+}
+
+.settings-tag-option.is-equipped {
+  border-color: rgba(124, 240, 197, 0.34);
+  background: rgba(124, 240, 197, 0.1);
+}
+
+.settings-tag-option-preview {
+  min-width: 0;
+}
+
+.settings-tag-option-state {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.84rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .settings-tier-row {
   display: flex;
   justify-content: space-between;

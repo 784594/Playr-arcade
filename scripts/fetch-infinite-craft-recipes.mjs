@@ -116,9 +116,9 @@ function printUsage() {
     '  --api-base <url>                  API base URL',
     '',
     'Examples:',
-    '  node scripts/fetch-infinite-craft-recipes.mjs --source icgg --mode chunk --target-new 2300000 --existing games/single-player/infinite-craft-clone/data/wiki-recipes-lite.json --output data/wiki-recipes-part-2.json --checkpoint data/wiki-recipes-part-2.checkpoint.json',
+    '  node scripts/fetch-infinite-craft-recipes.mjs --source icgg --mode chunk --target-new 2300000 --existing utils/single-player/infinite-craft-clone/data/wiki-recipes-lite.json --output data/wiki-recipes-part-2.json --checkpoint data/wiki-recipes-part-2.checkpoint.json',
     '  node scripts/fetch-infinite-craft-recipes.mjs --source icgg --mode full --target-new 3470353 --output data/wiki-recipes-full.json --checkpoint data/wiki-recipes-full.checkpoint.json',
-    '  node scripts/fetch-infinite-craft-recipes.mjs --source infinibrowser --mode chunk --target-new 1000000 --existing games/single-player/infinite-craft-clone/data/wiki-recipes-part-1.json --output data/wiki-recipes-part-2.json --checkpoint data/wiki-recipes-part-2.checkpoint.json',
+    '  node scripts/fetch-infinite-craft-recipes.mjs --source infinibrowser --mode chunk --target-new 1000000 --existing utils/single-player/infinite-craft-clone/data/wiki-recipes-part-1.json --output data/wiki-recipes-part-2.json --checkpoint data/wiki-recipes-part-2.checkpoint.json',
   ].join('\n'));
 }
 

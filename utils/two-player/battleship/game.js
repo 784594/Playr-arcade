@@ -924,10 +924,10 @@
         >
           <span class="power-card-top">
             <strong>${power.name}</strong>
-            <span class="power-hotkey">${power.hotkey}</span>
+            <span class="power-count">${remaining}/${POWER_MAX_CAPACITY}</span>
           </span>
           <span class="power-card-bottom">
-            <span class="tag">${remaining}/${POWER_MAX_CAPACITY}</span>
+            <span class="power-hotkey">Hotkey ${power.hotkey}</span>
           </span>
         </button>
       `;
