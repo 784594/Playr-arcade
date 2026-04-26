@@ -6,7 +6,6 @@
   const LEGACY_USER_STORAGE_KEY = 'playrCurrentUser';
   const PENDING_REFERRAL_STORAGE_KEY = 'playrPendingReferralCode';
   const TRUSTED_VIP_IDENTIFIERS = new Set(['owner@playr.io']);
-  const LEVEL_BADGE_GROUP_SIZE = 10;
   const EXTRA_EQUIPPED_BADGE_LIMIT = 2;
   const ACTIVE_TICK_MS = 5000;
   const ACTIVE_WINDOW_MS = 10000;
@@ -22,6 +21,7 @@
   const MAX_ACTIVITY_EVENTS = 240;
   const MAILBOX_STORAGE_KEY = 'playrMailboxV1';
   const XP_PAUSED_MESSAGE = 'Unusual activity detected — XP paused.';
+  const REFERRAL_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
   const LEADERBOARD_BONUS_RANKS = [
     { min: 1, max: 10, multiplier: 1.25 },
     { min: 11, max: 25, multiplier: 1.2 },
@@ -34,29 +34,36 @@
     repetitive: 'Repetitive interaction behavior',
     lowDiversity: 'Low interaction diversity over time',
   };
-  const REFERRAL_TIERS = [
-    { count: 1, xp: 50, badgeId: 'referral-1', label: 'Recruiter I', flair: '', title: '' },
-    { count: 3, xp: 150, badgeId: '', label: '', flair: 'Recruiter Flair', title: '' },
-    { count: 5, xp: 300, badgeId: 'referral-5', label: 'Animated Recruiter', flair: '', title: '' },
-    { count: 10, xp: 600, badgeId: '', label: '', flair: '', title: 'Referral Legend' },
-    { count: 25, xp: 1500, badgeId: 'referral-25', label: 'Exclusive Cosmetic', flair: '', title: '' },
+  const LEVEL_BRACKETS = [
+    { min: 1, max: 10, id: 'level-1-10', label: 'Level I', title: 'Levels 1-10' },
+    { min: 11, max: 25, id: 'level-11-25', label: 'Level II', title: 'Levels 11-25' },
+    { min: 26, max: 50, id: 'level-26-50', label: 'Level III', title: 'Levels 26-50' },
+    { min: 51, max: 75, id: 'level-51-75', label: 'Level IV', title: 'Levels 51-75' },
+    { min: 76, max: 100, id: 'level-76-100', label: 'Level V', title: 'Levels 76-100' },
+    { min: 101, max: Number.POSITIVE_INFINITY, id: 'level-101-plus', label: 'Level VI', title: 'Level 101+' },
   ];
-  const BADGE_ASSET_PATHS = {
-    vip: '',
-    levelGroups: {
-      novice: '',
-      challenger: '',
-      elite: '',
-      mythic: '',
-    },
-    referral: {
-      'referral-1': '',
-      'referral-3': '',
-      'referral-5': '',
-      'referral-10': '',
-      'referral-25': '',
-    },
-  };
+  const REFERRAL_TIERS = [
+    { count: 1, xp: 50, badgeId: 'referral-1', label: 'Recruiter I', description: 'Awarded after 1 qualified referral. Stays active for 1 week and refreshes when you earn another referral.' },
+    { count: 3, xp: 150, badgeId: 'referral-3', label: 'Recruiter II', description: 'Awarded after 3 qualified referrals. Stays active for 1 week and refreshes when you earn another referral.' },
+    { count: 5, xp: 300, badgeId: 'referral-5', label: 'Recruiter III', description: 'Awarded after 5 qualified referrals. Stays active for 1 week and refreshes when you earn another referral.', animated: true },
+    { count: 10, xp: 600, badgeId: 'referral-10', label: 'Scoutmaster', description: 'Awarded after 10 qualified referrals. Stays active for 1 week and refreshes when you earn another referral.' },
+    { count: 25, xp: 1500, badgeId: 'referral-25', label: 'Signal Sovereign', description: 'Awarded after 25 qualified referrals. Stays active for 1 week and refreshes when you earn another referral. The bonus VIP week needs another 25 referrals to renew.', animated: true, displayColor: '#c38bff' },
+  ];
+  const LEADERBOARD_BADGES = [
+    { id: 'leaderboard-top-100', min: 51, max: 100, label: 'Top 100', title: 'Top 100', description: 'Currently ranked inside the local XP Top 100.' },
+    { id: 'leaderboard-top-50', min: 26, max: 50, label: 'Top 50', title: 'Top 50', description: 'Currently ranked inside the local XP Top 50.' },
+    { id: 'leaderboard-top-25', min: 11, max: 25, label: 'Top 25', title: 'Top 25', description: 'Currently ranked inside the local XP Top 25.' },
+    { id: 'leaderboard-top-10', min: 4, max: 10, label: 'Top 10', title: 'Top 10', description: 'Currently ranked inside the local XP Top 10.' },
+    { id: 'leaderboard-top-3', min: 2, max: 3, label: 'Top 3', title: 'Top 3', description: 'Currently ranked inside the local XP Top 3.' },
+    { id: 'leaderboard-1st', min: 1, max: 1, label: '1st', title: '1st Place', description: 'Currently holds the #1 local XP spot.' },
+  ];
+  const DONATION_BADGES = [
+    { id: 'donation-1', minimumCad: 0.01, label: 'Donation I', title: 'Donation I', description: 'Reserved for supporters once donations go live.', color: '#55d76a' },
+    { id: 'donation-2', minimumCad: 3, label: 'Donation II', title: 'Donation II', description: 'Reserved for supporters once donations go live.', color: '#ffab4f' },
+    { id: 'donation-3', minimumCad: 10, label: 'Donation III', title: 'Donation III', description: 'Reserved for supporters once donations go live.', color: '#59b8ff' },
+    { id: 'donation-4', minimumCad: 50, label: 'Donation IV', title: 'Donation IV', description: 'Reserved for supporters once donations go live.', color: '#ff697a' },
+    { id: 'donation-5', minimumCad: 100, label: 'Donation V', title: 'Donation V', description: 'Reserved for supporters once donations go live.', color: '#bb75ff' },
+  ];
 
   const activityState = {
     lastInputAt: 0,
@@ -104,6 +111,58 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  function createSvgDataUri(markup) {
+    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(markup)}`;
+  }
+
+  function clampColor(value, fallback = '#8ed8ff') {
+    const safe = String(value || '').trim();
+    return /^#[0-9a-f]{6}$/i.test(safe) ? safe : fallback;
+  }
+
+  function createBadgeIcon({
+    shape = 'circle',
+    primary = '#8ed8ff',
+    accent = '#ffffff',
+    secondary = 'rgba(255,255,255,0.18)',
+    text = '',
+  } = {}) {
+    const fill = clampColor(primary);
+    const stroke = clampColor(accent, '#ffffff');
+    const plate = clampColor(secondary, '#1a2337');
+    let shapeMarkup = `<circle cx="16" cy="16" r="10.25" fill="${fill}" stroke="${stroke}" stroke-width="1.8" />`;
+
+    if (shape === 'ring') {
+      shapeMarkup = `<circle cx="16" cy="16" r="10.5" fill="${plate}" stroke="${stroke}" stroke-width="1.8" /><circle cx="16" cy="16" r="6.4" fill="${fill}" />`;
+    } else if (shape === 'diamond') {
+      shapeMarkup = `<path d="M16 5.4 26.6 16 16 26.6 5.4 16 16 5.4Z" fill="${fill}" stroke="${stroke}" stroke-width="1.8" />`;
+    } else if (shape === 'hex') {
+      shapeMarkup = `<path d="M10.3 6.5h11.4l5.7 9.5-5.7 9.5H10.3L4.6 16l5.7-9.5Z" fill="${fill}" stroke="${stroke}" stroke-width="1.8" />`;
+    } else if (shape === 'shield') {
+      shapeMarkup = `<path d="M16 4.8 25.8 8.3v7.4c0 6.1-3.5 10.3-9.8 11.7-6.3-1.4-9.8-5.6-9.8-11.7V8.3L16 4.8Z" fill="${fill}" stroke="${stroke}" stroke-width="1.8" />`;
+    } else if (shape === 'crown') {
+      shapeMarkup = `<path d="M7 23.8h18l1.3-11.6-5.7 3.7-4.6-7-4.6 7-5.7-3.7L7 23.8Z" fill="${fill}" stroke="${stroke}" stroke-width="1.7" />`;
+    } else if (shape === 'ribbon') {
+      shapeMarkup = `<circle cx="16" cy="13" r="7.4" fill="${fill}" stroke="${stroke}" stroke-width="1.7" /><path d="m11.7 18.6-1.9 8 6.2-3.5 6.2 3.5-1.9-8" fill="${plate}" stroke="${stroke}" stroke-width="1.3" />`;
+    } else if (shape === 'spark') {
+      shapeMarkup = `<path d="M16 4.8 18.8 12l7.2 2.8-7.2 2.8L16 24.8l-2.8-7.2L6 14.8l7.2-2.8L16 4.8Z" fill="${fill}" stroke="${stroke}" stroke-width="1.7" />`;
+    } else if (shape === 'network') {
+      shapeMarkup = `<circle cx="10" cy="11" r="3.4" fill="${fill}" /><circle cx="22" cy="11" r="3.4" fill="${fill}" /><circle cx="16" cy="22" r="3.8" fill="${fill}" /><path d="M12.8 13.2 16 18.2m3.2-5L16 18.2m-2.2-5.6h4.4" stroke="${stroke}" stroke-width="1.7" stroke-linecap="round" />`;
+    }
+
+    const textMarkup = text
+      ? `<text x="16" y="20.2" text-anchor="middle" font-size="${text.length > 2 ? 10 : 12}" font-weight="800" font-family="Arial, sans-serif" fill="${stroke}">${escapeHtml(text)}</text>`
+      : '';
+
+    return createSvgDataUri(`
+      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+        <rect x="1.4" y="1.4" width="29.2" height="29.2" rx="10" fill="#0d1424" stroke="rgba(255,255,255,0.14)" />
+        ${shapeMarkup}
+        ${textMarkup}
+      </svg>
+    `);
   }
 
   function slugify(value) {
@@ -220,19 +279,18 @@
 
   function getLevelInfoFromXp(xpValue) {
     const xp = Math.max(0, Number(xpValue) || 0);
-    const thresholds = getLevelThresholds(100);
     let level = 1;
+    let currentThreshold = 0;
+    let nextThreshold = getXpRequiredForLevel(1);
 
-    for (let index = thresholds.length - 1; index >= 0; index -= 1) {
-      if (xp >= thresholds[index]) {
-        level = index + 1;
-        break;
-      }
+    while (xp >= nextThreshold) {
+      currentThreshold = nextThreshold;
+      level += 1;
+      nextThreshold = currentThreshold + getXpRequiredForLevel(level);
     }
 
-    const currentThreshold = thresholds[level - 1] || 0;
-    const nextThreshold = thresholds[level] || (currentThreshold + Math.max(100, Math.round((currentThreshold || 100) * 0.2)));
     const progress = Math.max(0, Math.min(1, (xp - currentThreshold) / Math.max(1, nextThreshold - currentThreshold)));
+    const bracket = LEVEL_BRACKETS.find((entry) => level >= entry.min && level <= entry.max) || LEVEL_BRACKETS[LEVEL_BRACKETS.length - 1];
 
     return {
       xp,
@@ -242,7 +300,7 @@
       progress,
       xpIntoLevel: xp - currentThreshold,
       xpToNextLevel: Math.max(0, nextThreshold - xp),
-      badgeGroup: Math.floor((level - 1) / LEVEL_BADGE_GROUP_SIZE),
+      bracket,
     };
   }
 
@@ -266,13 +324,18 @@
     const cosmetics = progression.cosmetics && typeof progression.cosmetics === 'object' ? progression.cosmetics : {};
     const badges = Array.isArray(cosmetics.badges) ? cosmetics.badges : [];
     const revokedBadges = Array.isArray(cosmetics.revokedBadges) ? cosmetics.revokedBadges : [];
+    const unlockedBadgeIds = Array.isArray(cosmetics.unlockedBadgeIds) ? cosmetics.unlockedBadgeIds : [];
     const daily = progression.daily && typeof progression.daily === 'object' ? progression.daily : {};
     const activeSecondsByDay = daily.activeSecondsByDay && typeof daily.activeSecondsByDay === 'object' ? daily.activeSecondsByDay : {};
     const multiplayerSecondsByDay = daily.multiplayerSecondsByDay && typeof daily.multiplayerSecondsByDay === 'object' ? daily.multiplayerSecondsByDay : {};
     const roomXpByDay = daily.roomXpByDay && typeof daily.roomXpByDay === 'object' ? daily.roomXpByDay : {};
+    const pendingLeaderboardXpByDay = daily.pendingLeaderboardXpByDay && typeof daily.pendingLeaderboardXpByDay === 'object' ? daily.pendingLeaderboardXpByDay : {};
+    const awardedLeaderboardXpByDay = daily.awardedLeaderboardXpByDay && typeof daily.awardedLeaderboardXpByDay === 'object' ? daily.awardedLeaderboardXpByDay : {};
     const referralsRewarded = Array.isArray(referral.rewardedTiers) ? referral.rewardedTiers : [];
+    const qualifiedHistory = Array.isArray(referral.qualifiedHistory) ? referral.qualifiedHistory : [];
     const distinctDaysPlayed = Array.isArray(progression.distinctDaysPlayed) ? progression.distinctDaysPlayed : [];
     const afk = progression.afk && typeof progression.afk === 'object' ? progression.afk : {};
+    const support = progression.support && typeof progression.support === 'object' ? progression.support : {};
     const xp = Math.max(0, Number(progression.xp) || 0);
     const levelInfo = getLevelInfoFromXp(xp);
 
@@ -289,6 +352,8 @@
         activeSecondsByDay,
         multiplayerSecondsByDay,
         roomXpByDay,
+        pendingLeaderboardXpByDay,
+        awardedLeaderboardXpByDay,
       },
       afk: {
         warningCooldownUntil: Math.max(0, Number(afk.warningCooldownUntil) || 0),
@@ -304,36 +369,46 @@
         referredBy: referral.referredBy ? String(referral.referredBy) : '',
         qualifiedCount: Math.max(0, Number(referral.qualifiedCount) || 0),
         rewardedTiers: referralsRewarded,
+        qualifiedHistory: qualifiedHistory.map((value) => Math.max(0, Number(value) || 0)).filter(Boolean),
         qualifiedAt: referral.qualifiedAt || null,
         hasQualifiedSelf: Boolean(referral.hasQualifiedSelf),
+        activeBadgeId: String(referral.activeBadgeId || ''),
+        activeBadgeExpiresAt: Math.max(0, Number(referral.activeBadgeExpiresAt) || 0),
+        vipGrantMilestone: Math.max(0, Number(referral.vipGrantMilestone) || 0),
+        vipExpiresAt: Math.max(0, Number(referral.vipExpiresAt) || 0),
       },
       cosmetics: {
         badges,
         revokedBadges,
+        unlockedBadgeIds: unlockedBadgeIds.map((value) => String(value || '').trim()).filter(Boolean),
         title: String(cosmetics.title || ''),
         flair: String(cosmetics.flair || ''),
+        displayNameColor: String(cosmetics.displayNameColor || ''),
         equippedBadgeIds: Array.isArray(cosmetics.equippedBadgeIds)
           ? cosmetics.equippedBadgeIds.map((value) => String(value || '').trim()).filter(Boolean)
           : [],
       },
-      badgeAssets: {
-        vip: String(progression?.badgeAssets?.vip || BADGE_ASSET_PATHS.vip),
-        levelGroups: {
-          novice: String(progression?.badgeAssets?.levelGroups?.novice || BADGE_ASSET_PATHS.levelGroups.novice),
-          challenger: String(progression?.badgeAssets?.levelGroups?.challenger || BADGE_ASSET_PATHS.levelGroups.challenger),
-          elite: String(progression?.badgeAssets?.levelGroups?.elite || BADGE_ASSET_PATHS.levelGroups.elite),
-          mythic: String(progression?.badgeAssets?.levelGroups?.mythic || BADGE_ASSET_PATHS.levelGroups.mythic),
-        },
-        referral: {
-          'referral-1': String(progression?.badgeAssets?.referral?.['referral-1'] || BADGE_ASSET_PATHS.referral['referral-1']),
-          'referral-3': String(progression?.badgeAssets?.referral?.['referral-3'] || BADGE_ASSET_PATHS.referral['referral-3']),
-          'referral-5': String(progression?.badgeAssets?.referral?.['referral-5'] || BADGE_ASSET_PATHS.referral['referral-5']),
-          'referral-10': String(progression?.badgeAssets?.referral?.['referral-10'] || BADGE_ASSET_PATHS.referral['referral-10']),
-          'referral-25': String(progression?.badgeAssets?.referral?.['referral-25'] || BADGE_ASSET_PATHS.referral['referral-25']),
-        },
+      support: {
+        totalDonatedCad: Math.max(0, Number(support.totalDonatedCad) || 0),
+        highestDonationBadgeId: String(support.highestDonationBadgeId || ''),
       },
       level: levelInfo.level,
     };
+
+    if (isOwnerRecord(record || merged)) {
+      const ownerInventory = new Set(merged.progression.cosmetics.unlockedBadgeIds || []);
+      [
+        ...LEADERBOARD_BADGES.map((badge) => badge.id),
+        ...DONATION_BADGES.map((badge) => badge.id),
+        ...REFERRAL_TIERS.map((tier) => tier.badgeId),
+        'vip',
+        'owner',
+      ].forEach((badgeId) => ownerInventory.add(badgeId));
+      merged.progression.cosmetics.unlockedBadgeIds = Array.from(ownerInventory);
+    }
+    if ((Number(merged.progression.referral.vipExpiresAt) || 0) > Date.now()) {
+      merged.isVip = true;
+    }
 
     return merged;
   }
@@ -390,6 +465,7 @@
       updatedAt: Date.now(),
       createdAt: existing.createdAt || Date.now(),
     };
+    reconcileDeferredLeaderboardBonuses(record, nextProfile, Date.now());
 
     profiles[profileKey] = nextProfile;
     writeProfiles(profiles);
@@ -434,6 +510,10 @@
         gap: 6px;
         font-weight: 700;
       }
+      .playr-identity-text[data-playr-color] {
+        color: var(--playr-name-color, inherit);
+        text-shadow: 0 0 12px rgba(255, 255, 255, 0.18);
+      }
       .playr-badge-stack {
         display: inline-flex;
         align-items: center;
@@ -471,6 +551,22 @@
         border-color: rgba(255, 170, 210, 0.38);
         background: rgba(255, 170, 210, 0.14);
       }
+      .playr-badge.owner {
+        border-color: rgba(255, 208, 96, 0.42);
+        background: rgba(255, 208, 96, 0.16);
+        color: #fff1b9;
+      }
+      .playr-badge.leaderboard {
+        border-color: rgba(123, 208, 255, 0.36);
+        background: rgba(123, 208, 255, 0.12);
+      }
+      .playr-badge.donation {
+        border-color: rgba(132, 255, 166, 0.34);
+        background: rgba(132, 255, 166, 0.1);
+      }
+      .playr-badge.animated img {
+        animation: playrBadgeFloat 1.8s ease-in-out infinite;
+      }
       .playr-badge img {
         width: 14px;
         height: 14px;
@@ -486,6 +582,7 @@
         place-items: center;
       }
       .playr-levelup-card {
+        position: relative;
         min-width: min(420px, calc(100vw - 28px));
         max-width: calc(100vw - 28px);
         padding: 20px 24px;
@@ -500,6 +597,7 @@
         opacity: 0;
         transform: translateY(20px) scale(0.94);
         transition: opacity 220ms ease, transform 220ms ease;
+        overflow: hidden;
       }
       .playr-levelup-overlay.visible .playr-levelup-card {
         opacity: 1;
@@ -518,10 +616,24 @@
         line-height: 1.05;
         margin-bottom: 8px;
       }
+      .playr-levelup-card::after {
+        content: '';
+        position: absolute;
+        right: -18px;
+        bottom: -46px;
+        width: 180px;
+        height: 180px;
+        background: radial-gradient(circle, rgba(255, 210, 84, 0.24), transparent 70%);
+        transform: rotate(12deg);
+      }
       .playr-levelup-card p {
         margin: 0;
         color: #dce8ff;
         line-height: 1.6;
+      }
+      @keyframes playrBadgeFloat {
+        0%, 100% { transform: translateY(0) scale(1); filter: drop-shadow(0 0 0 rgba(255,255,255,0)); }
+        50% { transform: translateY(-1px) scale(1.05); filter: drop-shadow(0 0 10px rgba(160,205,255,0.35)); }
       }
       .playr-afk-warning-overlay {
         position: fixed;
@@ -595,9 +707,9 @@
     overlay.hidden = true;
     overlay.innerHTML = `
       <div class="playr-levelup-card">
-        <p class="playr-levelup-label">Level up</p>
-        <strong id="playrLevelUpTitle">Level 2 reached</strong>
-        <p id="playrLevelUpBody">Keep playing to unlock more badges, borders, and flair.</p>
+        <p class="playr-levelup-label">Progression update</p>
+        <strong id="playrLevelUpTitle">You've Leveled UP!</strong>
+        <p id="playrLevelUpBody">Level 2 unlocked. Keep playing to sharpen your badge lineup.</p>
       </div>
     `;
     document.body.appendChild(overlay);
@@ -609,8 +721,8 @@
     const overlay = ensureLevelUpOverlay();
     const title = overlay.querySelector('#playrLevelUpTitle');
     const body = overlay.querySelector('#playrLevelUpBody');
-    if (title) title.textContent = `Level ${level} reached`;
-    if (body) body.textContent = `You just earned ${Math.round(gainedXp)} XP. Cosmetic badges and flair are getting sharper now.`;
+    if (title) title.textContent = `You've Leveled UP! Level ${level}`;
+    if (body) body.textContent = `You just earned ${Math.round(gainedXp)} XP and hit Level ${level}. Your level tag has upgraded too.`;
     overlay.hidden = false;
     requestAnimationFrame(() => {
       overlay.classList.add('visible');
@@ -673,6 +785,51 @@
     });
     mailbox[safeKey] = current.slice(0, 50);
     writeMailbox(mailbox);
+  }
+
+  function queueDeferredLeaderboardBonus(profile, dayKey, amount) {
+    if (!profile?.progression?.daily || !dayKey) return 0;
+    const gain = Math.max(0, Math.floor(Number(amount) || 0));
+    if (!gain) return 0;
+    profile.progression.daily.pendingLeaderboardXpByDay[dayKey] = Math.max(
+      0,
+      Number(profile.progression.daily.pendingLeaderboardXpByDay[dayKey]) || 0,
+    ) + gain;
+    return gain;
+  }
+
+  function reconcileDeferredLeaderboardBonuses(record, profile, now = Date.now()) {
+    if (!record || !profile?.progression?.daily) return { profile, awardedXp: 0 };
+    const currentDayKey = getCurrentDateKey();
+    const pending = profile.progression.daily.pendingLeaderboardXpByDay || {};
+    const awarded = profile.progression.daily.awardedLeaderboardXpByDay || {};
+    const dueDays = Object.keys(pending).filter((dayKey) => dayKey && dayKey < currentDayKey);
+    if (!dueDays.length) return { profile, awardedXp: 0 };
+
+    let awardedXp = 0;
+    const previousLevel = getLevelInfoFromXp(profile.progression.xp).level;
+    dueDays.forEach((dayKey) => {
+      const amount = Math.max(0, Math.floor(Number(pending[dayKey]) || 0));
+      if (!amount) {
+        delete pending[dayKey];
+        return;
+      }
+      profile.progression.xp += amount;
+      awarded[dayKey] = Math.max(0, Number(awarded[dayKey]) || 0) + amount;
+      delete pending[dayKey];
+      awardedXp += amount;
+    });
+
+    if (awardedXp > 0) {
+      const nextLevel = getLevelInfoFromXp(profile.progression.xp).level;
+      profile.updatedAt = now;
+      if (nextLevel > previousLevel) {
+        profile.progression.lastLevelNotified = nextLevel;
+        showLevelUpOverlay(nextLevel, awardedXp);
+      }
+    }
+
+    return { profile, awardedXp };
   }
 
   function getCurrentGameName() {
@@ -782,6 +939,7 @@
       hasInteraction: false,
       earnedBaseXp: 0,
       awardedXp: 0,
+      queuedLeaderboardBonusXp: 0,
       warningShown: false,
       stage3Handled: false,
       stage4Handled: false,
@@ -935,11 +1093,37 @@
     const durationMs = Math.max(0, now - session.startedAt);
     const sessionMultiplier = getSessionMultiplier(durationMs);
     const leaderboardMultiplier = getLeaderboardMultiplier(session.leaderboardRank);
-    const finalAwardedXp = Math.floor(session.earnedBaseXp * sessionMultiplier * leaderboardMultiplier);
-    const delta = Math.max(0, finalAwardedXp - session.awardedXp);
+    const projectedSessionXp = Math.floor(session.earnedBaseXp * sessionMultiplier);
+    const delta = Math.max(0, projectedSessionXp - session.awardedXp);
+    const projectedLeaderboardBonus = Math.max(0, Math.floor(session.earnedBaseXp * sessionMultiplier * leaderboardMultiplier) - projectedSessionXp);
+    const queuedBonusDelta = Math.max(0, projectedLeaderboardBonus - session.queuedLeaderboardBonusXp);
 
-    if (delta > 0) {
-      awardXp(record, delta, `session-${reason}`, { notifyLevelUp: true });
+    if (delta > 0 || queuedBonusDelta > 0) {
+      const created = getOrCreateProfile(record);
+      if (created?.key) {
+        const profile = ensureProfileShape(created.profiles[created.key], record);
+        if (delta > 0) {
+          profile.progression.xp += delta;
+          profile.updatedAt = now;
+        }
+        if (queuedBonusDelta > 0) {
+          queueDeferredLeaderboardBonus(profile, getCurrentDateKey(), queuedBonusDelta);
+          profile.updatedAt = now;
+        }
+        created.profiles[created.key] = profile;
+        writeProfiles(created.profiles);
+        if (delta > 0) {
+          const previousLevel = getLevelInfoFromXp(profile.progression.xp - delta).level;
+          const nextLevel = getLevelInfoFromXp(profile.progression.xp).level;
+          if (nextLevel > previousLevel) {
+            profile.progression.lastLevelNotified = nextLevel;
+            created.profiles[created.key] = profile;
+            writeProfiles(created.profiles);
+            showLevelUpOverlay(nextLevel, delta);
+          }
+        }
+        emitProgressionChange(record, profile);
+      }
     }
 
     activityState.session = null;
@@ -948,67 +1132,226 @@
     activityState.lastPointerMoveSampleAt = 0;
     return {
       durationMs,
-      finalAwardedXp,
+      finalAwardedXp: projectedSessionXp,
       reason,
     };
   }
 
-  function getLevelBadgeTheme(levelInfo) {
-    if (levelInfo.level >= 31) return { id: 'mythic', label: 'Mythic', emoji: '✦' };
-    if (levelInfo.level >= 21) return { id: 'elite', label: 'Elite', emoji: '⬢' };
-    if (levelInfo.level >= 11) return { id: 'challenger', label: 'Challenger', emoji: '◆' };
-    return { id: 'novice', label: 'Novice', emoji: '●' };
+  function getLevelBadgeConfig(levelInfo) {
+    const bracket = levelInfo.bracket || LEVEL_BRACKETS[0];
+    const iconMap = {
+      'level-1-10': createBadgeIcon({ shape: 'circle', primary: '#8bf5b8', accent: '#e9fff2' }),
+      'level-11-25': createBadgeIcon({ shape: 'ring', primary: '#92f1ff', accent: '#eefcff' }),
+      'level-26-50': createBadgeIcon({ shape: 'diamond', primary: '#69c7ff', accent: '#edf7ff' }),
+      'level-51-75': createBadgeIcon({ shape: 'hex', primary: '#5d87ff', accent: '#f1f4ff' }),
+      'level-76-100': createBadgeIcon({ shape: 'shield', primary: '#ff8c6a', accent: '#fff3ea' }),
+      'level-101-plus': createBadgeIcon({ shape: 'crown', primary: '#d180ff', accent: '#fff0ff' }),
+    };
+    return {
+      ...bracket,
+      assetPath: iconMap[bracket.id] || iconMap['level-1-10'],
+    };
+  }
+
+  function getRecentReferralCount(profile, now = Date.now()) {
+    const history = Array.isArray(profile?.progression?.referral?.qualifiedHistory)
+      ? profile.progression.referral.qualifiedHistory
+      : [];
+    return history.filter((value) => (now - Number(value || 0)) <= REFERRAL_WINDOW_MS).length;
+  }
+
+  function getReferralTierByCount(count) {
+    const safeCount = Math.max(0, Number(count) || 0);
+    for (let index = REFERRAL_TIERS.length - 1; index >= 0; index -= 1) {
+      if (safeCount >= REFERRAL_TIERS[index].count) {
+        return REFERRAL_TIERS[index];
+      }
+    }
+    return null;
+  }
+
+  function getActiveReferralTier(profile, now = Date.now()) {
+    const referral = profile?.progression?.referral || {};
+    const expiresAt = Math.max(0, Number(referral.activeBadgeExpiresAt) || 0);
+    if (!expiresAt || expiresAt <= now) return null;
+    const activeBadgeId = String(referral.activeBadgeId || '').trim();
+    if (!activeBadgeId) return null;
+    return REFERRAL_TIERS.find((tier) => tier.badgeId === activeBadgeId) || null;
+  }
+
+  function getLocalXpLeaderboardRank(profile) {
+    if (!profile) return 0;
+    const profiles = Object.values(readProfiles())
+      .map((entry) => ensureProfileShape(entry, entry))
+      .sort((left, right) => {
+        const xpDiff = (Number(right?.progression?.xp) || 0) - (Number(left?.progression?.xp) || 0);
+        if (xpDiff !== 0) return xpDiff;
+        return normalizeName(left?.displayName || '').localeCompare(normalizeName(right?.displayName || ''));
+      });
+    const targetKey = profile.uid
+      || normalizeIdentifier(profile.identifier)
+      || normalizeIdentifier(profile.displayName);
+    const index = profiles.findIndex((candidate) => {
+      const candidateKey = candidate.uid
+        || normalizeIdentifier(candidate.identifier)
+        || normalizeIdentifier(candidate.displayName);
+      return candidateKey && candidateKey === targetKey;
+    });
+    return index >= 0 ? index + 1 : 0;
+  }
+
+  function getLeaderboardBadgeForRank(rank) {
+    const safeRank = Math.max(0, Math.floor(Number(rank) || 0));
+    if (!safeRank) return null;
+    return LEADERBOARD_BADGES.find((badge) => safeRank >= badge.min && safeRank <= badge.max) || null;
+  }
+
+  function getDonationBadgeForProfile(profile) {
+    const forcedId = String(profile?.progression?.support?.highestDonationBadgeId || '').trim();
+    if (forcedId) {
+      return DONATION_BADGES.find((badge) => badge.id === forcedId) || null;
+    }
+    const amount = Math.max(0, Number(profile?.progression?.support?.totalDonatedCad) || 0);
+    for (let index = DONATION_BADGES.length - 1; index >= 0; index -= 1) {
+      if (amount >= DONATION_BADGES[index].minimumCad) {
+        return DONATION_BADGES[index];
+      }
+    }
+    return null;
+  }
+
+  function buildManualBadgeDefinition(badgeId) {
+    const leaderboard = LEADERBOARD_BADGES.find((badge) => badge.id === badgeId);
+    if (leaderboard) {
+      const iconText = badgeId === 'leaderboard-1st' ? '#1' : String(leaderboard.label).replace('Top ', '');
+      return {
+        id: leaderboard.id,
+        tone: 'leaderboard',
+        label: leaderboard.label,
+        title: leaderboard.description,
+        description: leaderboard.description,
+        assetPath: createBadgeIcon({ shape: badgeId === 'leaderboard-1st' ? 'crown' : 'ribbon', primary: '#6cbcff', accent: '#eff8ff', text: iconText }),
+      };
+    }
+
+    const donation = DONATION_BADGES.find((badge) => badge.id === badgeId);
+    if (donation) {
+      return {
+        id: donation.id,
+        tone: 'donation',
+        label: donation.label,
+        title: donation.description,
+        description: donation.description,
+        assetPath: createBadgeIcon({ shape: 'ring', primary: donation.color, accent: '#ffffff', text: '$' }),
+      };
+    }
+
+    const referral = REFERRAL_TIERS.find((badge) => badge.badgeId === badgeId);
+    if (referral) {
+      return {
+        id: referral.badgeId,
+        tone: 'referral',
+        label: referral.label,
+        title: referral.description,
+        description: referral.description,
+        animated: Boolean(referral.animated),
+        displayColor: referral.displayColor || '',
+        assetPath: createBadgeIcon({ shape: 'network', primary: referral.displayColor || '#78afff', accent: '#eef5ff' }),
+      };
+    }
+
+    if (badgeId === 'vip') {
+      return {
+        id: 'vip',
+        tone: 'vip',
+        label: 'VIP',
+        title: 'VIP membership tag.',
+        description: 'VIP membership tag.',
+        assetPath: createBadgeIcon({ shape: 'spark', primary: '#ffd66d', accent: '#fff9db' }),
+      };
+    }
+
+    if (badgeId === 'owner') {
+      return {
+        id: 'owner',
+        tone: 'owner',
+        label: 'Owner',
+        title: 'Reserved for owner@playr.io.',
+        description: 'Reserved for owner@playr.io.',
+        assetPath: createBadgeIcon({ shape: 'crown', primary: '#ffc967', accent: '#fff5d7' }),
+      };
+    }
+
+    return null;
   }
 
   function getAvailableBadges(record, profile) {
     const safeProfile = ensureProfileShape(profile, record);
     const levelInfo = getLevelInfoFromXp(safeProfile.progression.xp);
     const revoked = new Set(safeProfile.progression.cosmetics.revokedBadges || []);
-    const levelTheme = getLevelBadgeTheme(levelInfo);
-    const badges = [
-      {
-        id: 'level',
-        tone: 'level',
-        emoji: levelTheme.emoji,
-        label: `Lv. ${levelInfo.level}`,
-        title: `${levelTheme.label} tier`,
-        assetPath: safeProfile.progression.badgeAssets.levelGroups[levelTheme.id] || '',
-      },
-    ];
+    const badges = [];
+    const pushBadge = (badge) => {
+      if (!badge?.id || revoked.has(badge.id) || badges.some((entry) => entry.id === badge.id)) return;
+      badges.push(badge);
+    };
 
-    if (safeProfile.isVip && !revoked.has('vip')) {
-      badges.push({
-        id: 'vip',
-        tone: 'vip',
-        emoji: '👑',
-        label: 'VIP',
-        title: 'VIP account',
-        assetPath: safeProfile.progression.badgeAssets.vip || '',
+    const levelBadge = getLevelBadgeConfig(levelInfo);
+    pushBadge({
+      id: 'level',
+      tone: 'level',
+      label: `Lv. ${levelInfo.level}`,
+      title: `${levelBadge.title}. Current level ${levelInfo.level}.`,
+      description: `${levelBadge.title}. Current level ${levelInfo.level}.`,
+      assetPath: levelBadge.assetPath,
+    });
+
+    if (safeProfile.isVip) {
+      pushBadge(buildManualBadgeDefinition('vip'));
+    }
+    if (isOwnerRecord(record || safeProfile)) {
+      pushBadge(buildManualBadgeDefinition('owner'));
+    }
+
+    const leaderboardRank = getLocalXpLeaderboardRank(safeProfile);
+    const leaderboardBadge = getLeaderboardBadgeForRank(leaderboardRank);
+    if (leaderboardBadge) {
+      pushBadge({
+        id: leaderboardBadge.id,
+        tone: 'leaderboard',
+        label: leaderboardBadge.label,
+        title: `${leaderboardBadge.description} Current rank: #${leaderboardRank}.`,
+        description: `${leaderboardBadge.description} Current rank: #${leaderboardRank}.`,
+        assetPath: createBadgeIcon({ shape: leaderboardRank === 1 ? 'crown' : 'ribbon', primary: '#6cbcff', accent: '#eff8ff', text: leaderboardRank === 1 ? '#1' : leaderboardBadge.label.replace('Top ', '') }),
       });
     }
 
-    REFERRAL_TIERS.forEach((tier) => {
-      if (tier.badgeId && safeProfile.progression.referral.qualifiedCount >= tier.count && !revoked.has(tier.badgeId)) {
-        badges.push({
-          id: tier.badgeId,
-          tone: 'referral',
-          emoji: '✧',
-          label: tier.label,
-          title: `${tier.count} qualified referral${tier.count === 1 ? '' : 's'}`,
-          assetPath: safeProfile.progression.badgeAssets.referral[tier.badgeId] || '',
-        });
-      }
+    const donationBadge = getDonationBadgeForProfile(safeProfile);
+    if (donationBadge) {
+      pushBadge(buildManualBadgeDefinition(donationBadge.id));
+    }
+
+    const referralTier = getActiveReferralTier(safeProfile);
+    if (referralTier) {
+      pushBadge(buildManualBadgeDefinition(referralTier.badgeId));
+    }
+
+    (safeProfile.progression.cosmetics.unlockedBadgeIds || []).forEach((badgeId) => {
+      const manual = buildManualBadgeDefinition(badgeId);
+      if (manual) pushBadge(manual);
     });
 
     safeProfile.progression.cosmetics.badges.forEach((badge) => {
       if (!badge || !badge.id || revoked.has(badge.id)) return;
-      badges.push({
+      pushBadge({
         id: badge.id,
-        tone: 'cosmetic',
+        tone: badge.tone || 'cosmetic',
         emoji: badge.emoji || '★',
         label: badge.label || 'Cosmetic',
         title: badge.title || badge.label || 'Cosmetic badge',
+        description: badge.description || badge.title || badge.label || 'Cosmetic badge',
         assetPath: badge.assetPath || '',
+        animated: Boolean(badge.animated),
+        displayColor: badge.displayColor || '',
       });
     });
 
@@ -1054,7 +1397,18 @@
     const icon = badge.assetPath
       ? `<img src="${escapeHtml(badge.assetPath)}" alt="" loading="lazy" />`
       : `<span aria-hidden="true">${escapeHtml(badge.emoji || '•')}</span>`;
-    return `<span class="playr-badge ${escapeHtml(badge.tone || 'cosmetic')}" title="${escapeHtml(badge.title || badge.label || '')}">${icon}<span>${escapeHtml(badge.label || '')}</span></span>`;
+    const className = ['playr-badge', badge.tone || 'cosmetic', badge.animated ? 'animated' : ''].filter(Boolean).join(' ');
+    const description = badge.description || badge.title || badge.label || '';
+    return `<span class="${escapeHtml(className)}" title="${escapeHtml(description)}">${icon}<span>${escapeHtml(badge.label || '')}</span></span>`;
+  }
+
+  function getIdentityDisplayColor(record, profile, visibleBadges = []) {
+    const directColor = String(profile?.progression?.cosmetics?.displayNameColor || '').trim();
+    if (directColor) return directColor;
+    const colorBadge = visibleBadges.find((badge) => String(badge?.displayColor || '').trim());
+    if (colorBadge?.displayColor) return colorBadge.displayColor;
+    if (isOwnerRecord(record || profile)) return '#ffd772';
+    return '';
   }
 
   function formatIdentityMarkup(name, options = {}) {
@@ -1065,10 +1419,11 @@
     const badges = options.showBadges === false
       ? []
       : getVisibleBadges(record || { displayName }, fallbackProfile || { displayName });
+    const displayColor = getIdentityDisplayColor(record, fallbackProfile, badges);
     const compactClass = options.compact ? ' compact' : '';
     return `
       <span class="playr-identity${compactClass}">
-        <span class="playr-identity-text">${escapeHtml(displayName)}</span>
+        <span class="playr-identity-text"${displayColor ? ` data-playr-color="true" style="--playr-name-color:${escapeHtml(displayColor)}"` : ''}>${escapeHtml(displayName)}</span>
         ${badges.length ? `<span class="playr-badge-stack">${badges.map((badge) => formatBadgeMarkup(badge)).join('')}</span>` : ''}
       </span>
     `;
@@ -1089,6 +1444,7 @@
     const multiplayerToday = safeProfile.progression.daily.multiplayerSecondsByDay[getCurrentDateKey()] || 0;
     const availableBadges = getAvailableBadges(record, safeProfile);
     const equippedBadgeIds = getEquippedBadgeIds(safeProfile, availableBadges);
+    const xpLeaderboardRank = getLocalXpLeaderboardRank(safeProfile);
     return {
       displayName: normalizeName(record?.displayName || safeProfile.displayName || 'Player'),
       uid: record?.uid || safeProfile.uid || '',
@@ -1105,15 +1461,18 @@
       referralCode: safeProfile.progression.referral.code,
       referralLink: getReferralLink(safeProfile),
       qualifiedReferrals: safeProfile.progression.referral.qualifiedCount,
+      recentQualifiedReferrals: getRecentReferralCount(safeProfile),
       title: safeProfile.progression.cosmetics.title,
       flair: safeProfile.progression.cosmetics.flair,
+      displayNameColor: getIdentityDisplayColor(record, safeProfile, getVisibleBadges(record, safeProfile)),
       leaderboardRestricted: Boolean(safeProfile.progression.afk.leaderboardRestricted),
+      xpLeaderboardRank,
       warningCooldownUntil: safeProfile.progression.afk.warningCooldownUntil || 0,
       badges: getVisibleBadges(record, safeProfile),
       availableBadges,
       equippedBadgeIds,
       maxExtraBadgeSlots: EXTRA_EQUIPPED_BADGE_LIMIT,
-      badgeAssets: safeProfile.progression.badgeAssets,
+      badgeAssets: {},
     };
   }
 
@@ -1171,29 +1530,34 @@
     if (referrerEntry) {
       const [referrerKey, referrerProfileRaw] = referrerEntry;
       const referrerProfile = ensureProfileShape(referrerProfileRaw, referrerProfileRaw);
+      const now = Date.now();
       referrerProfile.progression.referral.qualifiedCount += 1;
+      referrerProfile.progression.referral.qualifiedHistory.push(now);
+      referrerProfile.progression.referral.qualifiedHistory = referrerProfile.progression.referral.qualifiedHistory
+        .map((value) => Math.max(0, Number(value) || 0))
+        .filter(Boolean)
+        .sort((left, right) => left - right);
 
       REFERRAL_TIERS.forEach((tier) => {
         if (referrerProfile.progression.referral.qualifiedCount >= tier.count && !referrerProfile.progression.referral.rewardedTiers.includes(tier.count)) {
           referrerProfile.progression.referral.rewardedTiers.push(tier.count);
-          if (tier.badgeId && tier.label) {
-            referrerProfile.progression.cosmetics.badges.push({
-              id: tier.badgeId,
-              label: tier.label,
-              title: `${tier.count} qualified referrals`,
-              emoji: '✧',
-              assetPath: referrerProfile.progression.badgeAssets.referral[tier.badgeId] || '',
-            });
-          }
-          if (tier.flair) {
-            referrerProfile.progression.cosmetics.flair = tier.flair;
-          }
-          if (tier.title) {
-            referrerProfile.progression.cosmetics.title = tier.title;
-          }
           referrerProfile.progression.xp += tier.xp;
         }
       });
+
+      const activeTier = getReferralTierByCount(referrerProfile.progression.referral.qualifiedCount);
+      if (activeTier?.badgeId) {
+        referrerProfile.progression.referral.activeBadgeId = activeTier.badgeId;
+        referrerProfile.progression.referral.activeBadgeExpiresAt = now + REFERRAL_WINDOW_MS;
+      } else if (referrerProfile.progression.referral.activeBadgeExpiresAt > 0) {
+        referrerProfile.progression.referral.activeBadgeExpiresAt = now + REFERRAL_WINDOW_MS;
+      }
+
+      const vipMilestone = Math.floor(referrerProfile.progression.referral.qualifiedCount / 25);
+      if (vipMilestone > (referrerProfile.progression.referral.vipGrantMilestone || 0)) {
+        referrerProfile.progression.referral.vipGrantMilestone = vipMilestone;
+        referrerProfile.progression.referral.vipExpiresAt = now + REFERRAL_WINDOW_MS;
+      }
 
       profiles[referrerKey] = referrerProfile;
       writeProfiles(profiles);
@@ -1227,6 +1591,8 @@
     }
 
     maybeApplyReferralQualification(profile);
+    profiles[key] = profile;
+    writeProfiles(profiles);
     emitProgressionChange(record, profile);
     return getProgressionSnapshot(record, profile);
   }
@@ -1249,6 +1615,8 @@
     profiles[key] = profile;
     writeProfiles(profiles);
     maybeApplyReferralQualification(profile);
+    profiles[key] = profile;
+    writeProfiles(profiles);
     emitProgressionChange(record, profile);
     return getProgressionSnapshot(record, profile);
   }
@@ -1322,6 +1690,7 @@
     const activityMultiplier = getActivityMultiplier(stageInfo.stage);
     const minuteShare = ACTIVE_TICK_MS / 60000;
     const baseTickXp = BASE_XP_PER_MINUTE * minuteShare * activityMultiplier;
+    const dayKey = getCurrentDateKey();
 
     addActivitySeconds(record, ACTIVE_TICK_MS / 1000, { multiplayer: isMultiplayerPage() });
     session.earnedBaseXp += baseTickXp;
@@ -1331,11 +1700,26 @@
     maybeHandleAfkEnforcement(record, key, profiles, profile, session, stageInfo, now);
 
     const sessionMultiplier = getSessionMultiplier(getCurrentSessionDuration(now));
+    const leaderboardMultiplier = getLeaderboardMultiplier(session.leaderboardRank);
     const projectedXp = Math.floor(session.earnedBaseXp * sessionMultiplier);
     const delta = Math.max(0, projectedXp - session.awardedXp);
+    const projectedLeaderboardBonus = Math.max(0, Math.floor(session.earnedBaseXp * sessionMultiplier * leaderboardMultiplier) - projectedXp);
+    const queuedBonusDelta = Math.max(0, projectedLeaderboardBonus - session.queuedLeaderboardBonusXp);
     if (delta > 0) {
       awardXp(record, delta, 'active-play', { notifyLevelUp: true });
       session.awardedXp += delta;
+    }
+    if (queuedBonusDelta > 0) {
+      const latest = getOrCreateProfile(record);
+      if (latest?.key) {
+        const liveProfile = ensureProfileShape(latest.profiles[latest.key], record);
+        queueDeferredLeaderboardBonus(liveProfile, dayKey, queuedBonusDelta);
+        liveProfile.updatedAt = now;
+        latest.profiles[latest.key] = liveProfile;
+        writeProfiles(latest.profiles);
+        emitProgressionChange(record, liveProfile);
+      }
+      session.queuedLeaderboardBonusXp += queuedBonusDelta;
     }
   }
 
@@ -1400,14 +1784,14 @@
 
     const profiles = readProfiles();
     if (record.uid && profiles[record.uid]) {
-      return buildRoles(profiles[record.uid]).includes('vip');
+      return ensureProfileShape(profiles[record.uid], record).isVip === true;
     }
 
     const normalizedIdentifier = normalizeIdentifier(record.identifier);
     return Object.values(profiles).some((profile) => {
       if (!profile || typeof profile !== 'object') return false;
       if (normalizeIdentifier(profile.identifier) !== normalizedIdentifier) return false;
-      return buildRoles(profile).includes('vip');
+      return ensureProfileShape(profile, record).isVip === true;
     });
   }
 
@@ -1443,6 +1827,8 @@
     }
 
     maybeApplyReferralQualification(profile);
+    profiles[key] = profile;
+    writeProfiles(profiles);
     emitProgressionChange(record, profile);
     return getProgressionSnapshot(record, profile);
   }

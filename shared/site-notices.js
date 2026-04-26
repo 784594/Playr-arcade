@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-26-we-got-tags',
+      title: 'We Got Tags!',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-26T14:40:00-04:00',
+      summary: 'PlayR progression now fixes high-level XP rollovers, adds clearer level and status tags, and banks leaderboard XP until the daily reset instead of paying it out every session.',
+      details: [
+        'Level calculations now keep climbing correctly past the old cap edge, and level-up moments use a bigger cutscene with a dedicated You\'ve Leveled UP message.',
+        'Accounts now unlock clearer small tag icons for level brackets, VIP, owner, referrals, leaderboard placement, and future donation support, with hover descriptions in settings and identity rows.',
+        'Leaderboard bonus XP now gets banked through the day and pays out after the daily reset, which helps prevent session-spam abuse while keeping active-play XP immediate.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-26-created-connect-4',
       title: 'Created Connect-4',
       category: 'update',

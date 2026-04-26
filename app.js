@@ -2262,6 +2262,7 @@ function renderSettingsBadgeManager(account = getCurrentAccount()) {
     button.className = `settings-tag-option${equippedSet.has(badge.id) ? ' is-equipped' : ''}`;
     button.dataset.badgeId = badge.id;
     button.setAttribute('aria-pressed', equippedSet.has(badge.id) ? 'true' : 'false');
+    button.title = badge.description || badge.title || badge.label || badge.id;
 
     const preview = document.createElement('span');
     preview.className = 'settings-tag-option-preview';
@@ -2275,7 +2276,15 @@ function renderSettingsBadgeManager(account = getCurrentAccount()) {
     stateLabel.className = 'settings-tag-option-state';
     stateLabel.textContent = equippedSet.has(badge.id) ? 'Equipped' : 'Available';
 
-    button.append(preview, stateLabel);
+    const details = document.createElement('span');
+    details.className = 'settings-tag-option-details';
+
+    const desc = document.createElement('span');
+    desc.className = 'settings-tag-option-description';
+    desc.textContent = badge.description || badge.title || 'Hover for details';
+
+    details.append(stateLabel, desc);
+    button.append(preview, details);
     settingsBadgeList.appendChild(button);
   });
 }
@@ -2297,11 +2306,11 @@ function renderSettingsProgression(account = getCurrentAccount()) {
   }
   if (settingsReferralRewards) {
     settingsReferralRewards.innerHTML = [
-      { count: 1, reward: '+50 XP + Recruiter I' },
-      { count: 3, reward: '+150 XP + profile flair' },
-      { count: 5, reward: '+300 XP + animated badge' },
-      { count: 10, reward: '+600 XP + special title' },
-      { count: 25, reward: '+1500 XP + exclusive cosmetic' },
+      { count: 1, reward: '+50 XP + Recruiter I tag' },
+      { count: 3, reward: '+150 XP + Recruiter II tag' },
+      { count: 5, reward: '+300 XP + animated Recruiter III tag' },
+      { count: 10, reward: '+600 XP + Scoutmaster tag' },
+      { count: 25, reward: '+1500 XP + Signal Sovereign tag + 1-week VIP perk' },
     ].map((tier) => `
       <div class="settings-tier-row ${progression.qualifiedReferrals >= tier.count ? 'claimed' : ''}">
         <strong>${tier.count}</strong>

@@ -987,12 +987,26 @@ a {
   min-width: 0;
 }
 
+.settings-tag-option-details {
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+  min-width: min(260px, 42%);
+}
+
 .settings-tag-option-state {
   flex: 0 0 auto;
   color: var(--muted);
   font-size: 0.84rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.settings-tag-option-description {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+  text-align: right;
 }
 
 .settings-tier-row {
