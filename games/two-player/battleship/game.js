@@ -23,6 +23,8 @@
   const TOTAL_CELLS = GRID_SIZE * GRID_SIZE;
   const PLACEMENT_TIMEOUT_MS = 120 * 1000;
   const TURN_TIMEOUT_MS = 30 * 1000;
+  const POWER_MAX_CAPACITY = 3;
+  const POWER_RESTOCK_TURNS = 5;
   const XP_HIT = 10;
   const XP_SUNK = 50;
   const XP_WIN = 200;
@@ -40,32 +42,28 @@
       name: 'Radar',
       hotkey: '1',
       mode: 'enemy',
-      description: 'Scan around a previously hit enemy tile to reveal nearby ship positions.',
-      summary: 'Needs a previously hit enemy tile.',
+      description: 'Reveal nearby tiles from a hit',
     },
     {
       id: 'airstrike',
       name: 'Airstrike',
       hotkey: '2',
       mode: 'enemy',
-      description: 'Attack an entire horizontal or vertical line on the enemy board.',
-      summary: 'Uses the current line orientation.',
+      description: 'Strike a full row or column',
     },
     {
       id: 'mine',
       name: 'Mine',
       hotkey: '3',
       mode: 'own',
-      description: 'Place a hidden trap on your board. If it is hit, three random counter-shots fire back.',
-      summary: 'Select one tile on your own board.',
+      description: 'Trap tile; triggers 3 random shots',
     },
     {
       id: 'nuke',
       name: 'Nuke',
       hotkey: '4',
       mode: 'enemy',
-      description: 'Detonate a 3x3 blast zone on the enemy board.',
-      summary: 'Targets a full 3x3 area.',
+      description: '3×3 area attack',
     },
   ];
 
@@ -208,10 +206,10 @@
     const defaults = getDefaultPowers();
     const source = powers && typeof powers === 'object' ? powers : {};
     return {
-      radar: Math.max(0, Number(source.radar ?? defaults.radar)),
-      airstrike: Math.max(0, Number(source.airstrike ?? defaults.airstrike)),
-      mine: Math.max(0, Number(source.mine ?? defaults.mine)),
-      nuke: Math.max(0, Number(source.nuke ?? defaults.nuke)),
+      radar: Math.min(POWER_MAX_CAPACITY, Math.max(0, Number(source.radar ?? defaults.radar))),
+      airstrike: Math.min(POWER_MAX_CAPACITY, Math.max(0, Number(source.airstrike ?? defaults.airstrike))),
+      mine: Math.min(POWER_MAX_CAPACITY, Math.max(0, Number(source.mine ?? defaults.mine))),
+      nuke: Math.min(POWER_MAX_CAPACITY, Math.max(0, Number(source.nuke ?? defaults.nuke))),
     };
   }
 
@@ -246,6 +244,7 @@
       powers: getDefaultPowers(),
       mineCells: [],
       triggeredMines: [],
+      turnsTaken: 0,
     };
   }
 
@@ -262,6 +261,40 @@
       powers: clonePowerInventory(raw.powers),
       mineCells: Array.isArray(raw.mineCells) ? raw.mineCells.map((cell) => Number(cell)) : [],
       triggeredMines: Array.isArray(raw.triggeredMines) ? raw.triggeredMines.map((cell) => Number(cell)) : [],
+      turnsTaken: Math.max(0, Number(raw.turnsTaken || 0)),
+    };
+  }
+
+  function restockPowers(powers) {
+    const next = clonePowerInventory(powers);
+    const restocked = [];
+    POWERS.forEach((power) => {
+      if (Number(next[power.id] || 0) >= POWER_MAX_CAPACITY) return;
+      next[power.id] = Math.min(POWER_MAX_CAPACITY, Number(next[power.id] || 0) + 1);
+      restocked.push(power.name);
+    });
+    return { powers: next, restocked };
+  }
+
+  function advanceTurnCount(board) {
+    const turnsTaken = Math.max(0, Number(board?.turnsTaken || 0)) + 1;
+    if (turnsTaken % POWER_RESTOCK_TURNS !== 0) {
+      return {
+        board: {
+          ...board,
+          turnsTaken,
+        },
+        restocked: [],
+      };
+    }
+    const nextInventory = restockPowers(board.powers);
+    return {
+      board: {
+        ...board,
+        turnsTaken,
+        powers: nextInventory.powers,
+      },
+      restocked: nextInventory.restocked,
     };
   }
 
@@ -880,19 +913,23 @@
       const remaining = Number(board.powers?.[power.id] || 0);
       const selected = activePower?.id === power.id;
       const used = remaining <= 0;
+      const interactive = battleReady && !used;
       return `
         <button
-          class="power-card${selected ? ' is-selected' : ''}${used ? ' is-used' : ''}"
+          class="power-card${selected ? ' is-selected' : ''}${used ? ' is-used' : ''}${interactive ? '' : ' is-disabled'}"
           type="button"
           data-power-id="${power.id}"
-          ${battleReady && !used ? '' : 'disabled'}
+          data-tooltip="${power.description}"
+          aria-label="${power.name}: ${power.description}"
+          aria-disabled="${interactive ? 'false' : 'true'}"
         >
-          <div class="power-card-header">
+          <span class="power-card-top">
             <strong>${power.name}</strong>
             <span class="power-hotkey">${power.hotkey}</span>
-          </div>
-          <span>${power.description}</span>
-          <span class="tag">${remaining > 0 ? `${remaining} ready` : 'Used'}</span>
+          </span>
+          <span class="power-card-bottom">
+            <span class="tag">${remaining}/${POWER_MAX_CAPACITY}</span>
+          </span>
         </button>
       `;
     }).join('');
@@ -941,6 +978,7 @@
     if (els.roomGate) {
       els.roomGate.hidden = inRoom;
       els.roomGate.toggleAttribute('hidden', inRoom);
+      els.roomGate.classList.toggle('is-hidden', inRoom);
     }
     if (els.fleetSurface) {
       els.fleetSurface.classList.toggle('is-lobby-view', !inRoom);
@@ -1062,8 +1100,8 @@
     }
     if (els.powerHint) {
       els.powerHint.textContent = room.phase === 'battle'
-        ? (activePower?.summary || 'Use one special power per turn. Number keys 1-4 pick a power, R rotates airstrikes, and Enter confirms.')
-        : 'Powers unlock during battle. Number keys 1-4 pick a power, R rotates airstrikes, and Enter confirms.';
+        ? 'Hover a power for a quick tooltip. Number keys 1-4 select powers, R rotates airstrikes, and Enter confirms.'
+        : 'Powers unlock during battle.';
     }
     if (els.fleetHealthLabel) {
       const displayShips = room.phase === 'placement' && !myBoard.locked ? state.draftShips : myBoard.ships;
@@ -1353,6 +1391,11 @@
     };
   }
 
+  function appendRestockEvents(eventLog, actorName, restocked) {
+    if (!restocked.length) return eventLog;
+    return pushEvent(eventLog, `${actorName} restocked ${restocked.join(', ')} after ${POWER_RESTOCK_TURNS} turns.`);
+  }
+
   async function confirmAttack() {
     if (!db || !state.user || !state.roomData || !state.roomId || state.selectedAttackIndex < 0) return;
     const targetIndex = Number(state.selectedAttackIndex);
@@ -1373,7 +1416,8 @@
       const sequence = resolveFireSequence(attackerBoard, defenderBoard, state.user.uid, defenderUid, [targetIndex], { source: 'shot' });
       if (!sequence.shotResults.length) throw new Error('ALREADY_TARGETED');
       const mineOutcome = maybeTriggerMine(state.user.uid, defenderUid, room, sequence);
-      let nextAttackerBoard = mineOutcome.attackerBoard;
+      const turnAdvance = advanceTurnCount(mineOutcome.attackerBoard);
+      let nextAttackerBoard = turnAdvance.board;
       let nextDefenderBoard = mineOutcome.defenderBoard;
 
       const boards = { ...(room.boards || {}) };
@@ -1392,6 +1436,7 @@
       (mineOutcome.sunkShips || []).forEach((ship) => {
         eventLog = pushEvent(eventLog, `${getPlayerName(room, state.user.uid)} lost their ${ship.name}.`);
       });
+      eventLog = appendRestockEvents(eventLog, getDisplayName(state.user), turnAdvance.restocked);
 
       const keepTurn = sequence.shotResults.some((shot) => shot.result === 'hit' || shot.result === 'sunk');
       const payload = {
@@ -1413,6 +1458,9 @@
             : `Miss at ${coordFromIndex(primary.index)}.`;
       if (mineOutcome.eventText) {
         resultMessage += ' Enemy mine counterfire triggered.';
+      }
+      if (turnAdvance.restocked.length) {
+        resultMessage += ` Restocked: ${turnAdvance.restocked.join(', ')}.`;
       }
 
       if (window.PlayrProgression?.awardXp) {
@@ -1475,16 +1523,18 @@
       if (timeoutIndex >= 0) {
         const result = resolveFireSequence(attackerBoard, defenderBoard, attackerUid, defenderUid, [timeoutIndex], { timedOut: true, source: 'timeout' });
         const mineOutcome = maybeTriggerMine(attackerUid, defenderUid, room, result);
+        const turnAdvance = advanceTurnCount(mineOutcome.attackerBoard);
         payload.boards = {
           ...(room.boards || {}),
-          [attackerUid]: mineOutcome.attackerBoard,
+          [attackerUid]: turnAdvance.board,
           [defenderUid]: mineOutcome.defenderBoard,
         };
         payload.eventLog = pushEvent(nextEvents, `${getPlayerName(room, attackerUid)} timed out. Automatic miss at ${coordFromIndex(timeoutIndex)}.`);
         if (mineOutcome.eventText) {
           payload.eventLog = pushEvent(payload.eventLog, mineOutcome.eventText);
         }
-        finalizeBattleState(payload, room, attackerUid, defenderUid, mineOutcome.attackerBoard, mineOutcome.defenderBoard, payload.eventLog);
+        payload.eventLog = appendRestockEvents(payload.eventLog, getPlayerName(room, attackerUid), turnAdvance.restocked);
+        finalizeBattleState(payload, room, attackerUid, defenderUid, turnAdvance.board, mineOutcome.defenderBoard, payload.eventLog);
       } else {
         payload.eventLog = pushEvent(nextEvents, `${getPlayerName(room, attackerUid)} timed out and lost the turn.`);
       }
@@ -1549,7 +1599,8 @@
       if (!sequence.shotResults.length) throw new Error('NO_NEW_TARGETS');
 
       const mineOutcome = maybeTriggerMine(state.user.uid, defenderUid, room, sequence);
-      const nextAttackerBoard = consumePower(mineOutcome.attackerBoard, 'airstrike');
+      const turnAdvance = advanceTurnCount(consumePower(mineOutcome.attackerBoard, 'airstrike'));
+      const nextAttackerBoard = turnAdvance.board;
       const nextDefenderBoard = mineOutcome.defenderBoard;
       const boards = { ...(room.boards || {}) };
       boards[state.user.uid] = nextAttackerBoard;
@@ -1565,6 +1616,7 @@
       (mineOutcome.sunkShips || []).forEach((ship) => {
         eventLog = pushEvent(eventLog, `${getPlayerName(room, state.user.uid)} lost their ${ship.name}.`);
       });
+      eventLog = appendRestockEvents(eventLog, getDisplayName(state.user), turnAdvance.restocked);
 
       const keepTurn = sequence.shotResults.some((shot) => shot.result === 'hit' || shot.result === 'sunk');
       const payload = {
@@ -1581,6 +1633,9 @@
         : `Airstrike delivered ${formatShotSummary(sequence.shotResults)}.`;
       if (mineOutcome.eventText) {
         resultMessage += ' Enemy mine counterfire triggered.';
+      }
+      if (turnAdvance.restocked.length) {
+        resultMessage += ` Restocked: ${turnAdvance.restocked.join(', ')}.`;
       }
     });
     clearBattleSelections();
@@ -1605,20 +1660,28 @@
       if (myBoard.incomingShots.some((shot) => Number(shot.index) === index)) throw new Error('MINE_CELL_BLOCKED');
 
       const boards = { ...(room.boards || {}) };
-      boards[state.user.uid] = {
+      const turnAdvance = advanceTurnCount({
         ...consumePower(myBoard, 'mine'),
         mineCells: [index],
-      };
+      });
+      boards[state.user.uid] = turnAdvance.board;
 
       tx.set(ref, {
         boards,
         turnUid: defenderUid,
         turnDeadlineAt: Date.now() + TURN_TIMEOUT_MS,
-        eventLog: pushEvent(getEventLog(room), `${getDisplayName(state.user)} armed a hidden mine.`),
+        eventLog: appendRestockEvents(
+          pushEvent(getEventLog(room), `${getDisplayName(state.user)} armed a hidden mine.`),
+          getDisplayName(state.user),
+          turnAdvance.restocked
+        ),
         updatedAt: window.firebase.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
 
       resultMessage = `Mine armed at ${coordFromIndex(index)}. Enemy turn started.`;
+      if (turnAdvance.restocked.length) {
+        resultMessage += ` Restocked: ${turnAdvance.restocked.join(', ')}.`;
+      }
     });
     clearBattleSelections();
     state.lastResultMessage = resultMessage;
@@ -1644,7 +1707,8 @@
       if (!sequence.shotResults.length) throw new Error('NO_NEW_TARGETS');
 
       const mineOutcome = maybeTriggerMine(state.user.uid, defenderUid, room, sequence);
-      const nextAttackerBoard = consumePower(mineOutcome.attackerBoard, 'nuke');
+      const turnAdvance = advanceTurnCount(consumePower(mineOutcome.attackerBoard, 'nuke'));
+      const nextAttackerBoard = turnAdvance.board;
       const nextDefenderBoard = mineOutcome.defenderBoard;
       const boards = { ...(room.boards || {}) };
       boards[state.user.uid] = nextAttackerBoard;
@@ -1660,6 +1724,7 @@
       (mineOutcome.sunkShips || []).forEach((ship) => {
         eventLog = pushEvent(eventLog, `${getPlayerName(room, state.user.uid)} lost their ${ship.name}.`);
       });
+      eventLog = appendRestockEvents(eventLog, getDisplayName(state.user), turnAdvance.restocked);
 
       const keepTurn = sequence.shotResults.some((shot) => shot.result === 'hit' || shot.result === 'sunk');
       const payload = {
@@ -1676,6 +1741,9 @@
         : `Nuke delivered ${formatShotSummary(sequence.shotResults)}.`;
       if (mineOutcome.eventText) {
         resultMessage += ' Enemy mine counterfire triggered.';
+      }
+      if (turnAdvance.restocked.length) {
+        resultMessage += ` Restocked: ${turnAdvance.restocked.join(', ')}.`;
       }
     });
     clearBattleSelections();
@@ -1916,6 +1984,7 @@
     els.powerList?.addEventListener('click', (event) => {
       const powerButton = event.target.closest('[data-power-id]');
       if (!powerButton) return;
+      if (powerButton.getAttribute('aria-disabled') === 'true') return;
       togglePower(powerButton.dataset.powerId || '');
     });
 

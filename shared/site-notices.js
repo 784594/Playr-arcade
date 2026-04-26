@@ -7,10 +7,10 @@
       audience: 'public',
       severity: 'info',
       publishedAt: '2026-04-25T18:45:00-04:00',
-      summary: 'Battleship now has cleaner placement controls, longer battle timers, sunk-ship flair, and both Battleship and Infinite Craft hide their room panels more reliably after joining.',
+      summary: 'Battleship now centers the boards more cleanly, hides room panels once you are inside, uses compact tooltip-based powers, and restocks powers over time.',
       details: [
         'Battleship ship placement now stages positions before confirming them, uses longer placement and turn timers, and keeps your turn alive after a successful hit.',
-        'Battleship now shows a short ship-destruction cutscene and uses more detailed ship rendering during placement and battle.',
+        'Battleship powers now use compact cards with hover tooltips instead of inline descriptions, and each power restocks by 1 every 5 completed turns up to a max of 3.',
         'Battleship and Infinite Craft multiplayer now hide their create-or-join panels more consistently once a player is already in a room.',
       ],
     },

@@ -33,6 +33,11 @@
   z-index: 3;
 }
 
+.room-gate[hidden],
+.room-gate.is-hidden {
+  display: none !important;
+}
+
 .ship-cutscene {
   position: absolute;
   left: 50%;
@@ -141,8 +146,9 @@
 
 .battle-layout {
   display: grid;
-  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr) minmax(260px, 320px);
-  gap: 18px;
+  grid-template-columns: minmax(220px, 272px) minmax(540px, 700px) minmax(220px, 272px);
+  justify-content: center;
+  gap: 16px;
   align-items: stretch;
 }
 
@@ -227,9 +233,14 @@
 }
 
 .player-status-list,
-.fleet-ship-list,
+.fleet-ship-list {
+  display: grid;
+  gap: 10px;
+}
+
 .power-list {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -323,26 +334,22 @@
   opacity: 0.7;
 }
 
+.power-card.is-disabled {
+  opacity: 0.58;
+  cursor: default;
+  transform: none;
+}
+
 .ship-card strong,
-.ship-card span,
-.power-card strong,
-.power-card span {
+.ship-card span {
   display: block;
 }
 
-.ship-card span,
-.power-card span {
+.ship-card span {
   margin-top: 4px;
   color: var(--muted);
   font-size: 0.9rem;
   line-height: 1.5;
-}
-
-.power-card-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  align-items: baseline;
 }
 
 .power-hotkey {
@@ -352,8 +359,60 @@
   text-transform: uppercase;
 }
 
+.power-card {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  min-height: 88px;
+  overflow: visible;
+}
+
+.power-card-top,
+.power-card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.power-card strong,
+.power-card .tag,
+.power-card .power-hotkey {
+  margin: 0;
+}
+
 .power-card .tag {
-  margin-top: 8px;
+  min-width: 46px;
+  text-align: center;
+}
+
+.power-card::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  transform: translateX(-50%) translateY(4px);
+  width: max-content;
+  max-width: min(220px, calc(100vw - 48px));
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(8, 14, 26, 0.96);
+  border: 1px solid rgba(111, 239, 255, 0.28);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28);
+  color: #e9fbff;
+  font-size: 0.84rem;
+  line-height: 1.35;
+  white-space: normal;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease, transform 120ms ease;
+  z-index: 8;
+}
+
+.power-card:hover::after,
+.power-card:focus-visible::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 
 .control-actions-spaced {
@@ -370,6 +429,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   min-width: 0;
+  max-width: 700px;
 }
 
 .fleet-surface.is-lobby-view {
@@ -669,7 +729,7 @@
 
 @media (max-width: 1380px) {
   .battle-layout {
-    grid-template-columns: minmax(250px, 300px) minmax(0, 1fr);
+    grid-template-columns: minmax(220px, 280px) minmax(0, 700px);
   }
 
   .battle-sidebar-right {
@@ -689,6 +749,10 @@
 
   .battle-sidebar-right {
     grid-template-columns: 1fr;
+  }
+
+  .power-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -712,5 +776,9 @@
 
   .summary-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .power-list {
+    grid-template-columns: 1fr;
   }
 }
