@@ -361,9 +361,8 @@
 			user?.email,
 			user?.identifier,
 			user?.uid,
-			user?.displayName,
 		].map((value) => normalizeLookupName(value || ''));
-		return identifiers.some((value) => OWNER_ACCOUNT_IDENTIFIERS.has(value)) || normalizeLookupName(user?.displayName || '') === 'owner';
+		return identifiers.some((value) => OWNER_ACCOUNT_IDENTIFIERS.has(value));
 	}
 
 	function isCurrentUserOwner() {
