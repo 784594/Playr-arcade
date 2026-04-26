@@ -115,6 +115,7 @@
 	const LIVE_RECIPE_TIMEOUT_MS = 5000;
 	const LIVE_RECIPE_COOLDOWN_MS = 450;
 	const LIVE_CACHE_STORAGE_KEY = 'playrInfiniteCraftLiveCacheV2';
+	const ADMIN_INDEX_PATH = '../../../data/infinite-craft-admin-index.json';
 	const LOCAL_EXTRACT_RECIPES_PATHS = [
 		'../../../data/infinite-craft-recipes/chunk-1.json',
 		'../../../data/infinite-craft-recipes/chunk-2.json',
@@ -144,9 +145,6 @@
 		user: null,
 		elementsById: new Map(),
 		elementIdByName: new Map(),
-		adminCatalog: [],
-		adminCatalogById: new Map(),
-		adminCatalogByName: new Map(),
 		discoveredCraftedNames: new Set(),
 		recipeResults: new Map(),
 		livePairCache: new Map(),
@@ -175,7 +173,10 @@
 		adminSearchResults: [],
 		adminSearchTimer: null,
 		adminSearchLoading: false,
-		adminCatalogBuckets: new Map(),
+		adminSearchBuckets: new Map(),
+		adminIndexReady: false,
+		adminIndexLoadFailed: false,
+		adminIndexPromise: null,
 		adminDrag: null,
 		achievement: null,
 		achievementTimer: null,
@@ -735,45 +736,40 @@
 		if (state.localExtractPromise) return state.localExtractPromise;
 		state.localExtractPromise = loadLocalExtractRecipes().finally(() => {
 			state.localExtractPromise = null;
-			if (state.localExtractReady) buildAdminCatalog();
 		});
 		return state.localExtractPromise;
 	}
 
-	function buildAdminCatalog() {
-		const entries = new Map();
-		for (const entry of state.localExtractMap.values()) {
-			if (!entry?.id) continue;
-			const id = String(entry.id);
-			if (entries.has(id)) continue;
-			entries.set(id, {
-				id,
-				name: normalizeName(entry.name || 'Element'),
-				emoji: String(entry.emoji || '✨'),
-			});
+	async function loadAdminSearchIndex() {
+		const payload = await fetchJsonSafe(ADMIN_INDEX_PATH);
+		if (!payload || typeof payload !== 'object' || typeof payload.buckets !== 'object') {
+			state.adminIndexLoadFailed = true;
+			state.adminIndexReady = false;
+			return false;
 		}
-
-		for (const starter of STARTER_ELEMENTS) {
-			if (!entries.has(starter.id)) {
-				entries.set(starter.id, {
-					id: starter.id,
-					name: starter.name,
-					emoji: starter.emoji,
-				});
-			}
-		}
-
-		state.adminCatalog = [...entries.values()].sort((a, b) => a.name.localeCompare(b.name));
-		state.adminCatalogById = new Map(state.adminCatalog.map((entry) => [entry.id, entry]));
-		state.adminCatalogByName = new Map(state.adminCatalog.map((entry) => [normalizeLookupName(entry.name), entry]));
 		const buckets = new Map();
-		state.adminCatalog.forEach((entry) => {
-			const key = normalizeLookupName(entry.name || '');
-			const bucketKey = key.charAt(0) || '#';
-			if (!buckets.has(bucketKey)) buckets.set(bucketKey, []);
-			buckets.get(bucketKey).push(entry);
+		Object.entries(payload.buckets).forEach(([bucketKey, entries]) => {
+			if (!Array.isArray(entries)) return;
+			buckets.set(String(bucketKey || '#').toLowerCase(), entries.map((entry) => ({
+				name: normalizeName(Array.isArray(entry) ? entry[0] : entry?.name || 'Element'),
+				id: String(Array.isArray(entry) ? entry[1] : entry?.id || ''),
+				emoji: String(Array.isArray(entry) ? entry[2] : entry?.emoji || '✨') || '✨',
+			})).filter((entry) => entry.name));
 		});
-		state.adminCatalogBuckets = buckets;
+		state.adminSearchBuckets = buckets;
+		state.adminIndexReady = true;
+		state.adminIndexLoadFailed = false;
+		return true;
+	}
+
+	function ensureAdminSearchIndex() {
+		if (state.adminIndexReady) return Promise.resolve(true);
+		if (state.adminIndexLoadFailed) return Promise.resolve(false);
+		if (state.adminIndexPromise) return state.adminIndexPromise;
+		state.adminIndexPromise = loadAdminSearchIndex().finally(() => {
+			state.adminIndexPromise = null;
+		});
+		return state.adminIndexPromise;
 	}
 
 	function normalizeAdminSearchTerm(value) {
@@ -784,7 +780,7 @@
 		const scopedTerm = normalizeAdminSearchTerm(term);
 		if (!scopedTerm) return { results: [], hitLimit: false };
 		const bucketKey = scopedTerm.charAt(0) || '#';
-		const scopedEntries = state.adminCatalogBuckets.get(bucketKey) || [];
+		const scopedEntries = state.adminSearchBuckets.get(bucketKey) || [];
 		const results = [];
 		let hitLimit = false;
 		for (const entry of scopedEntries) {
@@ -813,10 +809,10 @@
 			setAdminSearchState('Type starting letters to search the block list.', []);
 			return;
 		}
-		if (!state.localExtractReady || !state.adminCatalog.length) {
+		if (!state.adminIndexReady || !state.adminSearchBuckets.size) {
 			state.adminSearchLoading = true;
 			setAdminSearchState('Loading block index...', []);
-			const ready = await ensureLocalExtractRecipes();
+			const ready = await ensureAdminSearchIndex();
 			state.adminSearchLoading = false;
 			if (!ready) {
 				setAdminSearchState('Block index failed to load.', []);
