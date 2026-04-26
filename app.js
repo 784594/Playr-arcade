@@ -2,12 +2,10 @@ const SINGLE_PLAYER_PLACEHOLDERS = [
   { id: 'snake', name: 'Snake', controls: 'Arrow keys' },
   { id: '2048', name: '2048', controls: 'Arrow keys' },
   { id: 'minesweeper', name: 'Minesweeper', controls: 'Mouse' },
-  { id: 'infinite-craft-clone', name: 'Infinite Craft', controls: 'Mouse' },
   { id: 'the-password-game', name: 'The Password Game', controls: 'Keyboard' },
   { id: 'tetris', name: 'Tetris', controls: 'Arrow keys' },
   { id: 'dino-run-clone', name: 'Dino Run Clone', controls: 'Space/Arrow' },
   { id: 'pac-man', name: 'Pac-Man', controls: 'Arrow keys' },
-  { id: 'sudoku', name: 'Sudoku', controls: 'Mouse' },
   { id: 'wordle-inf', name: 'Wordle Infinite', controls: 'Keyboard' },
   { id: 'flappy-bird-clone', name: 'Flappy Bird Clone', controls: 'Space/Mouse' },
   { id: 'doodle-jump-clone', name: 'Doodle Jump Clone', controls: 'Arrow keys' },
@@ -16,19 +14,16 @@ const SINGLE_PLAYER_PLACEHOLDERS = [
   { id: 'frogger', name: 'Frogger', controls: 'Arrow keys' },
   { id: 'solitaire', name: 'Solitaire', controls: 'Mouse/Touch' },
   { id: 'space-invaders', name: 'Space Invaders', controls: 'Arrow keys' },
-  { id: 'simon-says', name: 'Simon Says', controls: 'Mouse' },
   { id: 'little-alchemy-clone', name: 'Little Alchemy Clone', controls: 'Mouse' },
   { id: 'draw-a-perfect-circle', name: 'Draw a Perfect Circle', controls: 'Mouse' },
   { id: 'spend-bill-gates-money', name: "Spend Bill Gates' Money", controls: 'Mouse' },
   { id: 'the-deep-sea', name: 'The Deep Sea', controls: 'Mouse Scroll' },
   { id: 'geometry-dash-clone', name: 'Geometry Dash Clone', controls: 'Mouse Click' },
   { id: 'cookie-clicker', name: 'Cookie Clicker', controls: 'Mouse' },
-  { id: 'type-test', name: 'Type Test', controls: 'Keyboard' },
   { id: 'tower-builder', name: 'Tower Builder', controls: 'Mouse Click' },
   { id: 'memory-match', name: 'Memory Match', controls: 'Mouse' },
   { id: 'hextris', name: 'Hextris', controls: 'Arrow keys' },
   { id: 'burrito-bison-clone', name: 'Burrito Bison Clone', controls: 'Mouse' },
-  { id: 'click-speed-test', name: 'Click Speed Test', controls: 'Mouse' },
   { id: 'aim-training-arena', name: 'Aim Training Arena', controls: 'Mouse' },
   { id: 'typing-test', name: 'Typing Test', controls: 'Keyboard' },
   { id: 'slide-puzzle', name: 'Slide Puzzle', controls: 'Mouse' },
@@ -92,8 +87,6 @@ const MULTIPLAYER_IMPLEMENTED_IDS = new Set([
 const LEADERBOARD_SPECS = {
   'minesweeper': { label: 'Fastest times', unit: 'time', metric: 'Fastest time per board size', kind: 'time' },
   'snake': { label: 'Best survival runs', unit: 'apples', metric: 'Fastest win / apples / survival', kind: 'count' },
-  'click-speed-test': { label: 'Highest CPS', unit: 'cps', metric: 'Fastest clicks per second', kind: 'cps' },
-  'typing-test': { label: 'Highest WPM', unit: 'wpm', metric: 'Speed plus accuracy trainer', kind: 'wpm' },
   'tetris': { label: 'Top score stacks', unit: 'score', metric: 'Highest score / survival / level', kind: 'score' },
   'pac-man': { label: 'Arcade score race', unit: 'score', metric: 'Fastest level clear / highest score', kind: 'score' },
   'doodle-jump-clone': { label: 'Highest climbs', unit: 'height', metric: 'Highest height reached', kind: 'distance' },
@@ -103,35 +96,23 @@ const LEADERBOARD_SPECS = {
   'space-invaders': { label: 'Wave clear board', unit: 'score', metric: 'Highest wave / score', kind: 'score' },
   'geometry-dash-clone': { label: 'Run consistency', unit: 'time', metric: 'Fastest completion / least deaths', kind: 'time' },
   'cookie-clicker': { label: 'Cookies Clicked', unit: 'cookies', metric: 'Cookies clicked / CPC', kind: 'cookies' },
-  'type-test': { label: 'Typing speed', unit: 'wpm', metric: 'Words per minute / accuracy', kind: 'score' },
-  'simon-says': { label: 'Memory streaks', unit: 'sequence', metric: 'Longest sequence survived', kind: 'count' },
   'draw-a-perfect-circle': { label: 'Accuracy board', unit: 'accuracy', metric: 'Accuracy / deviation %', kind: 'accuracy' },
   'spend-bill-gates-money': { label: 'Spending speedrun', unit: 'time', metric: 'Fastest completion time', kind: 'time' },
   'memory-match': { label: 'Fastest matches', unit: 'time', metric: 'Fastest completion time', kind: 'time' },
   'aim-training-arena': { label: 'Aim discipline', unit: 'score', metric: 'Unified aim score', kind: 'score' },
   '2048': { label: 'Tile champions', unit: 'tile', metric: 'Highest tile / fastest 2048', kind: 'tile' },
-  'sudoku': { label: 'Sudoku solve speed', unit: 'time', metric: 'Fastest solve time', kind: 'time' },
   'slide-puzzle': { label: 'Puzzle speedruns', unit: 'time', metric: 'Fastest solve time', kind: 'time' },
   'hextris': { label: 'Hex survival', unit: 'score', metric: 'Score / survival time', kind: 'score' },
   'dino-run-clone': { label: 'Distance survivors', unit: 'distance', metric: 'Distance / survival time', kind: 'distance' },
   'burrito-bison-clone': { label: 'Launch distance', unit: 'distance', metric: 'Distance / score', kind: 'distance' },
-  'infinite-craft-clone': { label: 'Discovery milestones', unit: 'discoveries', metric: 'Discovery milestones / total', kind: 'count' },
 };
-
-const PLAYER_POOL = [
-  'Nova', 'Kite', 'Milo', 'Aya', 'Juno', 'Sage', 'Iris', 'Theo', 'Luna', 'Eden',
-  'Zed', 'Rin', 'Opal', 'Nico', 'Quinn', 'Atlas', 'Rae', 'Finn', 'Mira', 'Oak',
-  'Pax', 'Skye', 'Rey', 'Ari', 'Noa', 'Jax', 'Lux', 'Cora', 'Vale', 'Sora',
-];
 
 const multiplayerAccessConfig = {
   requireLoginFor2P: true,
   singleUseInviteLinks: true,
 };
 
-const SINGLE_PLAYER_SLUG_ALIASES = {
-  'type-test': 'typing-test',
-};
+const SINGLE_PLAYER_SLUG_ALIASES = {};
 
 const COMPLETED_SINGLE_PLAYER_IDS = new Set([
   'snake',
@@ -139,10 +120,8 @@ const COMPLETED_SINGLE_PLAYER_IDS = new Set([
   'asteroids',
   'breakout',
   'burrito-bison-clone',
-  'click-speed-test',
   'typing-test',
   'cookie-clicker',
-  'type-test',
   'dino-run-clone',
   'doodle-jump-clone',
   'draw-a-perfect-circle',
@@ -150,17 +129,14 @@ const COMPLETED_SINGLE_PLAYER_IDS = new Set([
   'frogger',
   'geometry-dash-clone',
   'hextris',
-  'infinite-craft-clone',
   'little-alchemy-clone',
   'memory-match',
   'minesweeper',
   'pac-man',
-  'simon-says',
   'spend-bill-gates-money',
   'slide-puzzle',
   'solitaire',
   'space-invaders',
-  'sudoku',
   'tetris',
   'the-deep-sea',
   'the-password-game',
@@ -887,17 +863,43 @@ function formatLeaderboardValue(kind, rank) {
   return `${Math.max(1, 420 - rank * 2)}`;
 }
 
-function buildTop100ForGame(gameId, kind) {
-  return Array.from({ length: 100 }, (_, index) => {
-    const rank = index + 1;
-    const name = `${PLAYER_POOL[index % PLAYER_POOL.length]}${rank > PLAYER_POOL.length ? rank : ''}`;
-    return {
-      rank,
-      player: name,
-      value: formatLeaderboardValue(kind, rank),
-      detail: rank <= 5 ? 'Top contender' : 'Qualifier',
-    };
-  });
+function buildBlankLeaderboardRows(limit = 100) {
+  return Array.from({ length: limit }, (_, index) => ({
+    rank: index + 1,
+    player: '',
+    value: '',
+    level: '',
+    profile: null,
+  }));
+}
+
+function buildLevelsLeaderboardRows(limit = 100) {
+  const progressionApi = getProgressionApi();
+  const profiles = Object.values(readStoredProfiles())
+    .filter((profile) => profile && typeof profile === 'object' && String(profile.displayName || '').trim())
+    .map((profile) => {
+      const xp = Math.max(0, Number(profile?.progression?.xp) || 0);
+      const levelInfo = progressionApi?.getLevelInfoFromXp
+        ? progressionApi.getLevelInfoFromXp(xp)
+        : { level: 1 };
+      return {
+        profile,
+        player: String(profile.displayName || 'Player').slice(0, 24),
+        xp: Math.round(xp),
+        level: Math.max(1, Math.floor(Number(levelInfo.level || 1))),
+      };
+    })
+    .sort((left, right) => right.xp - left.xp || right.level - left.level || left.player.localeCompare(right.player))
+    .slice(0, limit)
+    .map((entry, index) => ({
+      rank: index + 1,
+      player: entry.player,
+      value: entry.xp,
+      level: entry.level,
+      profile: entry.profile,
+    }));
+
+  return profiles;
 }
 
 function readJsonStorage(key, fallbackValue) {
@@ -1028,17 +1030,6 @@ function normalizeLeaderboardRows(gameId, spec) {
       });
   }
 
-  if (!rows.length && spec) {
-    return buildTop100ForGame(gameId, spec.kind);
-  }
-
-  if (rows.length < 5 && spec) {
-    const filler = buildTop100ForGame(gameId, spec.kind)
-      .filter((entry) => !rows.some((row) => row.player === entry.player && row.value === entry.value))
-      .slice(0, Math.max(0, 100 - rows.length));
-    return rows.concat(filler).map((entry, index) => ({ ...entry, rank: index + 1 }));
-  }
-
   return rows.map((entry, index) => ({ ...entry, rank: index + 1 }));
 }
 
@@ -1050,12 +1041,12 @@ function hydrateLeaderboardGames() {
     const rows = normalizeLeaderboardRows(game.id, spec);
     game.leaderboardTop100 = rows;
     game.leaderboard = rows.slice(0, 5);
-    game.leaderboardEligible = rows.length > 0;
-    game.competitive = rows.length > 0;
+    game.leaderboardEligible = Boolean(spec);
+    game.competitive = Boolean(spec);
 
     const currentAccount = getCurrentAccount();
     const currentName = currentAccount?.displayName || 'Guest';
-    const bestRow = rows[0] || null;
+    const bestRow = rows.find((row) => row && row.player) || null;
     game.currentPlayer = bestRow
       ? {
           username: currentName,
@@ -1073,14 +1064,10 @@ function hydrateLeaderboardGames() {
 
 function buildSinglePlayerGame(entry, index) {
   const lbSpec = LEADERBOARD_SPECS[entry.id] || null;
-  const top100 = lbSpec ? buildTop100ForGame(entry.id, lbSpec.kind) : [];
-  const currentRank = lbSpec ? Math.min(100, 45 + (index % 30)) : null;
-  const secondaryValue = entry.id === 'cookie-clicker'
-    ? Math.max(1, 1 + Math.floor(Math.random() * 10))
-    : null;
+  const top100 = [];
   
   const resolvedSlug = SINGLE_PLAYER_SLUG_ALIASES[entry.id] || entry.id;
-  const launchUrl = `/utils/single-player/${resolvedSlug}`;
+  const launchUrl = `/games/single-player/${resolvedSlug}`;
   
   return {
     id: entry.id,
@@ -1100,22 +1087,15 @@ function buildSinglePlayerGame(entry, index) {
     leaderboardLabel: lbSpec ? lbSpec.label : 'No leaderboard',
     leaderboardUnit: lbSpec ? lbSpec.unit : 'n/a',
     leaderboardTop100: top100,
-    leaderboard: top100.slice(0, 5),
+    leaderboard: [],
     launchUrl,
-    currentPlayer: lbSpec
-      ? {
-          username: 'You (Guest)',
-          rank: currentRank,
-          value: formatLeaderboardValue(lbSpec.kind, currentRank),
-          secondaryValue,
-        }
-      : null,
+    currentPlayer: null,
   };
 }
 
 function buildTwoPlayerGame(entry, index) {
   const launchUrl = MULTIPLAYER_IMPLEMENTED_IDS.has(entry.id)
-    ? `/utils/two-player/${entry.id}`
+    ? `/games/two-player/${entry.id}`
     : null;
 
   return {
@@ -1327,18 +1307,18 @@ const hasMineUi = Boolean(
 );
 
 const FEATURED_TAB_CONFIG = {
-  all: { anchorId: 'snake' },
+  all: { anchorId: 'pac-man' },
   'single-player': { anchorId: 'minesweeper' },
   'multiplayer': { anchorId: 'battleship' },
   competitive: { anchorId: 'pac-man' },
-  leaderboard: { anchorId: 'pac-man' },
+  leaderboard: { anchorId: 'snake' },
 };
 
 const uiState = {
   activeLibraryTab: 'all',
   activeSignalFilter: 'all',
   activeGameId: games[0]?.id || null,
-  activeLeaderboardRange: 'daily',
+  activeLeaderboardRange: 'levels',
   expandedLeaderboardByGame: {},
   adminPanelByGame: {},
   notificationsOpen: false,
@@ -2247,13 +2227,13 @@ function renderSettingsBadgeManager(account = getCurrentAccount()) {
   const equippedIds = Array.isArray(progression.equippedBadgeIds) ? progression.equippedBadgeIds : [];
   const equippedSet = new Set(equippedIds);
 
-  settingsBadgeSummary.textContent = `${Math.min(equippedIds.length, 2)}/2 extra tags equipped. Level is always shown by default.`;
+  settingsBadgeSummary.textContent = `${Math.min(equippedIds.length, 5)}/5 extra badges equipped. Level is always shown by default.`;
   settingsBadgeList.innerHTML = '';
 
   if (!extraBadges.length) {
     const empty = document.createElement('p');
     empty.className = 'settings-muted';
-    empty.textContent = 'No extra earned tags yet. As you unlock them, you can equip up to 2 here.';
+    empty.textContent = 'No extra earned badges yet. As you unlock them, you can equip up to 5 here.';
     settingsBadgeList.appendChild(empty);
     return;
   }
@@ -2297,7 +2277,9 @@ function renderSettingsProgression(account = getCurrentAccount()) {
   if (settingsXpTotal) settingsXpTotal.textContent = `${Math.round(progression.xp)} XP`;
   if (settingsXpProgress) settingsXpProgress.style.width = `${Math.round((progression.progress || 0) * 100)}%`;
   if (settingsXpProgressLabel) {
-    settingsXpProgressLabel.textContent = `${Math.round(progression.xp)} / ${Math.round(progression.nextThreshold)} XP`;
+    settingsXpProgressLabel.textContent = Number.isFinite(Number(progression.nextThreshold))
+      ? `${Math.round(progression.xp)} / ${Math.round(progression.nextThreshold)} XP`
+      : `${Math.round(progression.xp)} XP / MAX`;
   }
   if (settingsActiveToday) settingsActiveToday.textContent = `${progression.activeTodayMinutes} min`;
   if (settingsMultiplayerToday) settingsMultiplayerToday.textContent = `${progression.multiplayerTodayMinutes} min`;
@@ -2344,8 +2326,8 @@ function toggleEquippedSettingsBadge(badgeId) {
   if (existingIndex >= 0) {
     nextEquipped.splice(existingIndex, 1);
   } else {
-    if (nextEquipped.length >= 2) {
-      setSettingsStatus('You can equip up to 2 extra tags at a time.', 'info');
+    if (nextEquipped.length >= 5) {
+      setSettingsStatus('You can equip up to 5 extra badges at a time.', 'info');
       return;
     }
     nextEquipped.push(safeBadgeId);
@@ -2887,7 +2869,7 @@ function getFeaturedGameForTab(tabId) {
   } else if (tabId === 'multiplayer') {
     pool = games.filter((game) => game.category === 'two-player');
   } else if (tabId === 'competitive') {
-    pool = games.filter((game) => game.competitive && game.leaderboardEligible);
+    pool = games.filter((game) => game.competitive === true);
   } else if (tabId === 'leaderboard') {
     pool = games.filter((game) => game.leaderboardEligible);
   }
@@ -2956,9 +2938,9 @@ function getFilteredGames() {
   if (uiState.activeLibraryTab === 'single-player') {
     filtered = filtered.filter((game) => game.category === 'single-player');
   } else if (uiState.activeLibraryTab === 'competitive') {
-    filtered = filtered.filter((game) => game.competitive === true && Array.isArray(game.leaderboard) && game.leaderboard.length > 0);
+    filtered = filtered.filter((game) => game.competitive === true);
   } else if (uiState.activeLibraryTab === 'leaderboard') {
-    filtered = filtered.filter((game) => Array.isArray(game.leaderboard) && game.leaderboard.length > 0);
+    filtered = filtered.filter((game) => game.leaderboardEligible === true);
   } else if (uiState.activeLibraryTab === 'multiplayer') {
     filtered = filtered.filter((game) => game.category === 'two-player');
   }
@@ -3409,65 +3391,65 @@ function renderGames() {
 }
 
 function renderLeaderboard() {
-  const eligibleGames = games.filter((game) => game.leaderboardEligible && Array.isArray(game.leaderboardTop100) && game.leaderboardTop100.length > 0);
+  const eligibleGames = games.filter((game) => game.leaderboardEligible);
 
-  if (uiState.activeLeaderboardRange === 'most-xp') {
-    const currentAccount = getCurrentAccount();
-    const currentProgression = getProgressionSnapshotForAccount(currentAccount);
-    const rows = Array.from({ length: 10 }, (_, index) => {
-      if (index === 0 && currentAccount) {
-        return {
-          rank: 1,
-          player: currentAccount.displayName,
-          xp: Math.round(currentProgression.xp),
-          level: currentProgression.level,
-          profile: currentAccount,
-          detail: 'Live local progression preview',
-        };
-      }
-      return {
-        rank: index + 1,
-        player: `Player ${index + 1}`,
-        xp: 5000 - (index * 375),
-        level: Math.max(1, 12 - index),
+  const getPaddedRows = (rows, limit) => {
+    const safeRows = Array.isArray(rows) ? rows.slice(0, limit) : [];
+    while (safeRows.length < limit) {
+      safeRows.push({
+        rank: safeRows.length + 1,
+        player: '',
+        value: '',
+        level: '',
         profile: null,
-        detail: 'Ready for backend hookup',
-      };
-    });
+      });
+    }
+    return safeRows;
+  };
+
+  if (uiState.activeLeaderboardRange === 'levels') {
+    const currentAccount = getCurrentAccount();
+    const boardKey = '__levels__';
+    const isExpanded = uiState.expandedLeaderboardByGame[boardKey] === true;
+    const rows = buildLevelsLeaderboardRows(100);
+    const visibleRows = getPaddedRows(rows, isExpanded ? 100 : 10);
 
     leaderboardCard.innerHTML = `
+      <div class="leaderboard-card-standalone">
       <div class="leaderboard-header">
         <div>
           <p class="panel-label">Progression leaderboard</p>
-          <h3>Most XP</h3>
-          <p>This board is staged and UI-ready. It will rank accounts by total XP once the shared backend feed is connected.</p>
+          <h3>Levels</h3>
+          <p>Total XP decides placement while the table surfaces each player's current level beside their display name.</p>
         </div>
-        <div>
-          <span class="tag warn">Prepared now</span>
-        </div>
+        <button class="button secondary leaderboard-expand-btn" type="button" data-expand-game="${boardKey}">
+          ${isExpanded ? 'Show Top 10' : 'Show Top 100'}
+        </button>
       </div>
-      <p class="leaderboard-summary">Showing the planned top 10 layout with rank, XP, and level.</p>
+      <p class="leaderboard-summary">Showing ${isExpanded ? 'Top 100' : 'Top 10'} account slots. Empty spots stay blank until more players post progression.</p>
       <div class="table-wrap">
         <table class="leaderboard-table">
           <thead>
             <tr>
               <th>Rank</th>
               <th>Player</th>
-              <th>Total XP</th>
+              <th>XP</th>
               <th>Level</th>
             </tr>
           </thead>
           <tbody>
-            ${rows.map((row) => `
+            ${visibleRows.map((row) => `
               <tr>
                 <td class="rank">#${row.rank}</td>
-                <td>${formatPlayerIdentityMarkup(row.player, { record: row.profile || findProfileByDisplayName(row.player), compact: true })}</td>
-                <td>${row.xp.toLocaleString()}</td>
-                <td>Level ${row.level}</td>
+                <td>${row.player ? formatPlayerIdentityMarkup(row.player, { record: row.profile || findProfileByDisplayName(row.player), compact: true }) : '<span class="leaderboard-empty-cell">--</span>'}</td>
+                <td>${row.player ? Number(row.value || 0).toLocaleString() : '<span class="leaderboard-empty-cell">--</span>'}</td>
+                <td>${row.player ? `Level ${row.level}` : '<span class="leaderboard-empty-cell">--</span>'}</td>
               </tr>
             `).join('')}
           </tbody>
         </table>
+      </div>
+      ${currentAccount ? `<div class="leaderboard-player-footer"><strong>Your Progress:</strong> ${formatPlayerIdentityMarkup(currentAccount.displayName, { record: currentAccount, compact: true })}<span>${Math.round(getProgressionSnapshotForAccount(currentAccount).xp).toLocaleString()} XP</span><span>Level ${getProgressionSnapshotForAccount(currentAccount).level}</span></div>` : ''}
       </div>
     `;
     return;
@@ -3493,7 +3475,6 @@ function renderLeaderboard() {
               <th>Rank</th>
               <th>Supporter</th>
               <th>Amount</th>
-              <th>Notes</th>
             </tr>
           </thead>
           <tbody>
@@ -3504,7 +3485,6 @@ function renderLeaderboard() {
                     <td class="rank">#${index + 1}</td>
                     <td>${row.player}</td>
                     <td>${row.value}</td>
-                    <td>${row.detail}</td>
                   </tr>
                 `,
               )
@@ -3529,7 +3509,7 @@ function renderLeaderboard() {
       : 'All-time records';
 
   const isExpanded = uiState.expandedLeaderboardByGame[game.id] === true;
-  const visibleRows = isExpanded ? game.leaderboardTop100 : game.leaderboardTop100.slice(0, 5);
+  const visibleRows = getPaddedRows(game.leaderboardTop100 || [], isExpanded ? 100 : 5);
   const currentAccount = getCurrentAccount();
   const isAdmin = isCurrentAccountAdmin(currentAccount);
   const adminPanelVisible = isLeaderboardAdminPanelVisible(game.id);
@@ -3556,7 +3536,7 @@ function renderLeaderboard() {
       <div>
         <p class="panel-label">${rangeBadge}</p>
         <h3>${game.name}</h3>
-        <p style="color: var(--muted); line-height: 1.6; margin: 0;">${game.summary}</p>
+          <p style="color: var(--muted); line-height: 1.6; margin: 0;">${game.summary}</p>
       </div>
       <div class="leaderboard-actions">
         <p class="leaderboard-summary">${game.leaderboardLabel}. Showing ${isExpanded ? 'Top 100' : 'Top 5'}.</p>
@@ -3598,7 +3578,6 @@ function renderLeaderboard() {
                 <th>Rank</th>
                 <th>Player</th>
                 <th>${game.leaderboardLabel}</th>
-                <th>Notes</th>
               </tr>
             </thead>
             <tbody>
@@ -3607,9 +3586,8 @@ function renderLeaderboard() {
                   (row) => `
                     <tr>
                       <td class="rank">#${row.rank}</td>
-                      <td>${formatPlayerIdentityMarkup(row.player, { record: findProfileByDisplayName(row.player), compact: true })}</td>
-                      <td>${row.value}</td>
-                      <td>${row.detail}</td>
+                      <td>${row.player ? formatPlayerIdentityMarkup(row.player, { record: findProfileByDisplayName(row.player), compact: true }) : '<span class="leaderboard-empty-cell">--</span>'}</td>
+                      <td>${row.player ? row.value : '<span class="leaderboard-empty-cell">--</span>'}</td>
                     </tr>
                   `,
                 )
@@ -3644,8 +3622,8 @@ function updateLeaderboardAbout() {
     leaderboardAbout.textContent = 'Daily view highlights each game\'s strongest runs from the current day.';
   } else if (uiState.activeLeaderboardRange === 'all-time') {
     leaderboardAbout.textContent = 'All-time view keeps persistent records for long-term competition.';
-  } else if (uiState.activeLeaderboardRange === 'most-xp') {
-    leaderboardAbout.textContent = 'Most XP is staged for the progression system and will rank total experience with levels shown beside each name.';
+  } else if (uiState.activeLeaderboardRange === 'levels') {
+    leaderboardAbout.textContent = 'Levels ranks accounts by total XP while showing the current level beside each display name.';
   } else if (uiState.activeLeaderboardRange === 'your-stats') {
     const account = getCurrentAccount();
     if (!account) {
@@ -3663,9 +3641,9 @@ function refreshGameViews() {
   applyPersistedAdminOverrides();
   renderGames();
   const filteredGames = getFilteredGames();
-  const eligibleGames = games.filter((game) => game.leaderboardEligible && Array.isArray(game.leaderboardTop100) && game.leaderboardTop100.length > 0);
+  const eligibleGames = games.filter((game) => game.leaderboardEligible);
 
-  if (uiState.activeLeaderboardRange === 'most-xp') {
+  if (uiState.activeLeaderboardRange === 'levels') {
     renderLeaderboard();
     return;
   }
@@ -3703,6 +3681,11 @@ function setSupportPanelVisible(visible) {
 function setLeaderboardPanelVisible(visible) {
   if (!leaderboardSection) return;
   leaderboardSection.hidden = !visible;
+  if (visible) {
+    requestAnimationFrame(() => {
+      leaderboardSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
 }
 
 function init() {
@@ -3748,7 +3731,7 @@ function init() {
   refreshGameViews();
   updateLeaderboardAbout();
   setLeaderboardPanelVisible(uiState.activeLibraryTab === 'leaderboard');
-  setSupportPanelVisible(uiState.activeLibraryTab === 'leaderboard');
+  setSupportPanelVisible(false);
   if (hasMineUi) {
     resetMineGame('easy');
   }
@@ -3762,9 +3745,9 @@ function init() {
       syncControlStates();
       syncFeaturedGameToActiveTab();
       setLeaderboardPanelVisible(uiState.activeLibraryTab === 'leaderboard');
-      setSupportPanelVisible(uiState.activeLibraryTab === 'leaderboard');
+      setSupportPanelVisible(false);
       refreshGameViews();
-      if (window.scrollY > 0) {
+      if (uiState.activeLibraryTab !== 'leaderboard' && window.scrollY > 0) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     });
@@ -4141,7 +4124,7 @@ function init() {
     if (!settingsOverlay?.hidden) {
       renderSettingsProgression(getCurrentAccount());
     }
-    if (uiState.activeLeaderboardRange === 'most-xp') {
+    if (uiState.activeLeaderboardRange === 'levels') {
       renderLeaderboard();
     }
   });

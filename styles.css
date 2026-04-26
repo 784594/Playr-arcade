@@ -1872,9 +1872,14 @@ a {
   border-radius: var(--radius-xl);
   padding: 24px;
   display: grid;
-  grid-template-columns: 180px 1fr;
+  grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
   gap: 20px;
   align-items: start;
+}
+
+.leaderboard-card-standalone {
+  display: grid;
+  gap: 16px;
 }
 
 .leaderboard-games-list {
@@ -1955,6 +1960,7 @@ a {
 .leaderboard-expand-btn {
   min-height: 38px;
   padding: 0 14px;
+  color: var(--text);
 }
 
 .table-wrap {
@@ -1994,6 +2000,10 @@ a {
 .rank {
   color: var(--accent);
   font-weight: 800;
+}
+
+.leaderboard-empty-cell {
+  color: rgba(255, 255, 255, 0.28);
 }
 
 .leaderboard-player-footer {

@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-26-icon-updates',
+      title: 'Icon Updates',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-26T19:10:00-04:00',
+      summary: 'The homepage leaderboard now opens to a cleaner Levels view by default, and account badges have been tightened into clearer icon-only chips with better hover popups.',
+      details: [
+        'The Leaderboard tab now scrolls directly into the leaderboard section, the new Levels board is the default view, and fake placeholder competitors no longer fill empty ranks.',
+        'Leaderboard tables dropped the old Notes column, widened to use the available space better, and removed unsupported competitive boards like Sudoku, Simon Says, Typing Test, and Click Speed Test.',
+        'Badge chips now keep only the icon visible for non-level tags, use an opaque styled tooltip on hover, allow up to 5 extra equipped badges, and use refreshed level icons for the new bracket ranges plus a dedicated level 999 mark.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-26-chopsticks-live',
       title: 'Chopsticks is live',
       category: 'update',

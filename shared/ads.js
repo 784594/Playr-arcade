@@ -6,7 +6,7 @@
   const LEGACY_USER_STORAGE_KEY = 'playrCurrentUser';
   const PENDING_REFERRAL_STORAGE_KEY = 'playrPendingReferralCode';
   const TRUSTED_VIP_IDENTIFIERS = new Set(['owner@playr.io']);
-  const EXTRA_EQUIPPED_BADGE_LIMIT = 2;
+  const EXTRA_EQUIPPED_BADGE_LIMIT = 5;
   const ACTIVE_TICK_MS = 5000;
   const ACTIVE_WINDOW_MS = 10000;
   const SESSION_IDLE_TIMEOUT_MS = 30000;
@@ -35,12 +35,13 @@
     lowDiversity: 'Low interaction diversity over time',
   };
   const LEVEL_BRACKETS = [
-    { min: 1, max: 10, id: 'level-1-10', label: 'Level I', title: 'Levels 1-10' },
-    { min: 11, max: 25, id: 'level-11-25', label: 'Level II', title: 'Levels 11-25' },
-    { min: 26, max: 50, id: 'level-26-50', label: 'Level III', title: 'Levels 26-50' },
-    { min: 51, max: 75, id: 'level-51-75', label: 'Level IV', title: 'Levels 51-75' },
-    { min: 76, max: 100, id: 'level-76-100', label: 'Level V', title: 'Levels 76-100' },
-    { min: 101, max: Number.POSITIVE_INFINITY, id: 'level-101-plus', label: 'Level VI', title: 'Level 101+' },
+    { min: 1, max: 9, id: 'level-1-9', label: 'Level I', title: 'Levels 1-9' },
+    { min: 10, max: 24, id: 'level-10-24', label: 'Level II', title: 'Levels 10-24' },
+    { min: 25, max: 49, id: 'level-25-49', label: 'Level III', title: 'Levels 25-49' },
+    { min: 50, max: 74, id: 'level-50-74', label: 'Level IV', title: 'Levels 50-74' },
+    { min: 75, max: 99, id: 'level-75-99', label: 'Level V', title: 'Levels 75-99' },
+    { min: 100, max: 998, id: 'level-100-plus', label: 'Level VI', title: 'Level 100+' },
+    { min: 999, max: 999, id: 'level-999', label: 'Level MAX', title: 'Level 999' },
   ];
   const REFERRAL_TIERS = [
     { count: 1, xp: 50, badgeId: 'referral-1', label: 'Rec I', description: 'Awarded after 1 qualified referral. Stays active for 1 week and refreshes when you earn another referral.' },
@@ -163,6 +164,59 @@
         ${textMarkup}
       </svg>
     `);
+  }
+
+  function createLevelIcon(levelId) {
+    const iconMap = {
+      'level-1-9': createSvgDataUri(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+          <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#0a1220" stroke="rgba(255,255,255,0.14)" />
+          <circle cx="16" cy="16" r="7.9" fill="#9af0ba" stroke="#ecfff3" stroke-width="1.5" />
+        </svg>
+      `),
+      'level-10-24': createSvgDataUri(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+          <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#0a1220" stroke="rgba(255,255,255,0.14)" />
+          <circle cx="16" cy="16" r="8.7" fill="#0c1729" stroke="#eafcff" stroke-width="1.4" />
+          <circle cx="16" cy="16" r="5.4" fill="#8eeaff" />
+        </svg>
+      `),
+      'level-25-49': createSvgDataUri(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+          <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#0a1220" stroke="rgba(255,255,255,0.14)" />
+          <path d="M16 6.1 25.9 16 16 25.9 6.1 16 16 6.1Z" fill="#66c7ff" stroke="#eef8ff" stroke-width="1.5" />
+        </svg>
+      `),
+      'level-50-74': createSvgDataUri(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+          <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#0a1220" stroke="rgba(255,255,255,0.14)" />
+          <path d="M10.2 6.1h11.6l5.8 9.9-5.8 9.9H10.2L4.4 16l5.8-9.9Z" fill="#5f8cff" stroke="#eef3ff" stroke-width="1.5" />
+        </svg>
+      `),
+      'level-75-99': createSvgDataUri(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+          <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#0a1220" stroke="rgba(255,255,255,0.14)" />
+          <path d="M16 5.2 24.6 8.2v6.6c0 5.4-2.9 9.2-8.6 10.9-5.7-1.7-8.6-5.5-8.6-10.9V8.2L16 5.2Z" fill="#ffad67" stroke="#fff1e0" stroke-width="1.5" />
+        </svg>
+      `),
+      'level-100-plus': createSvgDataUri(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+          <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#0a1220" stroke="rgba(255,255,255,0.14)" />
+          <path d="M7.1 24h17.8l1.2-10.8-5.2 3.4-4.9-6.9-4.9 6.9-5.2-3.4L7.1 24Z" fill="#b06cff" stroke="#f7ebff" stroke-width="1.5" />
+        </svg>
+      `),
+      'level-999': createSvgDataUri(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+          <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#090f1d" stroke="rgba(255,255,255,0.14)" />
+          <path d="M16 4.8 24.4 7.7v6.2c0 5.7-3.1 9.9-8.4 12-5.3-2.1-8.4-6.3-8.4-12V7.7L16 4.8Z" fill="#d9c4ff" stroke="#fff8ff" stroke-width="1.4" />
+          <path d="M9.5 20.4c2.9-2.7 5.7-4.3 8.4-4.9m-6 8c3.6-1.9 6.8-2.5 10-1.9" stroke="#7a2bff" stroke-width="1.7" stroke-linecap="round" />
+          <circle cx="9.3" cy="11.1" r="1.4" fill="#ffd86a" />
+          <circle cx="22.6" cy="11.1" r="1.4" fill="#ffd86a" />
+          <circle cx="16" cy="7.8" r="1.6" fill="#ffd86a" />
+        </svg>
+      `),
+    };
+    return iconMap[levelId] || iconMap['level-1-9'];
   }
 
   function createLeaderboardIcon(text, primary = '#6cbcff', accent = '#eff8ff') {
@@ -309,11 +363,15 @@
 
   function isGameplayPage() {
     const path = String(window.location.pathname || '');
-    return path.includes('/utils/single-player/') || path.includes('/utils/two-player/');
+    return path.includes('/games/single-player/')
+      || path.includes('/games/two-player/')
+      || path.includes('/utils/single-player/')
+      || path.includes('/utils/two-player/');
   }
 
   function isMultiplayerPage() {
-    return String(window.location.pathname || '').includes('/utils/two-player/');
+    const path = String(window.location.pathname || '');
+    return path.includes('/games/two-player/') || path.includes('/utils/two-player/');
   }
 
   function getXpRequiredForLevel(level) {
@@ -353,17 +411,29 @@
       nextThreshold = currentThreshold + getXpRequiredForLevel(level);
     }
 
-    const progress = Math.max(0, Math.min(1, (xp - currentThreshold) / Math.max(1, nextThreshold - currentThreshold)));
-    const bracket = LEVEL_BRACKETS.find((entry) => level >= entry.min && level <= entry.max) || LEVEL_BRACKETS[LEVEL_BRACKETS.length - 1];
+    const uncappedLevel = level;
+    const displayLevel = Math.min(999, uncappedLevel);
+    let displayCurrentThreshold = currentThreshold;
+    let displayNextThreshold = nextThreshold;
+    if (displayLevel >= 999) {
+      const thresholds = getLevelThresholds(999);
+      displayCurrentThreshold = thresholds[998] || currentThreshold;
+      displayNextThreshold = Number.POSITIVE_INFINITY;
+    }
+    const progress = displayLevel >= 999
+      ? 1
+      : Math.max(0, Math.min(1, (xp - displayCurrentThreshold) / Math.max(1, displayNextThreshold - displayCurrentThreshold)));
+    const bracket = LEVEL_BRACKETS.find((entry) => displayLevel >= entry.min && displayLevel <= entry.max) || LEVEL_BRACKETS[LEVEL_BRACKETS.length - 1];
 
     return {
       xp,
-      level,
-      currentThreshold,
-      nextThreshold,
+      level: displayLevel,
+      uncappedLevel,
+      currentThreshold: displayCurrentThreshold,
+      nextThreshold: displayNextThreshold,
       progress,
-      xpIntoLevel: xp - currentThreshold,
-      xpToNextLevel: Math.max(0, nextThreshold - xp),
+      xpIntoLevel: xp - displayCurrentThreshold,
+      xpToNextLevel: displayLevel >= 999 ? 0 : Math.max(0, displayNextThreshold - xp),
       bracket,
     };
   }
@@ -585,11 +655,12 @@
         flex-wrap: wrap;
       }
       .playr-badge {
+        position: relative;
         display: inline-flex;
         align-items: center;
         gap: 5px;
         min-height: 22px;
-        padding: 0 8px;
+        padding: 0 7px;
         border-radius: 999px;
         border: 1px solid rgba(255, 255, 255, 0.12);
         background: rgba(255, 255, 255, 0.06);
@@ -645,6 +716,33 @@
         height: 15px;
         object-fit: contain;
         border-radius: 3px;
+      }
+      .playr-badge[data-tooltip]::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        left: 50%;
+        bottom: calc(100% + 10px);
+        transform: translateX(-50%) translateY(4px);
+        width: max-content;
+        max-width: min(230px, calc(100vw - 40px));
+        padding: 8px 10px;
+        border-radius: 12px;
+        background: rgba(8, 14, 26, 1);
+        border: 1px solid rgba(111, 239, 255, 0.28);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28);
+        color: #e9fbff;
+        font-size: 0.84rem;
+        line-height: 1.35;
+        white-space: normal;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 120ms ease, transform 120ms ease;
+        z-index: 20;
+      }
+      .playr-badge[data-tooltip]:hover::after,
+      .playr-badge[data-tooltip]:focus-visible::after {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
       }
       .playr-levelup-overlay {
         position: fixed;
@@ -1228,17 +1326,9 @@
 
   function getLevelBadgeConfig(levelInfo) {
     const bracket = levelInfo.bracket || LEVEL_BRACKETS[0];
-    const iconMap = {
-      'level-1-10': createBadgeIcon({ shape: 'circle', primary: '#8bf5b8', accent: '#e9fff2' }),
-      'level-11-25': createBadgeIcon({ shape: 'ring', primary: '#92f1ff', accent: '#eefcff' }),
-      'level-26-50': createBadgeIcon({ shape: 'diamond', primary: '#69c7ff', accent: '#edf7ff' }),
-      'level-51-75': createBadgeIcon({ shape: 'hex', primary: '#5d87ff', accent: '#f1f4ff' }),
-      'level-76-100': createBadgeIcon({ shape: 'shield', primary: '#ff8c6a', accent: '#fff3ea' }),
-      'level-101-plus': createBadgeIcon({ shape: 'crown', primary: '#d180ff', accent: '#fff0ff' }),
-    };
     return {
       ...bracket,
-      assetPath: iconMap[bracket.id] || iconMap['level-1-10'],
+      assetPath: createLevelIcon(bracket.id),
     };
   }
 
@@ -1315,9 +1405,10 @@
       return {
         id: leaderboard.id,
         tone: 'leaderboard',
-        label: leaderboard.label,
-        title: leaderboard.description,
-        description: leaderboard.description,
+        label: '',
+        title: `${leaderboard.label} Badge`,
+        description: `${leaderboard.label} Badge - ${leaderboard.description}`,
+        showLabel: false,
         assetPath: createLeaderboardIcon(
           badgeId === 'leaderboard-1st'
             ? '1'
@@ -1351,9 +1442,10 @@
       return {
         id: donation.id,
         tone: 'donation',
-        label: donation.label,
-        title: donation.description,
-        description: donation.description,
+        label: '',
+        title: `${donation.label} Badge`,
+        description: `${donation.label} Badge - Supporter donation tag.`,
+        showLabel: false,
         assetPath: donation.assetPath || createBadgeIcon({ shape: 'ring', primary: donation.color, accent: '#ffffff', text: '$' }),
       };
     }
@@ -1363,9 +1455,10 @@
       return {
         id: referral.badgeId,
         tone: 'referral',
-        label: referral.label,
-        title: referral.description,
-        description: referral.description,
+        label: '',
+        title: `${referral.label} Badge`,
+        description: `${referral.label} Badge - ${referral.description}`,
+        showLabel: false,
         animated: Boolean(referral.animated),
         animationClass: referral.animationClass || '',
         displayColor: referral.displayColor || '',
@@ -1377,10 +1470,11 @@
       return {
         id: 'vip',
         tone: 'vip',
-        label: 'VIP',
-        title: 'VIP membership tag.',
-        description: 'VIP membership tag.',
-        assetPath: createBadgeIcon({ shape: 'spark', primary: '#ffd66d', accent: '#fff9db' }),
+        label: '',
+        title: 'VIP Badge',
+        description: 'VIP Badge - VIP Membership Tag',
+        showLabel: false,
+        assetPath: createBadgeIcon({ shape: 'spark', primary: '#ffd66d', accent: '#fff9db', text: '+' }),
       };
     }
 
@@ -1388,9 +1482,10 @@
       return {
         id: 'owner',
         tone: 'owner',
-        label: 'Owner',
-        title: 'Reserved for owner@playr.io.',
-        description: 'Reserved for owner@playr.io.',
+        label: '',
+        title: 'Owner Badge',
+        description: 'Owner Badge - Game maker!',
+        showLabel: false,
         assetPath: createBadgeIcon({ shape: 'crown', primary: '#ffc967', accent: '#fff5d7' }),
       };
     }
@@ -1413,8 +1508,9 @@
       id: 'level',
       tone: 'level',
       label: `Lv. ${levelInfo.level}`,
-      title: `${levelBadge.title}. Current level ${levelInfo.level}.`,
-      description: `${levelBadge.title}. Current level ${levelInfo.level}.`,
+      title: `Level ${levelInfo.level}`,
+      description: `Level Badge - ${levelBadge.title}. Current level ${levelInfo.level}.`,
+      showLabel: true,
       assetPath: levelBadge.assetPath,
     });
 
@@ -1432,9 +1528,10 @@
       pushBadge({
         id: leaderboardBadge.id,
         tone: 'leaderboard',
-        label: leaderboardBadge.label,
-        title: `${leaderboardBadge.description} Current rank: #${leaderboardRank}.`,
-        description: `${leaderboardBadge.description} Current rank: #${leaderboardRank}.`,
+        label: '',
+        title: `${leaderboardBadge.label} Badge`,
+        description: `${leaderboardBadge.label} Badge - ${leaderboardBadge.description} Current rank: #${leaderboardRank}.`,
+        showLabel: false,
         assetPath: leaderboardVisual?.assetPath || '',
       });
     }
@@ -1460,12 +1557,13 @@
         id: badge.id,
         tone: badge.tone || 'cosmetic',
         emoji: badge.emoji || '★',
-        label: badge.label || 'Cosmetic',
+        label: badge.label || '',
         title: badge.title || badge.label || 'Cosmetic badge',
         description: badge.description || badge.title || badge.label || 'Cosmetic badge',
         assetPath: badge.assetPath || '',
         animated: Boolean(badge.animated),
         displayColor: badge.displayColor || '',
+        showLabel: Boolean(badge.showLabel),
       });
     });
 
@@ -1514,7 +1612,8 @@
     const className = ['playr-badge', badge.tone || 'cosmetic', badge.animated ? 'animated' : ''].filter(Boolean).join(' ');
     const fullClassName = [className, badge.animationClass || ''].filter(Boolean).join(' ');
     const description = badge.description || badge.title || badge.label || '';
-    return `<span class="${escapeHtml(fullClassName)}" title="${escapeHtml(description)}">${icon}<span>${escapeHtml(badge.label || '')}</span></span>`;
+    const text = badge.showLabel !== false && badge.label ? `<span>${escapeHtml(badge.label || '')}</span>` : '';
+    return `<span class="${escapeHtml(fullClassName)}" data-tooltip="${escapeHtml(description)}" tabindex="0">${icon}${text}</span>`;
   }
 
   function getIdentityDisplayColor(record, profile, visibleBadges = []) {
