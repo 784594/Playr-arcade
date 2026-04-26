@@ -21,8 +21,8 @@
   const ROOM_PREFIX = 'bnf-';
   const GRID_SIZE = 10;
   const TOTAL_CELLS = GRID_SIZE * GRID_SIZE;
-  const PLACEMENT_TIMEOUT_MS = 90 * 1000;
-  const TURN_TIMEOUT_MS = 20 * 1000;
+  const PLACEMENT_TIMEOUT_MS = 120 * 1000;
+  const TURN_TIMEOUT_MS = 30 * 1000;
   const XP_HIT = 10;
   const XP_SUNK = 50;
   const XP_WIN = 200;
@@ -77,11 +77,14 @@
     gateMode: 'choice',
     draftShips: [],
     selectedShipId: SHIPS[0].id,
+    pendingPlacementIndex: -1,
     orientation: 'horizontal',
     activePowerId: '',
     selectedAttackIndex: -1,
     selectedMineIndex: -1,
     lastResultMessage: 'Waiting for room activity.',
+    seenShipCutsceneKeys: [],
+    shipCutsceneTimer: null,
     tickHandle: null,
   };
 
@@ -97,6 +100,9 @@
     backToChoiceBtn: document.getElementById('backToChoiceBtn'),
     roomIdInput: document.getElementById('roomIdInput'),
     roomGateError: document.getElementById('roomGateError'),
+    shipCutscene: document.getElementById('shipCutscene'),
+    shipCutsceneTitle: document.getElementById('shipCutsceneTitle'),
+    shipCutsceneText: document.getElementById('shipCutsceneText'),
     battleLayout: document.getElementById('battleLayout'),
     battleHud: document.getElementById('battleHud'),
     battleStage: document.getElementById('battleStage'),
@@ -302,6 +308,13 @@
     return Array.from({ length: GRID_SIZE }, (_, nextCol) => indexFromCell(row, nextCol));
   }
 
+  function getPendingPlacementCells(shipId = state.selectedShipId, startIndex = state.pendingPlacementIndex, orientation = state.orientation) {
+    const config = getShipConfig(shipId);
+    if (!config || startIndex < 0) return [];
+    const cells = buildShipCells(startIndex, config.size, orientation);
+    return cells.length === config.size ? cells : [];
+  }
+
   function canPlaceShip(ships, shipId, startIndex, orientation) {
     const config = getShipConfig(shipId);
     if (!config) return false;
@@ -327,6 +340,7 @@
       });
     const nextShip = SHIPS.find((ship) => !state.draftShips.some((placed) => placed.id === ship.id));
     if (nextShip) state.selectedShipId = nextShip.id;
+    state.pendingPlacementIndex = -1;
     renderAll();
     return true;
   }
@@ -334,6 +348,7 @@
   function clearDraftFleet() {
     state.draftShips = [];
     state.selectedShipId = SHIPS[0].id;
+    state.pendingPlacementIndex = -1;
     renderAll();
   }
 
@@ -610,13 +625,71 @@
     state.selectedMineIndex = -1;
   }
 
+  function rememberShipCutsceneKey(key) {
+    const nextKeys = state.seenShipCutsceneKeys.filter((entry) => entry !== key);
+    nextKeys.push(key);
+    state.seenShipCutsceneKeys = nextKeys.slice(-18);
+  }
+
+  function showShipCutscene(title, text) {
+    if (!els.shipCutscene || !els.shipCutsceneTitle || !els.shipCutsceneText) return;
+    if (state.shipCutsceneTimer) {
+      window.clearTimeout(state.shipCutsceneTimer);
+      state.shipCutsceneTimer = null;
+    }
+    els.shipCutsceneTitle.textContent = title;
+    els.shipCutsceneText.textContent = text;
+    els.shipCutscene.hidden = false;
+    els.shipCutscene.classList.remove('ship-cutscene-restart');
+    void els.shipCutscene.offsetWidth;
+    els.shipCutscene.classList.add('ship-cutscene-restart');
+    state.shipCutsceneTimer = window.setTimeout(() => {
+      if (els.shipCutscene) els.shipCutscene.hidden = true;
+      state.shipCutsceneTimer = null;
+    }, 1450);
+  }
+
+  function hideShipCutscene() {
+    if (state.shipCutsceneTimer) {
+      window.clearTimeout(state.shipCutsceneTimer);
+      state.shipCutsceneTimer = null;
+    }
+    if (els.shipCutscene) els.shipCutscene.hidden = true;
+  }
+
+  function scanShipCutsceneEvents(room) {
+    const events = getEventLog(room).slice(0, 4).reverse();
+    events.forEach((event) => {
+      const text = String(event?.text || '');
+      const match = text.match(/^(.*?) lost their (.+)\.$/);
+      if (!match) return;
+      const key = `${Number(event?.at) || 0}:${text}`;
+      if (state.seenShipCutsceneKeys.includes(key)) return;
+      rememberShipCutsceneKey(key);
+      const captainName = match[1] || 'A captain';
+      const shipName = match[2] || 'Ship';
+      showShipCutscene(`${shipName} Destroyed`, `${captainName}'s ${shipName} has been wiped out.`);
+    });
+  }
+
+  function primeShipCutsceneEvents(room) {
+    getEventLog(room).slice(0, 6).forEach((event) => {
+      const text = String(event?.text || '');
+      if (!/^(.*?) lost their (.+)\.$/.test(text)) return;
+      rememberShipCutsceneKey(`${Number(event?.at) || 0}:${text}`);
+    });
+  }
+
   function getActivePower() {
     return getPowerConfig(state.activePowerId);
   }
 
   function getSelectedLabel(room) {
     if (room?.phase === 'placement') {
-      return getShipConfig(state.selectedShipId)?.name || 'None';
+      const shipName = getShipConfig(state.selectedShipId)?.name || 'None';
+      return state.pendingPlacementIndex >= 0
+        ? `${shipName} ${coordFromIndex(state.pendingPlacementIndex)}`
+        : shipName;
     }
     if (room?.phase !== 'battle') return 'None';
     const activePower = getActivePower();
@@ -650,6 +723,9 @@
     const radarCells = new Set((trackingBoard.radarScans || []).flatMap((scan) => scan.cells || []));
     const mineCells = new Set(board.mineCells || []);
     const triggeredMines = new Set(board.triggeredMines || []);
+    const pendingPlacementCells = type === 'own' && room?.phase === 'placement' && !board.locked
+      ? new Set(getPendingPlacementCells())
+      : new Set();
     let markup = '<div class="grid-wrap">';
     markup += '<span class="axis-cell" aria-hidden="true"></span>';
     for (let col = 0; col < GRID_SIZE; col += 1) {
@@ -666,7 +742,19 @@
 
         if (type === 'own' && occupied.has(index)) {
           classes.push('ship');
-          mark = '■';
+          if (ship) {
+            classes.push(ship.orientation === 'vertical' ? 'ship-vertical' : 'ship-horizontal');
+            const segmentIndex = ship.cells.indexOf(index);
+            if (ship.cells.length <= 1) {
+              classes.push('ship-single');
+            } else if (segmentIndex === 0) {
+              classes.push('ship-start');
+            } else if (segmentIndex === ship.cells.length - 1) {
+              classes.push('ship-end');
+            } else {
+              classes.push('ship-middle');
+            }
+          }
         }
 
         if (shot) {
@@ -704,15 +792,8 @@
           classes.push('selected');
         }
 
-        if (type === 'own' && room?.phase === 'placement' && !board.locked) {
-          const selected = getShipConfig(state.selectedShipId);
-          if (selected) {
-            const previewCells = buildShipCells(index, selected.size, state.orientation);
-            const validPreview = previewCells.length === selected.size && canPlaceShip(state.draftShips, selected.id, index, state.orientation);
-            if (validPreview && previewCells.includes(index)) {
-              classes.push('preview-valid');
-            }
-          }
+        if (pendingPlacementCells.has(index)) {
+          classes.push('preview-pending');
         }
 
         markup += `
@@ -855,10 +936,11 @@
   function renderAll() {
     const room = state.roomData;
     const signedIn = Boolean(state.user);
-    const inRoom = Boolean(state.roomId);
+    const inRoom = Boolean(state.roomId || state.roomData);
 
     if (els.roomGate) {
       els.roomGate.hidden = inRoom;
+      els.roomGate.toggleAttribute('hidden', inRoom);
     }
     if (els.fleetSurface) {
       els.fleetSurface.classList.toggle('is-lobby-view', !inRoom);
@@ -867,6 +949,7 @@
     if (els.battleHud) els.battleHud.hidden = !inRoom;
     if (els.battleStage) els.battleStage.hidden = false;
     if (!inRoom) {
+      hideShipCutscene();
       if (els.ownBoard) els.ownBoard.innerHTML = buildLobbyBoardMarkup();
       if (els.enemyBoard) els.enemyBoard.innerHTML = buildLobbyBoardMarkup();
       if (els.fleetHealthLabel) els.fleetHealthLabel.textContent = 'Awaiting room';
@@ -892,6 +975,11 @@
     const placementLocked = myBoard.locked;
     const allPlaced = SHIPS.every((ship) => state.draftShips.some((placed) => placed.id === ship.id));
     const activePower = getActivePower();
+    const pendingPlacementReady = room.phase === 'placement'
+      && !placementLocked
+      && state.pendingPlacementIndex >= 0
+      && canPlaceShip(state.draftShips, state.selectedShipId, state.pendingPlacementIndex, state.orientation);
+    const readyToLockFleet = room.phase === 'placement' && !placementLocked && allPlaced && state.pendingPlacementIndex < 0;
     const canConfirmBattleAction = room.phase === 'battle' && isMyTurn(room) && (
       (activePower?.mode === 'own' && state.selectedMineIndex >= 0)
       || (activePower?.mode !== 'own' && state.selectedAttackIndex >= 0)
@@ -927,7 +1015,11 @@
       els.controlHint.textContent = room.phase === 'placement'
         ? (placementLocked
           ? 'Fleet locked in. Waiting for the opposing captain.'
-          : 'Select a ship, place it on your board, and lock your fleet before the timer expires. Enter also locks in a full fleet.')
+          : pendingPlacementReady
+            ? `Press Enter to place the ${getShipConfig(state.selectedShipId)?.name || 'ship'} at ${coordFromIndex(state.pendingPlacementIndex)}.`
+            : readyToLockFleet
+              ? 'All ships are placed. You can still reposition any ship, or press Lock Fleet when you are ready.'
+              : 'Click your board to stage a ship position, then press Enter to place it before the timer expires.')
         : room.phase === 'battle'
           ? (activePower?.id === 'mine'
             ? 'Mine selected. Pick one tile on your own board, then confirm to arm the trap and end your turn.'
@@ -988,7 +1080,9 @@
                 ? `${activePower.name} ready`
                 : 'Pick a coordinate'
         )
-        : 'Enemy fleet hidden';
+        : pendingPlacementReady
+          ? `Ready to place at ${coordFromIndex(state.pendingPlacementIndex)}`
+          : 'Enemy fleet hidden';
     }
     if (els.resultBanner) els.resultBanner.textContent = state.lastResultMessage;
 
@@ -1012,6 +1106,7 @@
       if (!snap.exists) {
         state.roomData = null;
         state.roomId = '';
+        state.pendingPlacementIndex = -1;
         clearBattleSelections();
         state.lastResultMessage = 'Room no longer exists.';
         updateUrl('');
@@ -1020,13 +1115,23 @@
       }
 
       const room = snap.data() || {};
+      const hadRoomSnapshot = Boolean(state.roomData);
       state.roomData = room;
+      if (hadRoomSnapshot) {
+        scanShipCutsceneEvents(room);
+      } else {
+        primeShipCutsceneEvents(room);
+      }
       const myBoard = getMyBoard(room);
       if (room.phase === 'placement' && !myBoard.locked && (!state.draftShips.length || state.draftShips.every((ship) => !ship.cells?.length))) {
         state.draftShips = cloneShips(myBoard.ships);
       }
       if (myBoard.locked) {
         state.draftShips = cloneShips(myBoard.ships);
+        state.pendingPlacementIndex = -1;
+      }
+      if (room.phase !== 'placement') {
+        state.pendingPlacementIndex = -1;
       }
       if (room.phase !== 'battle' || !isMyTurn(room)) {
         state.activePowerId = '';
@@ -1233,8 +1338,9 @@
       return;
     }
 
-    payload.turnUid = defenderUid;
+    payload.turnUid = payload.keepTurnUid || defenderUid;
     payload.turnDeadlineAt = Date.now() + TURN_TIMEOUT_MS;
+    delete payload.keepTurnUid;
   }
 
   function consumePower(board, powerId) {
@@ -1287,11 +1393,13 @@
         eventLog = pushEvent(eventLog, `${getPlayerName(room, state.user.uid)} lost their ${ship.name}.`);
       });
 
+      const keepTurn = sequence.shotResults.some((shot) => shot.result === 'hit' || shot.result === 'sunk');
       const payload = {
         boards,
         eventLog,
         updatedAt: window.firebase.firestore.FieldValue.serverTimestamp(),
       };
+      if (keepTurn) payload.keepTurnUid = state.user.uid;
       finalizeBattleState(payload, room, state.user.uid, defenderUid, nextAttackerBoard, nextDefenderBoard, eventLog);
       tx.set(ref, payload, { merge: true });
 
@@ -1458,11 +1566,13 @@
         eventLog = pushEvent(eventLog, `${getPlayerName(room, state.user.uid)} lost their ${ship.name}.`);
       });
 
+      const keepTurn = sequence.shotResults.some((shot) => shot.result === 'hit' || shot.result === 'sunk');
       const payload = {
         boards,
         eventLog,
         updatedAt: window.firebase.firestore.FieldValue.serverTimestamp(),
       };
+      if (keepTurn) payload.keepTurnUid = state.user.uid;
       finalizeBattleState(payload, room, state.user.uid, defenderUid, nextAttackerBoard, nextDefenderBoard, eventLog);
       tx.set(ref, payload, { merge: true });
 
@@ -1551,11 +1661,13 @@
         eventLog = pushEvent(eventLog, `${getPlayerName(room, state.user.uid)} lost their ${ship.name}.`);
       });
 
+      const keepTurn = sequence.shotResults.some((shot) => shot.result === 'hit' || shot.result === 'sunk');
       const payload = {
         boards,
         eventLog,
         updatedAt: window.firebase.firestore.FieldValue.serverTimestamp(),
       };
+      if (keepTurn) payload.keepTurnUid = state.user.uid;
       finalizeBattleState(payload, room, state.user.uid, defenderUid, nextAttackerBoard, nextDefenderBoard, eventLog);
       tx.set(ref, payload, { merge: true });
 
@@ -1615,11 +1727,14 @@
     if (!Number.isInteger(index) || index < 0 || index >= TOTAL_CELLS) return;
 
     if (boardType === 'own' && state.roomData.phase === 'placement' && !isPlacementLocked(state.roomData)) {
-      const placed = placeShipInDraft(state.selectedShipId, index, state.orientation);
-      if (!placed) {
+      if (!canPlaceShip(state.draftShips, state.selectedShipId, index, state.orientation)) {
         state.lastResultMessage = 'That ship does not fit there without overlapping another one.';
         renderAll();
+        return;
       }
+      state.pendingPlacementIndex = index;
+      state.lastResultMessage = `${getShipConfig(state.selectedShipId)?.name || 'Ship'} staged at ${coordFromIndex(index)}. Press Enter to confirm placement.`;
+      renderAll();
       return;
     }
 
@@ -1648,6 +1763,9 @@
 
   function toggleOrientation() {
     state.orientation = state.orientation === 'horizontal' ? 'vertical' : 'horizontal';
+    if (state.pendingPlacementIndex >= 0 && !canPlaceShip(state.draftShips, state.selectedShipId, state.pendingPlacementIndex, state.orientation)) {
+      state.lastResultMessage = 'Rotate moved the staged ship out of bounds or into another ship. Pick a new tile.';
+    }
     renderAll();
   }
 
@@ -1665,7 +1783,16 @@
   async function confirmCurrentAction() {
     if (!state.roomData) return;
     if (state.roomData.phase === 'placement') {
-      await lockFleet();
+      if (state.pendingPlacementIndex >= 0) {
+        const placedShipName = getShipConfig(state.selectedShipId)?.name || 'Ship';
+        const placed = placeShipInDraft(state.selectedShipId, state.pendingPlacementIndex, state.orientation);
+        if (!placed) {
+          throw new Error('INVALID_PLACEMENT');
+        }
+        state.lastResultMessage = `${placedShipName} placed.`;
+        renderAll();
+        return;
+      }
       return;
     }
     if (state.roomData.phase !== 'battle') return;
@@ -1754,6 +1881,7 @@
       state.draftShips = generateRandomFleet();
       const nextUnplaced = SHIPS.find((ship) => !state.draftShips.some((placed) => placed.id === ship.id));
       state.selectedShipId = nextUnplaced?.id || SHIPS[0].id;
+      state.pendingPlacementIndex = -1;
       renderAll();
     });
 
@@ -1781,6 +1909,7 @@
       const shipButton = event.target.closest('[data-ship-id]');
       if (!shipButton) return;
       state.selectedShipId = shipButton.dataset.shipId || SHIPS[0].id;
+      state.pendingPlacementIndex = -1;
       renderAll();
     });
 
@@ -1798,7 +1927,9 @@
       if (!state.roomData) return;
 
       if (event.key === 'Enter') {
-        const canPlacementConfirm = state.roomData.phase === 'placement' && SHIPS.every((ship) => state.draftShips.some((placed) => placed.id === ship.id)) && !isPlacementLocked(state.roomData);
+        const canPlacementConfirm = state.roomData.phase === 'placement'
+          && !isPlacementLocked(state.roomData)
+          && state.pendingPlacementIndex >= 0;
         const canBattleConfirm = state.roomData.phase === 'battle' && isMyTurn(state.roomData);
         if (canPlacementConfirm || canBattleConfirm) {
           event.preventDefault();

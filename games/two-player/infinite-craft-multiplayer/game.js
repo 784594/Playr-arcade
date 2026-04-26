@@ -749,7 +749,7 @@
 
 	function renderRoomControls() {
 		if (!els.roomStatus || !els.roomCodeDisplay) return;
-		const inLobby = Boolean(state.roomId);
+		const inLobby = Boolean(state.roomId || state.roomData?.roomId);
 		const isHost = Boolean(inLobby && state.roomData?.ownerUid && state.roomData.ownerUid === state.user?.uid);
 		setRoomPanelMode(state.roomPanelMode);
 		if (els.craftLayout) {
@@ -762,6 +762,7 @@
 			els.elementsPanel.hidden = !inLobby;
 		}
 		if (els.roomCenterPanel) {
+			els.roomCenterPanel.hidden = inLobby;
 			els.roomCenterPanel.classList.toggle('is-live', inLobby);
 			els.roomCenterPanel.classList.toggle('is-hidden', inLobby);
 		}
@@ -1485,6 +1486,9 @@
 	function selectRoom(roomId, roomData = null) {
 		state.roomId = normalizeRoomCode(roomId);
 		state.roomData = roomData;
+		if (state.roomId) {
+			state.ownerLobbyOpen = false;
+		}
 		renderRoomControls();
 	}
 

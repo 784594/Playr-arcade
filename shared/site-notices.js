@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-25-ui-improvements',
+      title: 'UI improvements',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-25T18:45:00-04:00',
+      summary: 'Battleship now has cleaner placement controls, longer battle timers, sunk-ship flair, and both Battleship and Infinite Craft hide their room panels more reliably after joining.',
+      details: [
+        'Battleship ship placement now stages positions before confirming them, uses longer placement and turn timers, and keeps your turn alive after a successful hit.',
+        'Battleship now shows a short ship-destruction cutscene and uses more detailed ship rendering during placement and battle.',
+        'Battleship and Infinite Craft multiplayer now hide their create-or-join panels more consistently once a player is already in a room.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-25-battleship-ui-improvements-and-minor-bug-fixes',
       title: 'Battleship UI improvements and minor bug fixes',
       category: 'update',

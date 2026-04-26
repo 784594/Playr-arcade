@@ -33,6 +33,63 @@
   z-index: 3;
 }
 
+.ship-cutscene {
+  position: absolute;
+  left: 50%;
+  top: 26px;
+  transform: translateX(-50%);
+  z-index: 6;
+  min-width: min(92vw, 360px);
+  padding: 16px 20px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 122, 122, 0.42);
+  background:
+    linear-gradient(180deg, rgba(74, 12, 28, 0.94), rgba(25, 5, 12, 0.96)),
+    radial-gradient(circle at top, rgba(255, 196, 196, 0.2), transparent 54%);
+  box-shadow: 0 24px 42px rgba(0, 0, 0, 0.32);
+  text-align: center;
+  animation: ship-cutscene-pop 1350ms ease forwards;
+}
+
+.ship-cutscene-kicker,
+.ship-cutscene h2,
+.ship-cutscene p:last-child {
+  margin: 0;
+}
+
+.ship-cutscene-kicker {
+  color: rgba(255, 220, 220, 0.76);
+  font-size: 0.76rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.ship-cutscene h2 {
+  margin-top: 6px;
+  font-size: 1.3rem;
+}
+
+.ship-cutscene p:last-child {
+  margin-top: 8px;
+  color: #ffd8d8;
+}
+
+@keyframes ship-cutscene-pop {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px) scale(0.94);
+  }
+  12%,
+  75% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-8px) scale(0.98);
+  }
+}
+
 .room-gate h2,
 .battle-hud h2,
 .battle-hud h3,
@@ -422,13 +479,82 @@
     radial-gradient(circle at top, rgba(255, 255, 255, 0.12), transparent 44%);
 }
 
+.board-cell.ship::before,
+.board-cell.ship::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.board-cell.ship::before {
+  inset: 22% 10%;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(194, 235, 255, 0.22), rgba(84, 162, 210, 0.16)),
+    linear-gradient(180deg, rgba(55, 112, 149, 0.96), rgba(23, 63, 94, 0.96));
+  box-shadow:
+    0 0 0 1px rgba(207, 240, 255, 0.14) inset,
+    0 5px 12px rgba(0, 0, 0, 0.22);
+}
+
+.board-cell.ship::after {
+  background: rgba(220, 245, 255, 0.5);
+  border-radius: 999px;
+}
+
+.board-cell.ship-horizontal::before {
+  inset: 32% 8%;
+}
+
+.board-cell.ship-vertical::before {
+  inset: 8% 32%;
+}
+
+.board-cell.ship-horizontal.ship-middle::after {
+  left: 34%;
+  top: 20%;
+  width: 18%;
+  height: 16%;
+}
+
+.board-cell.ship-vertical.ship-middle::after {
+  left: 20%;
+  top: 34%;
+  width: 16%;
+  height: 18%;
+}
+
+.board-cell.ship-horizontal.ship-start::before {
+  clip-path: polygon(0 50%, 22% 0, 100% 0, 100% 100%, 22% 100%);
+}
+
+.board-cell.ship-horizontal.ship-end::before {
+  clip-path: polygon(0 0, 78% 0, 100% 50%, 78% 100%, 0 100%);
+}
+
+.board-cell.ship-vertical.ship-start::before {
+  clip-path: polygon(50% 0, 100% 22%, 100% 100%, 0 100%, 0 22%);
+}
+
+.board-cell.ship-vertical.ship-end::before {
+  clip-path: polygon(0 0, 100% 0, 100% 78%, 50% 100%, 0 78%);
+}
+
 .board-cell.selected {
   border-color: rgba(255, 218, 124, 0.8);
   box-shadow: 0 0 0 2px rgba(255, 218, 124, 0.14);
 }
 
-.board-cell.preview-valid {
+.board-cell.preview-valid,
+.board-cell.preview-pending {
   border-color: rgba(124, 240, 197, 0.56);
+  box-shadow: 0 0 0 1px rgba(124, 240, 197, 0.16) inset;
+}
+
+.board-cell.preview-pending {
+  background:
+    linear-gradient(180deg, rgba(25, 76, 70, 0.94), rgba(13, 37, 43, 0.96)),
+    radial-gradient(circle at top, rgba(124, 240, 197, 0.16), transparent 50%);
 }
 
 .board-cell.hit {

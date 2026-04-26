@@ -21,7 +21,7 @@
       <div class="board-meta">
         <span class="tag">Type: two-player</span>
         <span class="tag">Room code: bnf-xxxx</span>
-        <span class="tag">Turn timer: 20s</span>
+        <span class="tag">Turn timer: 30s</span>
       </div>
     </div>
 
@@ -56,6 +56,12 @@
             <button id="backToChoiceBtn" class="action-btn secondary" type="button">Back</button>
           </div>
         </section>
+
+        <div id="shipCutscene" class="ship-cutscene" aria-live="polite" hidden>
+          <p class="ship-cutscene-kicker">Ship Destroyed</p>
+          <h2 id="shipCutsceneTitle">Target Eliminated</h2>
+          <p id="shipCutsceneText">A ship has been destroyed.</p>
+        </div>
 
         <section id="battleLayout" class="battle-layout" hidden>
           <aside id="battleHud" class="battle-hud battle-sidebar battle-sidebar-left" hidden>
