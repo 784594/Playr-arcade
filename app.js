@@ -38,6 +38,7 @@ const SINGLE_PLAYER_PLACEHOLDERS = [
 const MULTIPLAYER_PLACEHOLDERS = [
   { id: 'infinite-craft-multiplayer', name: 'Infinite Craft Multiplayer', controls: 'Mouse - shared room crafting (2P-4P)' },
   { id: 'battleship', name: 'Battleship - Neon Fleet', controls: 'Mouse - room-based 2P fleet duel' },
+  { id: 'chopsticks', name: 'Chopsticks', controls: 'Mouse - first-person 2P hand duel' },
   { id: 'connect-4', name: 'Connect 4', controls: 'Mouse - 2P/4P rotation/bracket' },
   { id: 'chess', name: 'Chess', controls: 'Mouse - 2D top-down 2P' },
   { id: 'checkers', name: 'Checkers', controls: 'Mouse - 2P/4P team mode' },
@@ -66,6 +67,7 @@ const MULTIPLAYER_IMPLEMENTED_IDS = new Set([
   'air-hockey',
   'among-us-clone',
   'battleship',
+  'chopsticks',
   'checkers',
   'chess',
   'connect-4',

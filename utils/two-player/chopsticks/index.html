@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Real-time 2-player Chopsticks with first-person hand controls, room codes, chat, and a move timer." />
+  <title>Chopsticks | PlayR</title>
+  <link rel="stylesheet" href="../../shared/game-shell.css" />
+  <link rel="stylesheet" href="game.css" />
+  <script src="/shared/ads.js"></script>
+  <script defer src="/shared/site-footer.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <div class="page" id="gameRoot">
+    <div class="top">
+      <a class="back-link" href="/">Back to hub</a>
+      <div class="board-meta">
+        <span class="tag">Type: two-player</span>
+        <span class="tag">First-person hand duel</span>
+        <span class="tag">30s move timer</span>
+      </div>
+    </div>
+
+    <header class="header">
+      <p class="tag">PlayR Multiplayer Room Match</p>
+      <h1>Chopsticks</h1>
+      <div class="meta">
+        <span class="tag">Deterministic rounds</span>
+        <span class="tag">Procedural hand poses</span>
+        <span class="tag">Chat filter: enabled</span>
+      </div>
+      <p id="gameStatus">Connecting...</p>
+    </header>
+
+    <section class="chop-layout">
+      <article class="play-area chop-surface">
+        <h2>Hands</h2>
+
+        <div class="chop-top-layout">
+          <aside class="room-rail left-rail">
+            <section id="boardInfo" class="board-info" hidden>
+              <p><strong>Room:</strong> <span id="roomCode">--</span></p>
+              <p><strong id="myUserLabel">You:</strong> <span id="myUserDisplay">--</span></p>
+              <p><strong id="otherUserLabel">Other Player:</strong> <span id="otherUserDisplay">Waiting...</span></p>
+              <p><strong>Turn:</strong> <span id="turnDisplay">--</span></p>
+              <div class="timer-block">
+                <div class="timer-row">
+                  <strong>Move Timer</strong>
+                  <span id="timerDisplay">30.0s</span>
+                </div>
+                <div class="timer-track">
+                  <span id="timerFill" class="timer-fill"></span>
+                </div>
+              </div>
+              <div class="score-block">
+                <strong>Scores:</strong>
+                <div id="scoreDisplay" class="score-lines">
+                  <span>Host: 0</span>
+                  <span>Guest: 0</span>
+                </div>
+              </div>
+              <div class="board-info-actions">
+                <button id="copyRoomCodeBtn" class="action-btn secondary" type="button">Copy Code</button>
+                <button id="copyInviteBtn" class="action-btn secondary" type="button">Copy Invite Link</button>
+                <button id="startGameBtn" class="action-btn" type="button" hidden>Start Game</button>
+              </div>
+            </section>
+          </aside>
+
+          <div class="arena-stage">
+            <section id="roomGate" class="room-gate">
+              <h3>Create or Join a Room</h3>
+              <p>Play Chopsticks in a live first-person hand duel.</p>
+
+              <div id="gateChoice" class="gate-choice">
+                <button id="createFlowBtn" class="action-btn" type="button">Create a Room</button>
+                <button id="joinFlowBtn" class="action-btn" type="button">Join a Room</button>
+              </div>
+
+              <div id="joinFlow" class="gate-flow" hidden>
+                <div class="gate-row grow">
+                  <input id="roomIdInput" class="room-input" type="text" maxlength="24" placeholder="Enter room code" autocomplete="off" />
+                  <button id="joinRoomBtn" class="action-btn" type="button">Join</button>
+                </div>
+                <p id="roomGateError" class="gate-error" hidden></p>
+                <button id="backToChoiceBtn" class="action-btn secondary" type="button">Back</button>
+              </div>
+            </section>
+
+            <section class="action-rail">
+              <div class="action-mode-group" role="tablist" aria-label="Action mode">
+                <button id="attackModeBtn" class="mode-btn is-active" type="button">Attack</button>
+                <button id="transferModeBtn" class="mode-btn" type="button">Transfer</button>
+                <button id="clearSelectionBtn" class="mode-btn secondary" type="button">Clear</button>
+              </div>
+              <p id="modeHint" class="board-hint">Create a room or join with a code to begin.</p>
+            </section>
+
+            <div id="arena" class="hand-arena" aria-live="polite"></div>
+          </div>
+
+          <section id="chatPanel" class="chat-panel" hidden>
+            <h2>Room Chat</h2>
+            <div id="chatLog" class="chat-log" aria-live="polite"></div>
+            <div class="chat-row">
+              <input id="chatInput" class="room-input" type="text" maxlength="220" placeholder="Type a message" />
+              <button id="sendChatBtn" class="action-btn" type="button">Send</button>
+            </div>
+            <p class="hint" id="chatStatus">Be respectful. Filter is active.</p>
+          </section>
+        </div>
+
+        <div id="endgameOverlay" class="endgame-overlay" hidden>
+          <div class="endgame-glow endgame-glow-left"></div>
+          <div class="endgame-glow endgame-glow-right"></div>
+          <div class="endgame-panel-stack">
+            <section id="endgameCard" class="endgame-card winner-card">
+              <p id="endgameLabel" class="tag">Winner!</p>
+              <strong id="endgameName">--</strong>
+            </section>
+            <button id="endgameRematchBtn" class="action-btn" type="button">Rematch</button>
+            <p id="endgameRematchStatus" class="hint">Waiting for votes.</p>
+          </div>
+        </div>
+      </article>
+    </section>
+  </div>
+</body>
+</html>

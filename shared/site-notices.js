@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-26-chopsticks-live',
+      title: 'Chopsticks is live',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-26T16:25:00-04:00',
+      summary: 'PlayR now has a live 2-player Chopsticks room match with procedural hands, direct attack/transfer moves, room chat, and a 30-second move timer.',
+      details: [
+        'Chopsticks uses a first-person hand layout instead of a board, with your two hands in the foreground and the opponent across the table.',
+        'The hand poses are rendered procedurally, so each hand visibly raises or hides fingers based on its current 0-4 count instead of relying on static number-only chips.',
+        'Rounds are deterministic, illegal moves are blocked automatically, and timeout losses plus rematches feed into persistent per-room scoring.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-26-we-got-tags',
       title: 'We Got Tags!',
       category: 'update',
