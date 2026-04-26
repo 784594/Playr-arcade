@@ -19,6 +19,42 @@
     </div>
 
     <section class="craft-layout" aria-label="Infinite Craft play area">
+      <aside class="panel owner-tools-panel" id="ownerToolsPanel" hidden>
+        <div class="owner-tools-header">
+          <div>
+            <p class="admin-kicker">Owner tools</p>
+            <h2>Infinite Craft Admin</h2>
+          </div>
+          <p class="hint">owner@playr.io only</p>
+        </div>
+        <section id="adminPanel" class="admin-panel" hidden>
+          <div class="admin-panel-header">
+            <div>
+              <p class="admin-kicker">Search blocks</p>
+              <h2>Block Library</h2>
+            </div>
+            <p class="hint">Prefix only</p>
+          </div>
+          <input id="adminSearch" class="room-input admin-search" type="search" placeholder="Type starting letters like r or rock..." autocomplete="off" />
+          <p id="adminSearchStatus" class="hint">Type starting letters to search the block list.</p>
+          <div id="adminBlockList" class="admin-block-list" aria-live="polite"></div>
+
+          <div class="admin-panel-header">
+            <div>
+              <p class="admin-kicker">Custom block</p>
+              <h2>Create Block</h2>
+            </div>
+            <p class="hint">Spawns on board</p>
+          </div>
+          <div class="admin-custom-grid">
+            <input id="adminCustomName" class="room-input admin-search" type="text" placeholder="Block name" autocomplete="off" />
+            <input id="adminCustomEmoji" class="room-input admin-search" type="text" placeholder="Emoji" maxlength="4" autocomplete="off" />
+            <input id="adminCustomTags" class="room-input admin-search admin-custom-tags" type="text" placeholder="Tags, comma, separated" autocomplete="off" />
+            <button id="adminCreateCustomBtn" class="toolbar-btn" type="button">Create Block</button>
+          </div>
+        </section>
+      </aside>
+
       <article class="play-area craft-surface-panel">
         <div class="craft-counter" id="uniqueCounter" aria-live="polite">Unique Crafted: 0</div>
         <div id="workspace" class="craft-workspace" aria-label="Crafting workspace"></div>

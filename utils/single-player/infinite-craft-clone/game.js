@@ -138,6 +138,9 @@
 		'../../../../../../InfiniteCraftWiki-main/web/data/',
 	].filter(Boolean);
 	const WIKI_BASE64_TABLE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-=';
+	const OWNER_ACCOUNT_IDENTIFIERS = new Set(['owner@playr.io']);
+	const ADMIN_SEARCH_DEBOUNCE_MS = 120;
+	const ADMIN_SEARCH_RESULT_LIMIT = 80;
 
 	const state = {
 		firebaseApp: null,
@@ -172,8 +175,12 @@
 		roomCursorsDirty: false,
 		roomCreatePending: false,
 		roomJoinPending: false,
-		adminPanelOpen: false,
 		adminSearch: '',
+		adminSearchStatus: 'Type starting letters to search the block list.',
+		adminSearchResults: [],
+		adminSearchTimer: null,
+		adminSearchLoading: false,
+		adminCatalogBuckets: new Map(),
 		adminDrag: null,
 		achievement: null,
 		achievementTimer: null,
@@ -213,6 +220,8 @@
 
 	const els = {
 		status: document.getElementById('gameStatus'),
+		craftLayout: document.querySelector('.craft-layout'),
+		ownerToolsPanel: document.getElementById('ownerToolsPanel'),
 		workspace: document.getElementById('workspace'),
 		workspaceOverlay: document.getElementById('workspaceOverlay'),
 		inventoryPanel: document.getElementById('inventoryPanel'),
@@ -232,12 +241,16 @@
 		roomCodeDisplay: document.getElementById('roomCodeDisplay'),
 		createRoomBtn: document.getElementById('createRoomBtn'),
 		copyRoomInviteBtn: document.getElementById('copyRoomInviteBtn'),
-		ownerLobbyBtn: document.getElementById('ownerLobbyBtn'),
 		joinRoomInput: document.getElementById('joinRoomInput'),
 		joinRoomBtn: document.getElementById('joinRoomBtn'),
 		adminPanel: document.getElementById('adminPanel'),
 		adminSearch: document.getElementById('adminSearch'),
+		adminSearchStatus: document.getElementById('adminSearchStatus'),
 		adminBlockList: document.getElementById('adminBlockList'),
+		adminCustomName: document.getElementById('adminCustomName'),
+		adminCustomEmoji: document.getElementById('adminCustomEmoji'),
+		adminCustomTags: document.getElementById('adminCustomTags'),
+		adminCreateCustomBtn: document.getElementById('adminCreateCustomBtn'),
 		ownerLobbyPanel: document.getElementById('ownerLobbyPanel'),
 		ownerRoomList: document.getElementById('ownerRoomList'),
 		selectedRoomTitle: document.getElementById('selectedRoomTitle'),
@@ -316,6 +329,8 @@
 				if (user) {
 					return {
 						uid: String(user.uid || user.id || user.email || getDisplayName(user)),
+						email: String(user.email || user.identifier || '').trim().toLowerCase(),
+						identifier: String(user.identifier || user.email || '').trim().toLowerCase(),
 						displayName: normalizeName(user.displayName || user.name || 'Player'),
 					};
 				}
@@ -331,6 +346,8 @@
 			if (!parsed) return null;
 			return {
 				uid: String(parsed.uid || parsed.email || parsed.displayName || 'guest'),
+				email: String(parsed.email || parsed.identifier || '').trim().toLowerCase(),
+				identifier: String(parsed.identifier || parsed.email || '').trim().toLowerCase(),
 				displayName: normalizeName(parsed.displayName || parsed.name || 'Player'),
 			};
 		} catch {
@@ -339,7 +356,13 @@
 	}
 
 	function isOwnerAccount(user = state.user) {
-		return normalizeLookupName(user?.displayName || '') === 'owner';
+		const identifiers = [
+			user?.email,
+			user?.identifier,
+			user?.uid,
+			user?.displayName,
+		].map((value) => normalizeLookupName(value || ''));
+		return identifiers.some((value) => OWNER_ACCOUNT_IDENTIFIERS.has(value)) || normalizeLookupName(user?.displayName || '') === 'owner';
 	}
 
 	function isCurrentUserOwner() {
@@ -918,36 +941,152 @@
 		state.adminCatalog = [...entries.values()].sort((a, b) => a.name.localeCompare(b.name));
 		state.adminCatalogById = new Map(state.adminCatalog.map((entry) => [entry.id, entry]));
 		state.adminCatalogByName = new Map(state.adminCatalog.map((entry) => [normalizeLookupName(entry.name), entry]));
+		const buckets = new Map();
+		state.adminCatalog.forEach((entry) => {
+			const key = normalizeLookupName(entry.name || '');
+			const bucketKey = key.charAt(0) || '#';
+			if (!buckets.has(bucketKey)) buckets.set(bucketKey, []);
+			buckets.get(bucketKey).push(entry);
+		});
+		state.adminCatalogBuckets = buckets;
 	}
 
-	function sortedAdminCatalog() {
-		const term = state.adminSearch.trim().toLowerCase();
-		if (!term) return state.adminCatalog;
-		return state.adminCatalog.filter((entry) => entry.name.toLowerCase().includes(term));
+	function normalizeAdminSearchTerm(value) {
+		return normalizeLookupName(value || '').replace(/[^a-z0-9-]/g, '');
+	}
+
+	function searchAdminCatalogByPrefix(term) {
+		const scopedTerm = normalizeAdminSearchTerm(term);
+		if (!scopedTerm) return { results: [], hitLimit: false };
+		const bucketKey = scopedTerm.charAt(0) || '#';
+		const scopedEntries = state.adminCatalogBuckets.get(bucketKey) || [];
+		const results = [];
+		let hitLimit = false;
+		for (const entry of scopedEntries) {
+			const entryKey = normalizeLookupName(entry.name || '');
+			if (!entryKey.startsWith(scopedTerm)) continue;
+			results.push(entry);
+			if (results.length >= ADMIN_SEARCH_RESULT_LIMIT) {
+				hitLimit = true;
+				break;
+			}
+		}
+		return { results, hitLimit };
+	}
+
+	function setAdminSearchState(status, results = state.adminSearchResults) {
+		state.adminSearchStatus = status;
+		state.adminSearchResults = results;
+		renderAdminPanel();
+	}
+
+	async function runAdminSearch(rawTerm = state.adminSearch) {
+		const term = normalizeAdminSearchTerm(rawTerm);
+		state.adminSearch = term;
+		if (!term) {
+			state.adminSearchLoading = false;
+			setAdminSearchState('Type starting letters to search the block list.', []);
+			return;
+		}
+		if (!state.localExtractReady || !state.adminCatalog.length) {
+			state.adminSearchLoading = true;
+			setAdminSearchState('Loading block index...', []);
+			const ready = await ensureLocalExtractRecipes();
+			state.adminSearchLoading = false;
+			if (!ready) {
+				setAdminSearchState('Block index failed to load.', []);
+				return;
+			}
+		}
+		const { results, hitLimit } = searchAdminCatalogByPrefix(term);
+		const status = results.length
+			? `Showing ${results.length}${hitLimit ? '+' : ''} blocks starting with "${term}".`
+			: `No blocks found starting with "${term}".`;
+		setAdminSearchState(status, results);
+	}
+
+	function queueAdminSearch(rawTerm = '') {
+		const nextTerm = normalizeAdminSearchTerm(rawTerm);
+		state.adminSearch = nextTerm;
+		if (state.adminSearchTimer) {
+			clearTimeout(state.adminSearchTimer);
+			state.adminSearchTimer = null;
+		}
+		if (!nextTerm) {
+			state.adminSearchLoading = false;
+			setAdminSearchState('Type starting letters to search the block list.', []);
+			return;
+		}
+		setAdminSearchState('Searching block index...', []);
+		state.adminSearchTimer = setTimeout(() => {
+			state.adminSearchTimer = null;
+			void runAdminSearch(nextTerm);
+		}, ADMIN_SEARCH_DEBOUNCE_MS);
+	}
+
+	function parseOwnerTags(value) {
+		return String(value || '')
+			.split(',')
+			.map((tag) => normalizeLookupName(tag))
+			.filter(Boolean)
+			.slice(0, 6);
+	}
+
+	function createOwnerCustomBlock() {
+		if (!isCurrentUserOwner()) return;
+		const name = normalizeName(els.adminCustomName?.value || '');
+		if (!name) {
+			showNotice('Enter a custom block name');
+			return;
+		}
+		const tags = parseOwnerTags(els.adminCustomTags?.value || '');
+		const emoji = String(els.adminCustomEmoji?.value || '').trim() || pickEmoji(tags, Date.now());
+		const saved = addElement({
+			id: `custom-${slugify(name) || Date.now().toString(36)}`,
+			name,
+			emoji: emoji.slice(0, 4),
+			tags,
+		});
+		if (!saved) {
+			showNotice('Custom block could not be created');
+			return;
+		}
+		renderAll();
+		spawnElementNearCenter(saved.id);
+		if (els.adminCustomName) els.adminCustomName.value = '';
+		if (els.adminCustomEmoji) els.adminCustomEmoji.value = '';
+		if (els.adminCustomTags) els.adminCustomTags.value = '';
+		showNotice(`${saved.name} created`);
 	}
 
 	function renderAdminPanel() {
 		if (!els.adminPanel) return;
 		const canShow = isCurrentUserOwner();
-		els.adminPanel.hidden = !canShow || !state.adminPanelOpen;
+		els.adminPanel.hidden = !canShow;
 		if (!canShow) return;
+		if (els.adminSearchStatus) {
+			els.adminSearchStatus.textContent = state.adminSearchStatus || 'Type starting letters to search the block list.';
+		}
 
 		if (!els.adminBlockList) return;
-		const entries = sortedAdminCatalog();
-		els.adminBlockList.innerHTML = entries.slice(0, 240).map((entry) => `
+		const entries = state.adminSearchResults || [];
+		els.adminBlockList.innerHTML = entries.length ? entries.map((entry) => `
 			<button type="button" class="admin-block-item" data-admin-block-id="${entry.id}" draggable="false" title="${entry.name}">
 				<span class="craft-node-emoji">${entry.emoji}</span>
 				<span class="inventory-item-name">${entry.name}</span>
-				<span class="room-flag">Drag</span>
+				<span class="room-flag">Spawn</span>
 			</button>
-		`).join('');
+		`).join('') : '<p class="admin-search-empty">Search results stay empty until you type a starting letter.</p>';
 	}
 
 	function renderRoomControls() {
-		if (!els.roomStatus || !els.roomCodeDisplay) return;
-		if (els.ownerLobbyBtn) {
-			els.ownerLobbyBtn.hidden = !isCurrentUserOwner();
+		if (els.ownerToolsPanel) {
+			els.ownerToolsPanel.hidden = !isCurrentUserOwner();
 		}
+		if (els.craftLayout) {
+			els.craftLayout.classList.toggle('is-owner-tools', isCurrentUserOwner());
+		}
+		if (!els.roomStatus || !els.roomCodeDisplay) return;
 		if (!state.roomId) {
 			els.roomStatus.textContent = 'Offline';
 			els.roomCodeDisplay.textContent = 'No room yet.';
@@ -1830,10 +1969,9 @@
 		});
 	}
 
-	function toggleAdminPanel(forceOpen) {
+	function toggleAdminPanel() {
 		if (!isCurrentUserOwner()) return;
-		state.adminPanelOpen = typeof forceOpen === 'boolean' ? forceOpen : !state.adminPanelOpen;
-		renderAdminPanel();
+		els.adminSearch?.focus();
 	}
 
 	function renderAll() {
@@ -2119,8 +2257,13 @@
 
 		if (els.adminSearch) {
 			els.adminSearch.addEventListener('input', () => {
-				state.adminSearch = els.adminSearch.value || '';
-				renderAdminPanel();
+				queueAdminSearch(els.adminSearch.value || '');
+			});
+		}
+
+		if (els.adminCreateCustomBtn) {
+			els.adminCreateCustomBtn.addEventListener('click', () => {
+				createOwnerCustomBlock();
 			});
 		}
 
@@ -2138,14 +2281,6 @@
 		if (els.refreshRoomsBtn) {
 			els.refreshRoomsBtn.addEventListener('click', () => {
 				void syncOwnerLobby();
-			});
-		}
-
-		if (els.ownerLobbyBtn) {
-			els.ownerLobbyBtn.addEventListener('click', () => {
-				if (!isCurrentUserOwner()) return;
-				state.ownerLobbyOpen = !state.ownerLobbyOpen;
-				renderOwnerLobby();
 			});
 		}
 
@@ -2224,6 +2359,8 @@
 			firebase.auth.onAuthStateChanged((user) => {
 				state.user = user ? {
 					uid: String(user.uid || user.email || 'guest'),
+					email: String(user.email || state.user?.email || state.user?.identifier || '').trim().toLowerCase(),
+					identifier: String(state.user?.identifier || user.email || state.user?.email || '').trim().toLowerCase(),
 					displayName: normalizeName(user.displayName || user.email || 'Player'),
 				} : getCurrentUserInfo();
 				if (!state.user) {
@@ -2244,10 +2381,6 @@
 			}
 			renderAll();
 		});
-		if (!API_ONLY_RECIPES_MODE) {
-			void ensureLocalExtractRecipes();
-			void ensureWikiIndex();
-		}
 		bindEvents();
 		renderAll();
 		startBoardAnimation();
