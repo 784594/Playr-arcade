@@ -48,7 +48,7 @@ service cloud.firestore {
     function validUserProfileDoc(uid) {
       return request.resource.data.uid is string
         && request.resource.data.uid == uid
-        && request.resource.data.displayName is string
+        && request.resource.data.displayName is stgtyggtggfgfrffrfrring
         && request.resource.data.normalizedDisplayName is string
         && request.resource.data.normalizedDisplayName == normalizedName(request.resource.data.displayName)
         && validDisplayName(request.resource.data.displayName)
