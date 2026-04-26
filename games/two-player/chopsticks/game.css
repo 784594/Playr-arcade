@@ -79,22 +79,20 @@
 
 .room-gate {
   position: absolute;
-  top: 32px;
+  top: 54%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   z-index: 6;
-  width: min(560px, 94%);
-  border: 1px solid rgba(132, 184, 255, 0.28);
-  background:
-    linear-gradient(180deg, rgba(24, 40, 72, 0.98), rgba(10, 15, 25, 0.96)),
-    radial-gradient(circle at top left, rgba(76, 156, 255, 0.28), transparent 42%),
-    radial-gradient(circle at top right, rgba(255, 215, 94, 0.18), transparent 38%);
+  width: min(620px, calc(100% - 36px));
+  border: 1px solid rgba(132, 184, 255, 0.2);
+  background: rgba(12, 20, 37, 0.92);
   backdrop-filter: blur(18px);
   border-radius: 20px;
-  padding: 18px;
+  padding: 24px;
   display: grid;
-  gap: 12px;
-  box-shadow: 0 24px 56px rgba(0, 0, 0, 0.42);
+  gap: 14px;
+  text-align: center;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
 }
 
 .room-gate::before {
@@ -104,6 +102,11 @@
   height: 4px;
   border-radius: 20px 20px 0 0;
   background: linear-gradient(90deg, rgba(255, 141, 150, 0.98), rgba(255, 207, 114, 0.98), rgba(116, 191, 255, 0.88));
+}
+
+.room-gate[hidden],
+.room-gate.is-hidden {
+  display: none !important;
 }
 
 .room-gate h3,
@@ -116,6 +119,7 @@
 
 .room-gate p {
   color: var(--muted);
+  line-height: 1.65;
 }
 
 .gate-choice {
@@ -127,6 +131,7 @@
 .gate-flow {
   display: grid;
   gap: 10px;
+  justify-items: center;
 }
 
 .gate-row {
@@ -135,10 +140,12 @@
 }
 
 .gate-row.grow {
+  width: min(100%, 430px);
   grid-template-columns: 1fr auto;
 }
 
 .gate-error {
+  margin: 0;
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid rgba(255, 118, 145, 0.45);
@@ -613,6 +620,10 @@
 
   .arena-stage {
     width: 100%;
+  }
+
+  .room-gate {
+    top: 52%;
   }
 
   .chat-log {

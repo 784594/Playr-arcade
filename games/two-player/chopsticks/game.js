@@ -329,8 +329,12 @@
     const room = state.roomData;
     const side = getCurrentSide(room);
     const opponentSide = getOpponentSide(side);
+    const hasRoomTarget = Boolean(state.roomId);
     const inRoom = Boolean(state.roomId && room);
-    if (els.roomGate) els.roomGate.hidden = inRoom;
+    if (els.roomGate) {
+      els.roomGate.hidden = hasRoomTarget;
+      els.roomGate.classList.toggle('is-hidden', hasRoomTarget);
+    }
     if (els.boardInfo) els.boardInfo.hidden = !inRoom;
     if (els.chatPanel) els.chatPanel.hidden = !inRoom;
 
@@ -988,12 +992,19 @@
       showGateMode('choice');
       setStatus('Creating room...');
       void createRoom()
-        .then((roomId) => joinRoom(roomId))
+        .then(async (roomId) => {
+          if (els.roomIdInput) els.roomIdInput.value = roomId;
+          await subscribeToRoom(roomId);
+          return roomId;
+        })
         .then(() => {
           showGateMode('choice');
           setStatus(`Room created. Code: ${state.roomId}. Share it with your opponent.`);
         })
         .catch((error) => {
+          state.roomId = '';
+          state.roomData = null;
+          renderAll();
           setStatus(`Create room failed: ${error?.message || 'unknown error'}.`);
         });
     });
