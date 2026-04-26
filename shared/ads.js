@@ -43,11 +43,11 @@
     { min: 101, max: Number.POSITIVE_INFINITY, id: 'level-101-plus', label: 'Level VI', title: 'Level 101+' },
   ];
   const REFERRAL_TIERS = [
-    { count: 1, xp: 50, badgeId: 'referral-1', label: 'Recruiter I', description: 'Awarded after 1 qualified referral. Stays active for 1 week and refreshes when you earn another referral.' },
-    { count: 3, xp: 150, badgeId: 'referral-3', label: 'Recruiter II', description: 'Awarded after 3 qualified referrals. Stays active for 1 week and refreshes when you earn another referral.' },
-    { count: 5, xp: 300, badgeId: 'referral-5', label: 'Recruiter III', description: 'Awarded after 5 qualified referrals. Stays active for 1 week and refreshes when you earn another referral.', animated: true },
-    { count: 10, xp: 600, badgeId: 'referral-10', label: 'Scoutmaster', description: 'Awarded after 10 qualified referrals. Stays active for 1 week and refreshes when you earn another referral.' },
-    { count: 25, xp: 1500, badgeId: 'referral-25', label: 'Signal Sovereign', description: 'Awarded after 25 qualified referrals. Stays active for 1 week and refreshes when you earn another referral. The bonus VIP week needs another 25 referrals to renew.', animated: true, displayColor: '#c38bff' },
+    { count: 1, xp: 50, badgeId: 'referral-1', label: 'Rec I', description: 'Awarded after 1 qualified referral. Stays active for 1 week and refreshes when you earn another referral.' },
+    { count: 3, xp: 150, badgeId: 'referral-3', label: 'Rec II', description: 'Awarded after 3 qualified referrals. Stays active for 1 week and refreshes when you earn another referral.' },
+    { count: 5, xp: 300, badgeId: 'referral-5', label: 'Rec III', description: 'Awarded after 5 qualified referrals. Stays active for 1 week and refreshes when you earn another referral.', animated: true, animationClass: 'referral-animated-rec3' },
+    { count: 10, xp: 600, badgeId: 'referral-10', label: 'Scout', description: 'Awarded after 10 qualified referrals. Stays active for 1 week and refreshes when you earn another referral.', animated: true, animationClass: 'referral-animated-scout' },
+    { count: 25, xp: 1500, badgeId: 'referral-25', label: 'Signal', description: 'Awarded after 25 qualified referrals. Stays active for 1 week and refreshes when you earn another referral. The bonus VIP week needs another 25 referrals to renew.', animated: true, animationClass: 'referral-animated-signal', displayColor: '#c38bff' },
   ];
   const LEADERBOARD_BADGES = [
     { id: 'leaderboard-top-100', min: 51, max: 100, label: 'Top 100', title: 'Top 100', description: 'Currently ranked inside the local XP Top 100.' },
@@ -58,11 +58,11 @@
     { id: 'leaderboard-1st', min: 1, max: 1, label: '1st', title: '1st Place', description: 'Currently holds the #1 local XP spot.' },
   ];
   const DONATION_BADGES = [
-    { id: 'donation-1', minimumCad: 0.01, label: 'Donation I', title: 'Donation I', description: 'Reserved for supporters once donations go live.', color: '#55d76a' },
-    { id: 'donation-2', minimumCad: 3, label: 'Donation II', title: 'Donation II', description: 'Reserved for supporters once donations go live.', color: '#ffab4f' },
-    { id: 'donation-3', minimumCad: 10, label: 'Donation III', title: 'Donation III', description: 'Reserved for supporters once donations go live.', color: '#59b8ff' },
-    { id: 'donation-4', minimumCad: 50, label: 'Donation IV', title: 'Donation IV', description: 'Reserved for supporters once donations go live.', color: '#ff697a' },
-    { id: 'donation-5', minimumCad: 100, label: 'Donation V', title: 'Donation V', description: 'Reserved for supporters once donations go live.', color: '#bb75ff' },
+    { id: 'donation-1', minimumCad: 0.01, label: 'Dono I', title: 'Donation I', description: 'Reserved for supporters once donations go live.', color: '#22ff4e', assetPath: '/images/donations/dono-1.svg' },
+    { id: 'donation-2', minimumCad: 3, label: 'Dono II', title: 'Donation II', description: 'Reserved for supporters once donations go live.', color: '#ffbf20', assetPath: '/images/donations/dono-2.svg' },
+    { id: 'donation-3', minimumCad: 10, label: 'Dono III', title: 'Donation III', description: 'Reserved for supporters once donations go live.', color: '#3dc8ff', assetPath: '/images/donations/dono-3.svg' },
+    { id: 'donation-4', minimumCad: 50, label: 'Dono IV', title: 'Donation IV', description: 'Reserved for supporters once donations go live.', color: '#ff2b2b', assetPath: '/images/donations/dono-4.svg' },
+    { id: 'donation-5', minimumCad: 100, label: 'Dono V', title: 'Donation V', description: 'Reserved for supporters once donations go live.', color: '#a638ff', assetPath: '/images/donations/dono-5.svg' },
   ];
 
   const activityState = {
@@ -163,6 +163,70 @@
         ${textMarkup}
       </svg>
     `);
+  }
+
+  function createLeaderboardIcon(text, primary = '#6cbcff', accent = '#eff8ff') {
+    const fill = clampColor(primary, '#6cbcff');
+    const stroke = clampColor(accent, '#eff8ff');
+    return createSvgDataUri(`
+      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+        <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#091120" stroke="rgba(255,255,255,0.14)" />
+        <rect x="4.8" y="5.4" width="22.4" height="21.2" rx="6.6" fill="${fill}" stroke="${stroke}" stroke-width="1.4" />
+        <text x="16" y="20.2" text-anchor="middle" font-size="${text.length >= 3 ? 9.2 : 12.4}" font-weight="900" font-family="Arial, sans-serif" fill="#08111f">${escapeHtml(text)}</text>
+      </svg>
+    `);
+  }
+
+  function createReferralIcon(tierId) {
+    if (tierId === 'referral-1') {
+      return createSvgDataUri(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+          <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#0a1221" stroke="rgba(255,255,255,0.14)" />
+          <circle cx="16" cy="16" r="8.6" fill="#6bc7ff" stroke="#ecf7ff" stroke-width="1.6" />
+          <text x="16" y="20.3" text-anchor="middle" font-size="11.6" font-weight="900" font-family="Arial, sans-serif" fill="#08111f">1</text>
+        </svg>
+      `);
+    }
+    if (tierId === 'referral-3') {
+      return createSvgDataUri(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+          <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#0a1221" stroke="rgba(255,255,255,0.14)" />
+          <path d="M16 5.6 26.4 16 16 26.4 5.6 16 16 5.6Z" fill="#59a5ff" stroke="#eef6ff" stroke-width="1.6" />
+          <text x="16" y="20.2" text-anchor="middle" font-size="11.4" font-weight="900" font-family="Arial, sans-serif" fill="#08111f">3</text>
+        </svg>
+      `);
+    }
+    if (tierId === 'referral-5') {
+      return createSvgDataUri(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+          <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#0a1221" stroke="rgba(255,255,255,0.14)" />
+          <path d="M10 5.9h12l6 10.1-6 10.1H10L4 16l6-10.1Z" fill="#ffd15f" stroke="#fff6de" stroke-width="1.5" />
+          <text x="16" y="20.1" text-anchor="middle" font-size="11.2" font-weight="900" font-family="Arial, sans-serif" fill="#1a1404">5</text>
+        </svg>
+      `);
+    }
+    if (tierId === 'referral-10') {
+      return createSvgDataUri(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+          <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#0a1221" stroke="rgba(255,255,255,0.14)" />
+          <circle cx="16" cy="16" r="9" fill="#ff9557" stroke="#fff1e8" stroke-width="1.5" />
+          <path d="M16 8.4 18.2 13.6l5.4 2.4-5.4 2.4L16 23.6l-2.2-5.2-5.4-2.4 5.4-2.4L16 8.4Z" fill="#3c1204" />
+          <circle cx="16" cy="16" r="2.6" fill="#fff4ea" />
+        </svg>
+      `);
+    }
+    if (tierId === 'referral-25') {
+      return createSvgDataUri(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+          <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#0a1221" stroke="rgba(255,255,255,0.14)" />
+          <path d="M16 5.2 24.7 8.2v6.6c0 5.5-3 9.3-8.7 11-5.7-1.7-8.7-5.5-8.7-11V8.2L16 5.2Z" fill="#b85dff" stroke="#f7ebff" stroke-width="1.5" />
+          <path d="M11.2 15.8c2.1-2.4 4-3.7 5.7-4.1m-5.7 7c2.7-1.8 5.6-2.6 8.7-2.4" stroke="#fff6ff" stroke-width="1.7" stroke-linecap="round" />
+          <circle cx="10.2" cy="20.3" r="1.4" fill="#fff6ff" />
+          <circle cx="21.2" cy="11.2" r="1.4" fill="#fff6ff" />
+        </svg>
+      `);
+    }
+    return createBadgeIcon({ shape: 'network', primary: '#78afff', accent: '#eef5ff' });
   }
 
   function slugify(value) {
@@ -567,9 +631,18 @@
       .playr-badge.animated img {
         animation: playrBadgeFloat 1.8s ease-in-out infinite;
       }
+      .playr-badge.referral-animated-rec3 img {
+        animation: playrBadgeRec3 1.4s ease-in-out infinite;
+      }
+      .playr-badge.referral-animated-scout img {
+        animation: playrBadgeScout 1.15s ease-in-out infinite;
+      }
+      .playr-badge.referral-animated-signal img {
+        animation: playrBadgeSignal 1.25s ease-in-out infinite;
+      }
       .playr-badge img {
-        width: 14px;
-        height: 14px;
+        width: 15px;
+        height: 15px;
         object-fit: contain;
         border-radius: 3px;
       }
@@ -634,6 +707,22 @@
       @keyframes playrBadgeFloat {
         0%, 100% { transform: translateY(0) scale(1); filter: drop-shadow(0 0 0 rgba(255,255,255,0)); }
         50% { transform: translateY(-1px) scale(1.05); filter: drop-shadow(0 0 10px rgba(160,205,255,0.35)); }
+      }
+      @keyframes playrBadgeRec3 {
+        0%, 100% { transform: translateY(0) scale(1); filter: drop-shadow(0 0 0 rgba(255,210,94,0)); }
+        40% { transform: translateY(-1px) scale(1.08) rotate(-4deg); filter: drop-shadow(0 0 10px rgba(255,210,94,0.34)); }
+        70% { transform: translateY(0) scale(1.03) rotate(4deg); filter: drop-shadow(0 0 6px rgba(255,210,94,0.2)); }
+      }
+      @keyframes playrBadgeScout {
+        0% { transform: rotate(0deg) scale(1); filter: drop-shadow(0 0 0 rgba(255,145,87,0)); }
+        30% { transform: rotate(-9deg) scale(1.06); filter: drop-shadow(0 0 9px rgba(255,145,87,0.32)); }
+        60% { transform: rotate(9deg) scale(1.09); filter: drop-shadow(0 0 12px rgba(255,145,87,0.38)); }
+        100% { transform: rotate(0deg) scale(1); filter: drop-shadow(0 0 0 rgba(255,145,87,0)); }
+      }
+      @keyframes playrBadgeSignal {
+        0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(184,93,255,0)); }
+        35% { transform: scale(1.12) translateY(-1px); filter: drop-shadow(0 0 14px rgba(184,93,255,0.44)); }
+        65% { transform: scale(1.06); filter: drop-shadow(0 0 18px rgba(184,93,255,0.56)); }
       }
       .playr-afk-warning-overlay {
         position: fixed;
@@ -1223,14 +1312,37 @@
   function buildManualBadgeDefinition(badgeId) {
     const leaderboard = LEADERBOARD_BADGES.find((badge) => badge.id === badgeId);
     if (leaderboard) {
-      const iconText = badgeId === 'leaderboard-1st' ? '#1' : String(leaderboard.label).replace('Top ', '');
       return {
         id: leaderboard.id,
         tone: 'leaderboard',
         label: leaderboard.label,
         title: leaderboard.description,
         description: leaderboard.description,
-        assetPath: createBadgeIcon({ shape: badgeId === 'leaderboard-1st' ? 'crown' : 'ribbon', primary: '#6cbcff', accent: '#eff8ff', text: iconText }),
+        assetPath: createLeaderboardIcon(
+          badgeId === 'leaderboard-1st'
+            ? '1'
+            : badgeId === 'leaderboard-top-3'
+              ? '3'
+              : badgeId === 'leaderboard-top-10'
+                ? '10'
+                : badgeId === 'leaderboard-top-25'
+                  ? '25'
+                  : badgeId === 'leaderboard-top-50'
+                    ? '50'
+                    : '100',
+          badgeId === 'leaderboard-1st'
+            ? '#ffd467'
+            : badgeId === 'leaderboard-top-3'
+              ? '#ff9467'
+              : badgeId === 'leaderboard-top-10'
+                ? '#79d8ff'
+                : badgeId === 'leaderboard-top-25'
+                  ? '#72c2ff'
+                  : badgeId === 'leaderboard-top-50'
+                    ? '#5da6ff'
+                    : '#4d8dff',
+          badgeId === 'leaderboard-1st' ? '#fff7dc' : '#eff8ff',
+        ),
       };
     }
 
@@ -1242,7 +1354,7 @@
         label: donation.label,
         title: donation.description,
         description: donation.description,
-        assetPath: createBadgeIcon({ shape: 'ring', primary: donation.color, accent: '#ffffff', text: '$' }),
+        assetPath: donation.assetPath || createBadgeIcon({ shape: 'ring', primary: donation.color, accent: '#ffffff', text: '$' }),
       };
     }
 
@@ -1255,8 +1367,9 @@
         title: referral.description,
         description: referral.description,
         animated: Boolean(referral.animated),
+        animationClass: referral.animationClass || '',
         displayColor: referral.displayColor || '',
-        assetPath: createBadgeIcon({ shape: 'network', primary: referral.displayColor || '#78afff', accent: '#eef5ff' }),
+        assetPath: createReferralIcon(referral.badgeId),
       };
     }
 
@@ -1315,13 +1428,14 @@
     const leaderboardRank = getLocalXpLeaderboardRank(safeProfile);
     const leaderboardBadge = getLeaderboardBadgeForRank(leaderboardRank);
     if (leaderboardBadge) {
+      const leaderboardVisual = buildManualBadgeDefinition(leaderboardBadge.id);
       pushBadge({
         id: leaderboardBadge.id,
         tone: 'leaderboard',
         label: leaderboardBadge.label,
         title: `${leaderboardBadge.description} Current rank: #${leaderboardRank}.`,
         description: `${leaderboardBadge.description} Current rank: #${leaderboardRank}.`,
-        assetPath: createBadgeIcon({ shape: leaderboardRank === 1 ? 'crown' : 'ribbon', primary: '#6cbcff', accent: '#eff8ff', text: leaderboardRank === 1 ? '#1' : leaderboardBadge.label.replace('Top ', '') }),
+        assetPath: leaderboardVisual?.assetPath || '',
       });
     }
 
@@ -1398,8 +1512,9 @@
       ? `<img src="${escapeHtml(badge.assetPath)}" alt="" loading="lazy" />`
       : `<span aria-hidden="true">${escapeHtml(badge.emoji || '•')}</span>`;
     const className = ['playr-badge', badge.tone || 'cosmetic', badge.animated ? 'animated' : ''].filter(Boolean).join(' ');
+    const fullClassName = [className, badge.animationClass || ''].filter(Boolean).join(' ');
     const description = badge.description || badge.title || badge.label || '';
-    return `<span class="${escapeHtml(className)}" title="${escapeHtml(description)}">${icon}<span>${escapeHtml(badge.label || '')}</span></span>`;
+    return `<span class="${escapeHtml(fullClassName)}" title="${escapeHtml(description)}">${icon}<span>${escapeHtml(badge.label || '')}</span></span>`;
   }
 
   function getIdentityDisplayColor(record, profile, visibleBadges = []) {
