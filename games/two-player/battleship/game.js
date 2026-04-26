@@ -34,6 +34,40 @@
     { id: 'submarine', name: 'Submarine', size: 3 },
     { id: 'destroyer', name: 'Destroyer', size: 2 },
   ];
+  const POWERS = [
+    {
+      id: 'radar',
+      name: 'Radar',
+      hotkey: '1',
+      mode: 'enemy',
+      description: 'Scan around a previously hit enemy tile to reveal nearby ship positions.',
+      summary: 'Needs a previously hit enemy tile.',
+    },
+    {
+      id: 'airstrike',
+      name: 'Airstrike',
+      hotkey: '2',
+      mode: 'enemy',
+      description: 'Attack an entire horizontal or vertical line on the enemy board.',
+      summary: 'Uses the current line orientation.',
+    },
+    {
+      id: 'mine',
+      name: 'Mine',
+      hotkey: '3',
+      mode: 'own',
+      description: 'Place a hidden trap on your board. If it is hit, three random counter-shots fire back.',
+      summary: 'Select one tile on your own board.',
+    },
+    {
+      id: 'nuke',
+      name: 'Nuke',
+      hotkey: '4',
+      mode: 'enemy',
+      description: 'Detonate a 3x3 blast zone on the enemy board.',
+      summary: 'Targets a full 3x3 area.',
+    },
+  ];
 
   const state = {
     user: null,
@@ -44,8 +78,9 @@
     draftShips: [],
     selectedShipId: SHIPS[0].id,
     orientation: 'horizontal',
+    activePowerId: '',
     selectedAttackIndex: -1,
-    radarMode: false,
+    selectedMineIndex: -1,
     lastResultMessage: 'Waiting for room activity.',
     tickHandle: null,
   };
@@ -62,6 +97,7 @@
     backToChoiceBtn: document.getElementById('backToChoiceBtn'),
     roomIdInput: document.getElementById('roomIdInput'),
     roomGateError: document.getElementById('roomGateError'),
+    battleLayout: document.getElementById('battleLayout'),
     battleHud: document.getElementById('battleHud'),
     battleStage: document.getElementById('battleStage'),
     roomCodeLabel: document.getElementById('roomCodeLabel'),
@@ -78,17 +114,26 @@
     randomizeFleetBtn: document.getElementById('randomizeFleetBtn'),
     clearFleetBtn: document.getElementById('clearFleetBtn'),
     lockFleetBtn: document.getElementById('lockFleetBtn'),
-    radarBtn: document.getElementById('radarBtn'),
     confirmAttackBtn: document.getElementById('confirmAttackBtn'),
     controlHint: document.getElementById('controlHint'),
+    powerList: document.getElementById('powerList'),
+    powerModeLabel: document.getElementById('powerModeLabel'),
+    powerHint: document.getElementById('powerHint'),
     ownBoard: document.getElementById('ownBoard'),
     enemyBoard: document.getElementById('enemyBoard'),
     fleetHealthLabel: document.getElementById('fleetHealthLabel'),
     enemyBoardHint: document.getElementById('enemyBoardHint'),
-    eventPanel: document.getElementById('eventPanel'),
-    eventLog: document.getElementById('eventLog'),
     resultBanner: document.getElementById('resultBanner'),
   };
+
+  function getDefaultPowers() {
+    return {
+      radar: 1,
+      airstrike: 1,
+      mine: 1,
+      nuke: 1,
+    };
+  }
 
   function setStatus(text) {
     if (els.gameStatus) els.gameStatus.textContent = text;
@@ -120,11 +165,15 @@
 
   function parseRoomId(value) {
     const normalized = String(value || '').trim().toLowerCase();
-    return /^bnf-[a-z0-9]{4,16}$/.test(normalized) ? normalized : '';
+    return /^bnf-[a-z0-9]{6,16}$/.test(normalized) ? normalized : '';
   }
 
   function getShipConfig(shipId) {
     return SHIPS.find((ship) => ship.id === shipId) || null;
+  }
+
+  function getPowerConfig(powerId) {
+    return POWERS.find((power) => power.id === powerId) || null;
   }
 
   function coordFromIndex(index) {
@@ -149,6 +198,37 @@
       : [];
   }
 
+  function clonePowerInventory(powers) {
+    const defaults = getDefaultPowers();
+    const source = powers && typeof powers === 'object' ? powers : {};
+    return {
+      radar: Math.max(0, Number(source.radar ?? defaults.radar)),
+      airstrike: Math.max(0, Number(source.airstrike ?? defaults.airstrike)),
+      mine: Math.max(0, Number(source.mine ?? defaults.mine)),
+      nuke: Math.max(0, Number(source.nuke ?? defaults.nuke)),
+    };
+  }
+
+  function cloneShots(shots) {
+    return Array.isArray(shots)
+      ? shots.map((shot) => ({
+          ...shot,
+          index: Number(shot.index),
+        }))
+      : [];
+  }
+
+  function cloneRadarScans(scans) {
+    return Array.isArray(scans)
+      ? scans.map((scan) => ({
+          ...scan,
+          center: Number(scan.center),
+          detected: Number(scan.detected || 0),
+          cells: Array.isArray(scan.cells) ? scan.cells.map((cell) => Number(cell)) : [],
+        }))
+      : [];
+  }
+
   function getEmptyBoardState() {
     return {
       ships: [],
@@ -157,21 +237,26 @@
       outgoingShots: [],
       radarScans: [],
       radarUsed: false,
+      powers: getDefaultPowers(),
+      mineCells: [],
+      triggeredMines: [],
     };
   }
 
   function getBoardState(room, uid) {
     const raw = room?.boards?.[uid];
-    return raw && typeof raw === 'object'
-      ? {
-          ships: cloneShips(raw.ships),
-          locked: Boolean(raw.locked),
-          incomingShots: Array.isArray(raw.incomingShots) ? raw.incomingShots.map((shot) => ({ ...shot, index: Number(shot.index) })) : [],
-          outgoingShots: Array.isArray(raw.outgoingShots) ? raw.outgoingShots.map((shot) => ({ ...shot, index: Number(shot.index) })) : [],
-          radarScans: Array.isArray(raw.radarScans) ? raw.radarScans.map((scan) => ({ ...scan, cells: Array.isArray(scan.cells) ? scan.cells.map((cell) => Number(cell)) : [] })) : [],
-          radarUsed: Boolean(raw.radarUsed),
-        }
-      : getEmptyBoardState();
+    if (!raw || typeof raw !== 'object') return getEmptyBoardState();
+    return {
+      ships: cloneShips(raw.ships),
+      locked: Boolean(raw.locked),
+      incomingShots: cloneShots(raw.incomingShots),
+      outgoingShots: cloneShots(raw.outgoingShots),
+      radarScans: cloneRadarScans(raw.radarScans),
+      radarUsed: Boolean(raw.radarUsed),
+      powers: clonePowerInventory(raw.powers),
+      mineCells: Array.isArray(raw.mineCells) ? raw.mineCells.map((cell) => Number(cell)) : [],
+      triggeredMines: Array.isArray(raw.triggeredMines) ? raw.triggeredMines.map((cell) => Number(cell)) : [],
+    };
   }
 
   function buildOccupiedSet(ships) {
@@ -191,6 +276,30 @@
     }
     if (row + size > GRID_SIZE) return [];
     return Array.from({ length: size }, (_, offset) => indexFromCell(row + offset, col));
+  }
+
+  function getCellsInArea(centerIndex, radius = 1) {
+    const row = Math.floor(centerIndex / GRID_SIZE);
+    const col = centerIndex % GRID_SIZE;
+    const cells = [];
+    for (let rowOffset = -radius; rowOffset <= radius; rowOffset += 1) {
+      for (let colOffset = -radius; colOffset <= radius; colOffset += 1) {
+        const nextRow = row + rowOffset;
+        const nextCol = col + colOffset;
+        if (nextRow < 0 || nextRow >= GRID_SIZE || nextCol < 0 || nextCol >= GRID_SIZE) continue;
+        cells.push(indexFromCell(nextRow, nextCol));
+      }
+    }
+    return cells;
+  }
+
+  function getLineCells(index, orientation) {
+    const row = Math.floor(index / GRID_SIZE);
+    const col = index % GRID_SIZE;
+    if (orientation === 'vertical') {
+      return Array.from({ length: GRID_SIZE }, (_, nextRow) => indexFromCell(nextRow, col));
+    }
+    return Array.from({ length: GRID_SIZE }, (_, nextCol) => indexFromCell(row, nextCol));
   }
 
   function canPlaceShip(ships, shipId, startIndex, orientation) {
@@ -259,8 +368,7 @@
   }
 
   function getPlayerIds(room) {
-    const ids = [room?.hostUid || '', room?.guestUid || ''].filter(Boolean);
-    return ids;
+    return [room?.hostUid || '', room?.guestUid || ''].filter(Boolean);
   }
 
   function getOpponentUid(room, uid) {
@@ -338,10 +446,6 @@
     return getMyBoard(room).locked;
   }
 
-  function shouldShowBattleActions(room) {
-    return room?.phase === 'battle';
-  }
-
   function getShipHitMap(board) {
     const incomingHits = new Set(
       board.incomingShots
@@ -389,14 +493,153 @@
     return normalizeName(name);
   }
 
+  function getSunkShipIds(board, incomingShotsOverride = null) {
+    const incomingShots = Array.isArray(incomingShotsOverride) ? incomingShotsOverride : board.incomingShots;
+    const hitCells = new Set(
+      incomingShots
+        .filter((shot) => shot.result === 'hit' || shot.result === 'sunk')
+        .map((shot) => Number(shot.index)),
+    );
+    return new Set(
+      board.ships
+        .filter((ship) => ship.cells.every((cell) => hitCells.has(Number(cell))))
+        .map((ship) => ship.id),
+    );
+  }
+
+  function isFleetDestroyed(board, incomingShotsOverride = null) {
+    if (!board.ships.length) return false;
+    const hitCells = new Set(
+      (incomingShotsOverride || board.incomingShots)
+        .filter((shot) => shot.result === 'hit' || shot.result === 'sunk')
+        .map((shot) => Number(shot.index)),
+    );
+    return board.ships.flatMap((ship) => ship.cells).every((cell) => hitCells.has(Number(cell)));
+  }
+
+  function getUntargetedIndices(attackerBoard, indices) {
+    const targeted = new Set(attackerBoard.outgoingShots.map((shot) => Number(shot.index)));
+    return Array.from(new Set(indices.map((index) => Number(index))))
+      .filter((index) => Number.isInteger(index) && index >= 0 && index < TOTAL_CELLS && !targeted.has(index));
+  }
+
+  function resolveFireSequence(attackerBoard, defenderBoard, attackerUid, defenderUid, targetIndices, options = {}) {
+    const incomingShots = cloneShots(defenderBoard.incomingShots);
+    const outgoingShots = cloneShots(attackerBoard.outgoingShots);
+    const sunkBefore = getSunkShipIds(defenderBoard, incomingShots);
+    const shotResults = [];
+    const sunkShips = [];
+    const timedOut = Boolean(options.timedOut);
+
+    for (const targetIndex of getUntargetedIndices(attackerBoard, targetIndices)) {
+      const targetShip = defenderBoard.ships.find((ship) => ship.cells.includes(targetIndex));
+      const isHit = Boolean(targetShip) && !timedOut;
+      const baseShot = {
+        index: targetIndex,
+        result: isHit ? 'hit' : 'miss',
+        at: Date.now(),
+        attackerUid,
+        defenderUid,
+        source: options.source || 'shot',
+      };
+
+      incomingShots.push(baseShot);
+      outgoingShots.push(baseShot);
+
+      let finalResult = baseShot.result;
+      if (isHit && targetShip) {
+        const nowSunk = targetShip.cells.every((cell) => incomingShots.some((shot) => Number(shot.index) === Number(cell) && (shot.result === 'hit' || shot.result === 'sunk')));
+        if (nowSunk && !sunkBefore.has(targetShip.id)) {
+          finalResult = 'sunk';
+          sunkBefore.add(targetShip.id);
+          sunkShips.push(targetShip);
+          incomingShots[incomingShots.length - 1] = { ...baseShot, result: 'sunk', shipId: targetShip.id };
+          outgoingShots[outgoingShots.length - 1] = { ...baseShot, result: 'sunk', shipId: targetShip.id };
+        }
+      }
+
+      shotResults.push({
+        index: targetIndex,
+        result: finalResult,
+        shipId: targetShip?.id || '',
+        shipName: targetShip?.name || '',
+      });
+    }
+
+    return {
+      attackerBoard: {
+        ...attackerBoard,
+        outgoingShots,
+      },
+      defenderBoard: {
+        ...defenderBoard,
+        incomingShots,
+      },
+      shotResults,
+      sunkShips,
+    };
+  }
+
+  function formatShotSummary(shotResults) {
+    const hits = shotResults.filter((shot) => shot.result === 'hit' || shot.result === 'sunk').length;
+    const misses = shotResults.filter((shot) => shot.result === 'miss').length;
+    if (!shotResults.length) return 'no new targets';
+    if (!hits && misses) return `${misses} miss${misses === 1 ? '' : 'es'}`;
+    if (hits && !misses) return `${hits} hit${hits === 1 ? '' : 's'}`;
+    return `${hits} hit${hits === 1 ? '' : 's'}, ${misses} miss${misses === 1 ? '' : 'es'}`;
+  }
+
+  function chooseRandomUntargetedIndices(attackerBoard, count) {
+    const targeted = new Set(attackerBoard.outgoingShots.map((shot) => Number(shot.index)));
+    const candidates = [];
+    for (let index = 0; index < TOTAL_CELLS; index += 1) {
+      if (!targeted.has(index)) candidates.push(index);
+    }
+    for (let i = candidates.length - 1; i > 0; i -= 1) {
+      const swapIndex = Math.floor(Math.random() * (i + 1));
+      const temp = candidates[i];
+      candidates[i] = candidates[swapIndex];
+      candidates[swapIndex] = temp;
+    }
+    return candidates.slice(0, count);
+  }
+
+  function clearBattleSelections() {
+    state.activePowerId = '';
+    state.selectedAttackIndex = -1;
+    state.selectedMineIndex = -1;
+  }
+
+  function getActivePower() {
+    return getPowerConfig(state.activePowerId);
+  }
+
+  function getSelectedLabel(room) {
+    if (room?.phase === 'placement') {
+      return getShipConfig(state.selectedShipId)?.name || 'None';
+    }
+    if (room?.phase !== 'battle') return 'None';
+    const activePower = getActivePower();
+    if (activePower?.mode === 'own' && state.selectedMineIndex >= 0) {
+      return `${activePower.name} ${coordFromIndex(state.selectedMineIndex)}`;
+    }
+    if (state.selectedAttackIndex >= 0) {
+      return `${activePower?.name || 'Shot'} ${coordFromIndex(state.selectedAttackIndex)}`;
+    }
+    if (activePower) return activePower.name;
+    return 'None';
+  }
+
   function buildBoardMarkup(type, room) {
     const board = type === 'own' ? getMyBoard(room) : getEnemyBoard(room);
     const trackingBoard = getEnemyTrackingBoard(room);
-    const myUid = state.user?.uid || '';
     const canInteract = room?.phase === 'placement'
       ? type === 'own' && !board.locked
       : room?.phase === 'battle'
-        ? type === 'enemy' && isMyTurn(room)
+        ? (
+          (type === 'enemy' && isMyTurn(room))
+          || (type === 'own' && isMyTurn(room) && state.activePowerId === 'mine')
+        )
         : false;
     const outgoingMap = getShotMap(trackingBoard.outgoingShots);
     const incomingMap = getShotMap(board.incomingShots);
@@ -405,6 +648,8 @@
       : board.ships;
     const occupied = buildOccupiedSet(displayShips);
     const radarCells = new Set((trackingBoard.radarScans || []).flatMap((scan) => scan.cells || []));
+    const mineCells = new Set(board.mineCells || []);
+    const triggeredMines = new Set(board.triggeredMines || []);
     let markup = '<div class="grid-wrap">';
     markup += '<span class="axis-cell" aria-hidden="true"></span>';
     for (let col = 0; col < GRID_SIZE; col += 1) {
@@ -439,11 +684,23 @@
           mark = '?';
         }
 
+        if (type === 'own' && mineCells.has(index)) {
+          classes.push('mine-armed');
+        }
+
+        if (type === 'own' && triggeredMines.has(index)) {
+          classes.push('mine-triggered');
+        }
+
         if (type === 'enemy' && ship && shot && (shot.result === 'hit' || shot.result === 'sunk') && isShipSunk(board, ship)) {
           classes.push('revealed-sunk');
         }
 
         if (type === 'enemy' && state.selectedAttackIndex === index) {
+          classes.push('selected');
+        }
+
+        if (type === 'own' && state.selectedMineIndex === index && state.activePowerId === 'mine') {
           classes.push('selected');
         }
 
@@ -486,7 +743,7 @@
       const isCurrent = uid === room.turnUid && room.phase === 'battle';
       const isMe = uid === state.user?.uid;
       const boardHealth = getFleetHealthText(board);
-      const statusClass = board.locked ? 'ready' : (room.phase === 'lobby' ? 'waiting' : 'waiting');
+      const statusClass = board.locked ? 'ready' : 'waiting';
       const statusText = room.phase === 'battle'
         ? (isCurrent ? 'Attacking now' : 'Waiting for turn')
         : room.phase === 'placement'
@@ -532,19 +789,32 @@
     }).join('');
   }
 
-  function renderEventLog(room) {
-    if (!els.eventLog) return;
-    const events = getEventLog(room);
-    if (!events.length) {
-      els.eventLog.innerHTML = '<div class="empty-state">The sea is quiet for now. Create or join a room to begin.</div>';
-      return;
-    }
-    els.eventLog.innerHTML = events.map((event) => `
-      <article class="event-entry">
-        <strong>${new Date(Number(event.at) || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>
-        <span>${event.text || ''}</span>
-      </article>
-    `).join('');
+  function renderPowerControls(room) {
+    if (!els.powerList) return;
+    const board = getMyBoard(room);
+    const activePower = getActivePower();
+    const battleReady = room?.phase === 'battle' && isMyTurn(room);
+
+    els.powerList.innerHTML = POWERS.map((power) => {
+      const remaining = Number(board.powers?.[power.id] || 0);
+      const selected = activePower?.id === power.id;
+      const used = remaining <= 0;
+      return `
+        <button
+          class="power-card${selected ? ' is-selected' : ''}${used ? ' is-used' : ''}"
+          type="button"
+          data-power-id="${power.id}"
+          ${battleReady && !used ? '' : 'disabled'}
+        >
+          <div class="power-card-header">
+            <strong>${power.name}</strong>
+            <span class="power-hotkey">${power.hotkey}</span>
+          </div>
+          <span>${power.description}</span>
+          <span class="tag">${remaining > 0 ? `${remaining} ready` : 'Used'}</span>
+        </button>
+      `;
+    }).join('');
   }
 
   function buildLobbyBoardMarkup() {
@@ -593,6 +863,7 @@
     if (els.fleetSurface) {
       els.fleetSurface.classList.toggle('is-lobby-view', !inRoom);
     }
+    if (els.battleLayout) els.battleLayout.hidden = false;
     if (els.battleHud) els.battleHud.hidden = !inRoom;
     if (els.battleStage) els.battleStage.hidden = false;
     if (!inRoom) {
@@ -600,6 +871,8 @@
       if (els.enemyBoard) els.enemyBoard.innerHTML = buildLobbyBoardMarkup();
       if (els.fleetHealthLabel) els.fleetHealthLabel.textContent = 'Awaiting room';
       if (els.enemyBoardHint) els.enemyBoardHint.textContent = 'Create or join a room';
+      if (els.powerList) els.powerList.innerHTML = '';
+      if (els.powerModeLabel) els.powerModeLabel.textContent = 'Standard Shot';
     }
     if (els.gateChoice) els.gateChoice.hidden = state.gateMode !== 'choice';
     if (els.joinFlow) els.joinFlow.hidden = state.gateMode !== 'join';
@@ -610,15 +883,20 @@
     }
 
     if (!room) {
-      setStatus('Create a room or join with a code.');
+      setStatus(inRoom ? 'Loading room...' : 'Create a room or join with a code.');
       return;
     }
 
     const myBoard = getMyBoard(room);
-    const enemyBoard = getEnemyBoard(room);
     const trackingBoard = getEnemyTrackingBoard(room);
     const placementLocked = myBoard.locked;
     const allPlaced = SHIPS.every((ship) => state.draftShips.some((placed) => placed.id === ship.id));
+    const activePower = getActivePower();
+    const canConfirmBattleAction = room.phase === 'battle' && isMyTurn(room) && (
+      (activePower?.mode === 'own' && state.selectedMineIndex >= 0)
+      || (activePower?.mode !== 'own' && state.selectedAttackIndex >= 0)
+      || (!activePower && state.selectedAttackIndex >= 0)
+    );
 
     if (els.roomCodeLabel) els.roomCodeLabel.textContent = state.roomId;
     if (els.phaseLabel) els.phaseLabel.textContent = getPhaseLabel(room.phase);
@@ -634,15 +912,7 @@
       els.timerLabel.textContent = getCountdown(deadline);
     }
     if (els.selectionLabel) {
-      if (state.radarMode) {
-        els.selectionLabel.textContent = 'Radar Ping';
-      } else if (state.selectedAttackIndex >= 0) {
-        els.selectionLabel.textContent = coordFromIndex(state.selectedAttackIndex);
-      } else {
-        els.selectionLabel.textContent = room.phase === 'placement'
-          ? (getShipConfig(state.selectedShipId)?.name || 'None')
-          : 'None';
-      }
+      els.selectionLabel.textContent = getSelectedLabel(room);
     }
     if (els.controlTitle) {
       els.controlTitle.textContent = room.phase === 'placement'
@@ -655,16 +925,29 @@
     }
     if (els.controlHint) {
       els.controlHint.textContent = room.phase === 'placement'
-        ? (placementLocked ? 'Fleet locked in. Waiting for the opposing captain.' : 'Select a ship, place it on your board, and lock your fleet before the timer expires.')
+        ? (placementLocked
+          ? 'Fleet locked in. Waiting for the opposing captain.'
+          : 'Select a ship, place it on your board, and lock your fleet before the timer expires. Enter also locks in a full fleet.')
         : room.phase === 'battle'
-          ? (state.radarMode ? 'Radar mode active. Click an enemy cell to scan its surrounding 3x3 area.' : (isMyTurn(room) ? 'Pick an enemy coordinate and confirm your attack.' : 'Hold position. You can attack when the turn indicator points to you.'))
+          ? (activePower?.id === 'mine'
+            ? 'Mine selected. Pick one tile on your own board, then confirm to arm the trap and end your turn.'
+            : activePower?.id === 'radar'
+              ? 'Radar selected. Pick an enemy tile you have already hit to scan its surrounding 3x3 zone.'
+              : activePower?.id === 'airstrike'
+                ? `Airstrike selected. Pick an enemy tile to strike its ${state.orientation} line.`
+                : activePower?.id === 'nuke'
+                  ? 'Nuke selected. Pick an enemy tile to blast a 3x3 area.'
+                  : (isMyTurn(room) ? 'Pick an enemy coordinate and confirm your attack.' : 'Hold position. You can attack when the turn indicator points to you.'))
           : room.phase === 'end'
             ? (room.winnerUid === state.user?.uid ? 'Victory secured. Launch another room to play again.' : 'Your fleet was lost. Create another room for a rematch.')
             : 'The room enters ship placement as soon as a second captain joins.';
     }
     if (els.rotateShipBtn) {
-      els.rotateShipBtn.hidden = room.phase !== 'placement' || placementLocked;
-      els.rotateShipBtn.textContent = `Rotate: ${state.orientation === 'horizontal' ? 'Horizontal' : 'Vertical'}`;
+      const showRotate = (room.phase === 'placement' && !placementLocked) || (room.phase === 'battle' && activePower?.id === 'airstrike' && isMyTurn(room));
+      els.rotateShipBtn.hidden = !showRotate;
+      els.rotateShipBtn.textContent = room.phase === 'battle'
+        ? `Line: ${state.orientation === 'horizontal' ? 'Horizontal' : 'Vertical'}`
+        : `Rotate: ${state.orientation === 'horizontal' ? 'Horizontal' : 'Vertical'}`;
     }
     if (els.randomizeFleetBtn) els.randomizeFleetBtn.hidden = room.phase !== 'placement' || placementLocked;
     if (els.clearFleetBtn) els.clearFleetBtn.hidden = room.phase !== 'placement' || placementLocked;
@@ -673,14 +956,22 @@
       els.lockFleetBtn.disabled = placementLocked || !allPlaced;
       els.lockFleetBtn.textContent = placementLocked ? 'Fleet Locked' : 'Lock Fleet';
     }
-    if (els.radarBtn) {
-      els.radarBtn.hidden = !shouldShowBattleActions(room);
-      els.radarBtn.disabled = !isMyTurn(room) || trackingBoard.radarUsed;
-      els.radarBtn.textContent = trackingBoard.radarUsed ? 'Radar Used' : (state.radarMode ? 'Cancel Radar' : 'Radar Ping');
-    }
     if (els.confirmAttackBtn) {
-      els.confirmAttackBtn.hidden = !shouldShowBattleActions(room);
-      els.confirmAttackBtn.disabled = !isMyTurn(room) || state.selectedAttackIndex < 0 || state.radarMode;
+      els.confirmAttackBtn.hidden = room.phase !== 'battle';
+      els.confirmAttackBtn.disabled = !canConfirmBattleAction;
+      els.confirmAttackBtn.textContent = activePower
+        ? `Confirm ${activePower.name}`
+        : 'Confirm Attack';
+    }
+    if (els.powerModeLabel) {
+      els.powerModeLabel.textContent = activePower
+        ? activePower.name + (activePower.id === 'airstrike' ? ` · ${state.orientation === 'horizontal' ? 'Horizontal' : 'Vertical'}` : '')
+        : 'Standard Shot';
+    }
+    if (els.powerHint) {
+      els.powerHint.textContent = room.phase === 'battle'
+        ? (activePower?.summary || 'Use one special power per turn. Number keys 1-4 pick a power, R rotates airstrikes, and Enter confirms.')
+        : 'Powers unlock during battle. Number keys 1-4 pick a power, R rotates airstrikes, and Enter confirms.';
     }
     if (els.fleetHealthLabel) {
       const displayShips = room.phase === 'placement' && !myBoard.locked ? state.draftShips : myBoard.ships;
@@ -688,15 +979,23 @@
     }
     if (els.enemyBoardHint) {
       els.enemyBoardHint.textContent = room.phase === 'battle'
-        ? (state.radarMode ? 'Radar scan ready' : (state.selectedAttackIndex >= 0 ? `Target ${coordFromIndex(state.selectedAttackIndex)}` : 'Pick a coordinate'))
+        ? (
+          activePower?.id === 'mine'
+            ? 'Mine arms on your own board'
+            : state.selectedAttackIndex >= 0
+              ? `${activePower?.name || 'Shot'} ${coordFromIndex(state.selectedAttackIndex)}`
+              : activePower
+                ? `${activePower.name} ready`
+                : 'Pick a coordinate'
+        )
         : 'Enemy fleet hidden';
     }
     if (els.resultBanner) els.resultBanner.textContent = state.lastResultMessage;
 
     renderPlayerStatus(room);
     renderShipControls(room);
+    renderPowerControls(room);
     renderBoards(room);
-    renderEventLog(room);
 
     setStatus(room.phase === 'end'
       ? (room.winnerUid === state.user?.uid ? 'You won the battle.' : `${getPlayerName(room, room.winnerUid)} won the battle.`)
@@ -708,20 +1007,33 @@
     state.roomId = roomId;
     state.gateMode = 'choice';
     setGateError('');
+    renderAll();
     state.roomUnsub = roomRef(roomId).onSnapshot((snap) => {
-      state.roomData = snap.exists ? snap.data() : null;
       if (!snap.exists) {
+        state.roomData = null;
+        state.roomId = '';
+        clearBattleSelections();
         state.lastResultMessage = 'Room no longer exists.';
         updateUrl('');
-      } else {
-        const room = snap.data() || {};
-        const myBoard = getMyBoard(room);
-        if (room.phase === 'placement' && !myBoard.locked && (!state.draftShips.length || state.draftShips.every((ship) => !ship.cells?.length))) {
-          state.draftShips = cloneShips(myBoard.ships);
-        }
-        if (myBoard.locked) {
-          state.draftShips = cloneShips(myBoard.ships);
-        }
+        renderAll();
+        return;
+      }
+
+      const room = snap.data() || {};
+      state.roomData = room;
+      const myBoard = getMyBoard(room);
+      if (room.phase === 'placement' && !myBoard.locked && (!state.draftShips.length || state.draftShips.every((ship) => !ship.cells?.length))) {
+        state.draftShips = cloneShips(myBoard.ships);
+      }
+      if (myBoard.locked) {
+        state.draftShips = cloneShips(myBoard.ships);
+      }
+      if (room.phase !== 'battle' || !isMyTurn(room)) {
+        state.activePowerId = '';
+        state.selectedMineIndex = -1;
+      }
+      if (room.phase !== 'battle') {
+        state.selectedAttackIndex = -1;
       }
       renderAll();
     }, () => {
@@ -753,7 +1065,7 @@
       updatedAt: window.firebase.firestore.FieldValue.serverTimestamp(),
     });
     state.draftShips = [];
-    state.selectedAttackIndex = -1;
+    clearBattleSelections();
     state.lastResultMessage = 'Room created. Waiting for a second captain.';
     await subscribeToRoom(roomId);
     if (window.PlayrProgression?.grantRoomCreatedXp) {
@@ -799,7 +1111,7 @@
     });
 
     state.draftShips = [];
-    state.selectedAttackIndex = -1;
+    clearBattleSelections();
     state.lastResultMessage = 'Joined room. Place your fleet.';
     await subscribeToRoom(safeRoomId);
   }
@@ -901,62 +1213,44 @@
     });
   }
 
-  function buildAttackOutcome(room, attackerUid, defenderUid, targetIndex, timedOut = false) {
-    const attackerBoard = getBoardState(room, attackerUid);
-    const defenderBoard = getBoardState(room, defenderUid);
-    const incomingShots = [...defenderBoard.incomingShots];
-    const outgoingShots = [...attackerBoard.outgoingShots];
-    const targetShip = defenderBoard.ships.find((ship) => ship.cells.includes(targetIndex));
-    const isHit = Boolean(targetShip) && !timedOut;
-    const shotResult = isHit ? 'hit' : 'miss';
-    const baseShot = {
-      index: targetIndex,
-      result: shotResult,
-      at: Date.now(),
-      attackerUid,
-      defenderUid,
-    };
-    incomingShots.push(baseShot);
-    outgoingShots.push(baseShot);
-
-    let sunkShip = null;
-    let winnerUid = '';
-    if (isHit && targetShip) {
-      const hitCells = new Set(
-        incomingShots
-          .filter((shot) => shot.result === 'hit' || shot.result === 'sunk')
-          .map((shot) => Number(shot.index)),
-      );
-      if (targetShip.cells.every((cell) => hitCells.has(cell))) {
-        sunkShip = targetShip;
-        outgoingShots[outgoingShots.length - 1] = { ...baseShot, result: 'sunk', shipId: targetShip.id };
-        incomingShots[incomingShots.length - 1] = { ...baseShot, result: 'sunk', shipId: targetShip.id };
-      }
-      const allShipCells = defenderBoard.ships.flatMap((ship) => ship.cells);
-      if (allShipCells.every((cell) => hitCells.has(cell))) {
-        winnerUid = attackerUid;
-      }
+  function finalizeBattleState(payload, room, attackerUid, defenderUid, attackerBoard, defenderBoard, eventLog) {
+    if (isFleetDestroyed(defenderBoard)) {
+      payload.phase = 'end';
+      payload.turnUid = '';
+      payload.turnDeadlineAt = 0;
+      payload.winnerUid = attackerUid;
+      payload.winnerName = getPlayerName(room, attackerUid);
+      payload.eventLog = pushEvent(eventLog, `${payload.winnerName} sank the final ship and won the battle.`);
+      return;
+    }
+    if (isFleetDestroyed(attackerBoard)) {
+      payload.phase = 'end';
+      payload.turnUid = '';
+      payload.turnDeadlineAt = 0;
+      payload.winnerUid = defenderUid;
+      payload.winnerName = getPlayerName(room, defenderUid);
+      payload.eventLog = pushEvent(eventLog, `${payload.winnerName} fought back and won the battle.`);
+      return;
     }
 
+    payload.turnUid = defenderUid;
+    payload.turnDeadlineAt = Date.now() + TURN_TIMEOUT_MS;
+  }
+
+  function consumePower(board, powerId) {
+    const powers = clonePowerInventory(board.powers);
+    powers[powerId] = Math.max(0, Number(powers[powerId] || 0) - 1);
     return {
-      attackerBoard: {
-        ...attackerBoard,
-        outgoingShots,
-      },
-      defenderBoard: {
-        ...defenderBoard,
-        incomingShots,
-      },
-      isHit,
-      sunkShip,
-      winnerUid,
+      ...board,
+      powers,
+      radarUsed: powerId === 'radar' ? true : board.radarUsed,
     };
   }
 
   async function confirmAttack() {
     if (!db || !state.user || !state.roomData || !state.roomId || state.selectedAttackIndex < 0) return;
     const targetIndex = Number(state.selectedAttackIndex);
-    let result = { isHit: false, sunkShip: null, winnerUid: '' };
+    let resultMessage = '';
 
     await db.runTransaction(async (tx) => {
       const ref = roomRef(state.roomId);
@@ -969,59 +1263,65 @@
       if (!defenderUid) throw new Error('NO_OPPONENT');
 
       const attackerBoard = getBoardState(room, state.user.uid);
-      if (attackerBoard.outgoingShots.some((shot) => Number(shot.index) === targetIndex)) {
-        throw new Error('ALREADY_TARGETED');
-      }
+      const defenderBoard = getBoardState(room, defenderUid);
+      const sequence = resolveFireSequence(attackerBoard, defenderBoard, state.user.uid, defenderUid, [targetIndex], { source: 'shot' });
+      if (!sequence.shotResults.length) throw new Error('ALREADY_TARGETED');
+      const mineOutcome = maybeTriggerMine(state.user.uid, defenderUid, room, sequence);
+      let nextAttackerBoard = mineOutcome.attackerBoard;
+      let nextDefenderBoard = mineOutcome.defenderBoard;
 
-      result = buildAttackOutcome(room, state.user.uid, defenderUid, targetIndex);
       const boards = { ...(room.boards || {}) };
-      boards[state.user.uid] = result.attackerBoard;
-      boards[defenderUid] = result.defenderBoard;
-      const nextEvents = getEventLog(room);
-      const baseEvent = result.isHit
-        ? `${getDisplayName(state.user)} landed a hit at ${coordFromIndex(targetIndex)}.`
-        : `${getDisplayName(state.user)} missed at ${coordFromIndex(targetIndex)}.`;
-      let eventLog = pushEvent(nextEvents, baseEvent);
-      if (result.sunkShip) {
-        eventLog = pushEvent(eventLog, `${getPlayerName(room, defenderUid)} lost their ${result.sunkShip.name}.`);
+      boards[state.user.uid] = nextAttackerBoard;
+      boards[defenderUid] = nextDefenderBoard;
+      let eventLog = pushEvent(getEventLog(room), sequence.shotResults[0].result === 'miss'
+        ? `${getDisplayName(state.user)} missed at ${coordFromIndex(targetIndex)}.`
+        : `${getDisplayName(state.user)} landed a hit at ${coordFromIndex(targetIndex)}.`);
+
+      sequence.sunkShips.forEach((ship) => {
+        eventLog = pushEvent(eventLog, `${getPlayerName(room, defenderUid)} lost their ${ship.name}.`);
+      });
+      if (mineOutcome.eventText) {
+        eventLog = pushEvent(eventLog, mineOutcome.eventText);
       }
+      (mineOutcome.sunkShips || []).forEach((ship) => {
+        eventLog = pushEvent(eventLog, `${getPlayerName(room, state.user.uid)} lost their ${ship.name}.`);
+      });
 
       const payload = {
         boards,
         eventLog,
         updatedAt: window.firebase.firestore.FieldValue.serverTimestamp(),
       };
+      finalizeBattleState(payload, room, state.user.uid, defenderUid, nextAttackerBoard, nextDefenderBoard, eventLog);
+      tx.set(ref, payload, { merge: true });
 
-      if (result.winnerUid) {
-        payload.phase = 'end';
-        payload.turnUid = '';
-        payload.turnDeadlineAt = 0;
-        payload.winnerUid = result.winnerUid;
-        payload.winnerName = getPlayerName(room, result.winnerUid);
-        payload.eventLog = pushEvent(eventLog, `${payload.winnerName} sank the final ship and won the battle.`);
-      } else {
-        payload.turnUid = defenderUid;
-        payload.turnDeadlineAt = Date.now() + TURN_TIMEOUT_MS;
+      const primary = sequence.shotResults[0];
+      resultMessage = payload.phase === 'end'
+        ? `Victory secured at ${coordFromIndex(primary.index)}.`
+        : primary.result === 'sunk'
+          ? `Direct hit. ${primary.shipName} sunk.`
+          : primary.result === 'hit'
+            ? `Direct hit at ${coordFromIndex(primary.index)}.`
+            : `Miss at ${coordFromIndex(primary.index)}.`;
+      if (mineOutcome.eventText) {
+        resultMessage += ' Enemy mine counterfire triggered.';
       }
 
-      tx.set(ref, payload, { merge: true });
+      if (window.PlayrProgression?.awardXp) {
+        if (primary.result === 'hit' || primary.result === 'sunk') {
+          window.PlayrProgression.awardXp(XP_HIT, 'battleship-hit', { notifyLevelUp: true });
+        }
+        if (sequence.sunkShips.length) {
+          window.PlayrProgression.awardXp(XP_SUNK, 'battleship-sunk', { notifyLevelUp: true });
+        }
+        if (payload.winnerUid === state.user.uid) {
+          window.PlayrProgression.awardXp(XP_WIN, 'battleship-win', { notifyLevelUp: true });
+        }
+      }
     });
 
-    state.selectedAttackIndex = -1;
-    state.radarMode = false;
-    state.lastResultMessage = result.winnerUid
-      ? `Victory secured at ${coordFromIndex(targetIndex)}.`
-      : result.sunkShip
-        ? `Direct hit. ${result.sunkShip.name} sunk.`
-        : result.isHit
-          ? `Direct hit at ${coordFromIndex(targetIndex)}.`
-          : `Miss at ${coordFromIndex(targetIndex)}.`;
-
-    if (window.PlayrProgression?.awardXp) {
-      if (result.isHit) window.PlayrProgression.awardXp(XP_HIT, 'battleship-hit', { notifyLevelUp: true });
-      if (result.sunkShip) window.PlayrProgression.awardXp(XP_SUNK, 'battleship-sunk', { notifyLevelUp: true });
-      if (result.winnerUid === state.user.uid) window.PlayrProgression.awardXp(XP_WIN, 'battleship-win', { notifyLevelUp: true });
-    }
+    clearBattleSelections();
+    state.lastResultMessage = resultMessage;
     renderAll();
   }
 
@@ -1065,13 +1365,18 @@
       };
 
       if (timeoutIndex >= 0) {
-        const result = buildAttackOutcome(room, attackerUid, defenderUid, timeoutIndex, true);
+        const result = resolveFireSequence(attackerBoard, defenderBoard, attackerUid, defenderUid, [timeoutIndex], { timedOut: true, source: 'timeout' });
+        const mineOutcome = maybeTriggerMine(attackerUid, defenderUid, room, result);
         payload.boards = {
           ...(room.boards || {}),
-          [attackerUid]: result.attackerBoard,
-          [defenderUid]: result.defenderBoard,
+          [attackerUid]: mineOutcome.attackerBoard,
+          [defenderUid]: mineOutcome.defenderBoard,
         };
         payload.eventLog = pushEvent(nextEvents, `${getPlayerName(room, attackerUid)} timed out. Automatic miss at ${coordFromIndex(timeoutIndex)}.`);
+        if (mineOutcome.eventText) {
+          payload.eventLog = pushEvent(payload.eventLog, mineOutcome.eventText);
+        }
+        finalizeBattleState(payload, room, attackerUid, defenderUid, mineOutcome.attackerBoard, mineOutcome.defenderBoard, payload.eventLog);
       } else {
         payload.eventLog = pushEvent(nextEvents, `${getPlayerName(room, attackerUid)} timed out and lost the turn.`);
       }
@@ -1082,7 +1387,7 @@
 
   async function useRadar(index) {
     if (!db || !state.user || !state.roomData || !state.roomId) return;
-    let detected = 0;
+    let resultMessage = '';
     await db.runTransaction(async (tx) => {
       const ref = roomRef(state.roomId);
       const snap = await tx.get(ref);
@@ -1091,38 +1396,215 @@
       if (room.phase !== 'battle') throw new Error('NOT_BATTLE');
       if (room.turnUid !== state.user.uid) throw new Error('NOT_TURN');
       const myBoard = getBoardState(room, state.user.uid);
-      if (myBoard.radarUsed) throw new Error('RADAR_USED');
+      if (Number(myBoard.powers?.radar || 0) <= 0) throw new Error('RADAR_USED');
+      const priorHit = myBoard.outgoingShots.some((shot) => Number(shot.index) === index && (shot.result === 'hit' || shot.result === 'sunk'));
+      if (!priorHit) throw new Error('RADAR_NEEDS_HIT');
       const enemyUid = getOpponentUid(room, state.user.uid);
       const enemyBoard = getBoardState(room, enemyUid);
-      const row = Math.floor(index / GRID_SIZE);
-      const col = index % GRID_SIZE;
-      const cells = [];
-      for (let rowOffset = -1; rowOffset <= 1; rowOffset += 1) {
-        for (let colOffset = -1; colOffset <= 1; colOffset += 1) {
-          const nextRow = row + rowOffset;
-          const nextCol = col + colOffset;
-          if (nextRow < 0 || nextRow >= GRID_SIZE || nextCol < 0 || nextCol >= GRID_SIZE) continue;
-          cells.push(indexFromCell(nextRow, nextCol));
-        }
-      }
+      const cells = getCellsInArea(index, 1);
       const occupied = buildOccupiedSet(enemyBoard.ships);
-      detected = cells.filter((cell) => occupied.has(cell)).length;
+      const detected = cells.filter((cell) => occupied.has(cell)).length;
       const boards = { ...(room.boards || {}) };
       boards[state.user.uid] = {
-        ...myBoard,
-        radarUsed: true,
+        ...consumePower(myBoard, 'radar'),
         radarScans: [...myBoard.radarScans, { center: index, cells, detected, at: Date.now() }].slice(-4),
       };
 
       tx.set(ref, {
         boards,
-        eventLog: pushEvent(getEventLog(room), `${getDisplayName(state.user)} used Radar Ping at ${coordFromIndex(index)} and detected ${detected} ship tiles nearby.`),
+        eventLog: pushEvent(getEventLog(room), `${getDisplayName(state.user)} used Radar at ${coordFromIndex(index)} and detected ${detected} nearby ship tiles.`),
         updatedAt: window.firebase.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
+      resultMessage = `Radar at ${coordFromIndex(index)} detected ${detected} ship tile${detected === 1 ? '' : 's'} in the surrounding 3x3 zone.`;
     });
-    state.lastResultMessage = `Radar Ping at ${coordFromIndex(index)} detected ${detected} ship tiles in the 3x3 zone.`;
-    state.radarMode = false;
+    clearBattleSelections();
+    state.lastResultMessage = resultMessage;
     renderAll();
+  }
+
+  async function useAirstrike(index) {
+    if (!db || !state.user || !state.roomData || !state.roomId) return;
+    let resultMessage = '';
+    await db.runTransaction(async (tx) => {
+      const ref = roomRef(state.roomId);
+      const snap = await tx.get(ref);
+      if (!snap.exists) throw new Error('ROOM_NOT_FOUND');
+      const room = snap.data() || {};
+      if (room.phase !== 'battle') throw new Error('NOT_BATTLE');
+      if (room.turnUid !== state.user.uid) throw new Error('NOT_TURN');
+      const defenderUid = getOpponentUid(room, state.user.uid);
+      const attackerBoard = getBoardState(room, state.user.uid);
+      if (Number(attackerBoard.powers?.airstrike || 0) <= 0) throw new Error('AIRSTRIKE_USED');
+      const defenderBoard = getBoardState(room, defenderUid);
+      const targets = getLineCells(index, state.orientation);
+      const sequence = resolveFireSequence(attackerBoard, defenderBoard, state.user.uid, defenderUid, targets, { source: 'airstrike' });
+      if (!sequence.shotResults.length) throw new Error('NO_NEW_TARGETS');
+
+      const mineOutcome = maybeTriggerMine(state.user.uid, defenderUid, room, sequence);
+      const nextAttackerBoard = consumePower(mineOutcome.attackerBoard, 'airstrike');
+      const nextDefenderBoard = mineOutcome.defenderBoard;
+      const boards = { ...(room.boards || {}) };
+      boards[state.user.uid] = nextAttackerBoard;
+      boards[defenderUid] = nextDefenderBoard;
+
+      let eventLog = pushEvent(getEventLog(room), `${getDisplayName(state.user)} launched an airstrike across the ${state.orientation} line at ${coordFromIndex(index)} for ${formatShotSummary(sequence.shotResults)}.`);
+      sequence.sunkShips.forEach((ship) => {
+        eventLog = pushEvent(eventLog, `${getPlayerName(room, defenderUid)} lost their ${ship.name}.`);
+      });
+      if (mineOutcome.eventText) {
+        eventLog = pushEvent(eventLog, mineOutcome.eventText);
+      }
+      (mineOutcome.sunkShips || []).forEach((ship) => {
+        eventLog = pushEvent(eventLog, `${getPlayerName(room, state.user.uid)} lost their ${ship.name}.`);
+      });
+
+      const payload = {
+        boards,
+        eventLog,
+        updatedAt: window.firebase.firestore.FieldValue.serverTimestamp(),
+      };
+      finalizeBattleState(payload, room, state.user.uid, defenderUid, nextAttackerBoard, nextDefenderBoard, eventLog);
+      tx.set(ref, payload, { merge: true });
+
+      resultMessage = payload.phase === 'end'
+        ? `Airstrike complete. ${payload.winnerName} took the final loss.`
+        : `Airstrike delivered ${formatShotSummary(sequence.shotResults)}.`;
+      if (mineOutcome.eventText) {
+        resultMessage += ' Enemy mine counterfire triggered.';
+      }
+    });
+    clearBattleSelections();
+    state.lastResultMessage = resultMessage;
+    renderAll();
+  }
+
+  async function useMine(index) {
+    if (!db || !state.user || !state.roomData || !state.roomId) return;
+    let resultMessage = '';
+    await db.runTransaction(async (tx) => {
+      const ref = roomRef(state.roomId);
+      const snap = await tx.get(ref);
+      if (!snap.exists) throw new Error('ROOM_NOT_FOUND');
+      const room = snap.data() || {};
+      if (room.phase !== 'battle') throw new Error('NOT_BATTLE');
+      if (room.turnUid !== state.user.uid) throw new Error('NOT_TURN');
+      const defenderUid = getOpponentUid(room, state.user.uid);
+      const myBoard = getBoardState(room, state.user.uid);
+      if (Number(myBoard.powers?.mine || 0) <= 0) throw new Error('MINE_USED');
+      if (myBoard.mineCells.includes(index)) throw new Error('MINE_ALREADY_PLACED');
+      if (myBoard.incomingShots.some((shot) => Number(shot.index) === index)) throw new Error('MINE_CELL_BLOCKED');
+
+      const boards = { ...(room.boards || {}) };
+      boards[state.user.uid] = {
+        ...consumePower(myBoard, 'mine'),
+        mineCells: [index],
+      };
+
+      tx.set(ref, {
+        boards,
+        turnUid: defenderUid,
+        turnDeadlineAt: Date.now() + TURN_TIMEOUT_MS,
+        eventLog: pushEvent(getEventLog(room), `${getDisplayName(state.user)} armed a hidden mine.`),
+        updatedAt: window.firebase.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+
+      resultMessage = `Mine armed at ${coordFromIndex(index)}. Enemy turn started.`;
+    });
+    clearBattleSelections();
+    state.lastResultMessage = resultMessage;
+    renderAll();
+  }
+
+  async function useNuke(index) {
+    if (!db || !state.user || !state.roomData || !state.roomId) return;
+    let resultMessage = '';
+    await db.runTransaction(async (tx) => {
+      const ref = roomRef(state.roomId);
+      const snap = await tx.get(ref);
+      if (!snap.exists) throw new Error('ROOM_NOT_FOUND');
+      const room = snap.data() || {};
+      if (room.phase !== 'battle') throw new Error('NOT_BATTLE');
+      if (room.turnUid !== state.user.uid) throw new Error('NOT_TURN');
+      const defenderUid = getOpponentUid(room, state.user.uid);
+      const attackerBoard = getBoardState(room, state.user.uid);
+      if (Number(attackerBoard.powers?.nuke || 0) <= 0) throw new Error('NUKE_USED');
+      const defenderBoard = getBoardState(room, defenderUid);
+      const targets = getCellsInArea(index, 1);
+      const sequence = resolveFireSequence(attackerBoard, defenderBoard, state.user.uid, defenderUid, targets, { source: 'nuke' });
+      if (!sequence.shotResults.length) throw new Error('NO_NEW_TARGETS');
+
+      const mineOutcome = maybeTriggerMine(state.user.uid, defenderUid, room, sequence);
+      const nextAttackerBoard = consumePower(mineOutcome.attackerBoard, 'nuke');
+      const nextDefenderBoard = mineOutcome.defenderBoard;
+      const boards = { ...(room.boards || {}) };
+      boards[state.user.uid] = nextAttackerBoard;
+      boards[defenderUid] = nextDefenderBoard;
+
+      let eventLog = pushEvent(getEventLog(room), `${getDisplayName(state.user)} launched a nuke at ${coordFromIndex(index)} for ${formatShotSummary(sequence.shotResults)}.`);
+      sequence.sunkShips.forEach((ship) => {
+        eventLog = pushEvent(eventLog, `${getPlayerName(room, defenderUid)} lost their ${ship.name}.`);
+      });
+      if (mineOutcome.eventText) {
+        eventLog = pushEvent(eventLog, mineOutcome.eventText);
+      }
+      (mineOutcome.sunkShips || []).forEach((ship) => {
+        eventLog = pushEvent(eventLog, `${getPlayerName(room, state.user.uid)} lost their ${ship.name}.`);
+      });
+
+      const payload = {
+        boards,
+        eventLog,
+        updatedAt: window.firebase.firestore.FieldValue.serverTimestamp(),
+      };
+      finalizeBattleState(payload, room, state.user.uid, defenderUid, nextAttackerBoard, nextDefenderBoard, eventLog);
+      tx.set(ref, payload, { merge: true });
+
+      resultMessage = payload.phase === 'end'
+        ? `Nuke landed. ${payload.winnerName} took the final loss.`
+        : `Nuke delivered ${formatShotSummary(sequence.shotResults)}.`;
+      if (mineOutcome.eventText) {
+        resultMessage += ' Enemy mine counterfire triggered.';
+      }
+    });
+    clearBattleSelections();
+    state.lastResultMessage = resultMessage;
+    renderAll();
+  }
+
+  function maybeTriggerMine(attackerUid, defenderUid, room, primarySequence) {
+    const defenderBoard = primarySequence.defenderBoard;
+    const attackerBoard = primarySequence.attackerBoard;
+    const armedMine = defenderBoard.mineCells.find((cell) => primarySequence.shotResults.some((shot) => Number(shot.index) === Number(cell)));
+    if (!Number.isInteger(armedMine)) {
+      return {
+        attackerBoard,
+        defenderBoard,
+        eventText: '',
+      };
+    }
+
+    const updatedDefenderBoard = {
+      ...defenderBoard,
+      mineCells: defenderBoard.mineCells.filter((cell) => Number(cell) !== Number(armedMine)),
+      triggeredMines: [...new Set([...(defenderBoard.triggeredMines || []), armedMine])],
+    };
+    const counterTargets = chooseRandomUntargetedIndices(updatedDefenderBoard, 3);
+    if (!counterTargets.length) {
+      return {
+        attackerBoard,
+        defenderBoard: updatedDefenderBoard,
+        eventText: `${getPlayerName(room, defenderUid)}'s mine detonated at ${coordFromIndex(armedMine)}, but there were no untargeted cells left for counterfire.`,
+      };
+    }
+
+    const counterSequence = resolveFireSequence(updatedDefenderBoard, attackerBoard, defenderUid, attackerUid, counterTargets, { source: 'mine' });
+    return {
+      attackerBoard: counterSequence.defenderBoard,
+      defenderBoard: counterSequence.attackerBoard,
+      eventText: `${getPlayerName(room, defenderUid)}'s mine detonated at ${coordFromIndex(armedMine)} and fired back for ${formatShotSummary(counterSequence.shotResults)}.`,
+      sunkShips: counterSequence.sunkShips,
+      mineIndex: armedMine,
+    };
   }
 
   function handleBoardClick(event) {
@@ -1141,25 +1623,80 @@
       return;
     }
 
-    if (boardType === 'enemy' && state.roomData.phase === 'battle' && isMyTurn(state.roomData)) {
-      if (state.radarMode) {
-        void useRadar(index).catch(() => {
-          state.lastResultMessage = 'Radar ping could not be used right now.';
-          state.radarMode = false;
-          renderAll();
-        });
-        return;
-      }
-      const trackingBoard = getEnemyTrackingBoard(state.roomData);
-      if (trackingBoard.outgoingShots.some((shot) => Number(shot.index) === index)) return;
-      state.selectedAttackIndex = index;
+    if (state.roomData.phase !== 'battle' || !isMyTurn(state.roomData)) return;
+
+    if (boardType === 'own' && state.activePowerId === 'mine') {
+      state.selectedMineIndex = index;
+      state.selectedAttackIndex = -1;
       renderAll();
+      return;
     }
+
+    if (boardType !== 'enemy') return;
+
+    const trackingBoard = getEnemyTrackingBoard(state.roomData);
+    if (!state.activePowerId && trackingBoard.outgoingShots.some((shot) => Number(shot.index) === index)) return;
+    state.selectedAttackIndex = index;
+    state.selectedMineIndex = -1;
+    renderAll();
+  }
+
+  function isTypingTarget(target) {
+    const node = target instanceof Element ? target : null;
+    return Boolean(node && (node.closest('input, textarea, [contenteditable="true"]')));
+  }
+
+  function toggleOrientation() {
+    state.orientation = state.orientation === 'horizontal' ? 'vertical' : 'horizontal';
+    renderAll();
+  }
+
+  function togglePower(powerId) {
+    const room = state.roomData;
+    if (!room || room.phase !== 'battle' || !isMyTurn(room)) return;
+    const board = getMyBoard(room);
+    if (Number(board.powers?.[powerId] || 0) <= 0) return;
+    state.activePowerId = state.activePowerId === powerId ? '' : powerId;
+    state.selectedAttackIndex = -1;
+    state.selectedMineIndex = -1;
+    renderAll();
+  }
+
+  async function confirmCurrentAction() {
+    if (!state.roomData) return;
+    if (state.roomData.phase === 'placement') {
+      await lockFleet();
+      return;
+    }
+    if (state.roomData.phase !== 'battle') return;
+    if (state.activePowerId === 'radar') {
+      if (state.selectedAttackIndex < 0) return;
+      await useRadar(state.selectedAttackIndex);
+      return;
+    }
+    if (state.activePowerId === 'airstrike') {
+      if (state.selectedAttackIndex < 0) return;
+      await useAirstrike(state.selectedAttackIndex);
+      return;
+    }
+    if (state.activePowerId === 'mine') {
+      if (state.selectedMineIndex < 0) return;
+      await useMine(state.selectedMineIndex);
+      return;
+    }
+    if (state.activePowerId === 'nuke') {
+      if (state.selectedAttackIndex < 0) return;
+      await useNuke(state.selectedAttackIndex);
+      return;
+    }
+    if (state.selectedAttackIndex < 0) return;
+    await confirmAttack();
   }
 
   function bindEvents() {
     els.showJoinBtn?.addEventListener('click', () => {
       state.gateMode = 'join';
+      window.setTimeout(() => els.roomIdInput?.focus(), 0);
       renderAll();
     });
 
@@ -1194,6 +1731,13 @@
       });
     });
 
+    els.roomIdInput?.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        els.joinRoomBtn?.click();
+      }
+    });
+
     els.copyRoomCodeBtn?.addEventListener('click', () => {
       if (!state.roomId) return;
       void copyText(state.roomId, 'Room code copied.');
@@ -1204,10 +1748,7 @@
       void copyText(`${window.location.origin}${window.location.pathname}?room=${state.roomId}`, 'Invite link copied.');
     });
 
-    els.rotateShipBtn?.addEventListener('click', () => {
-      state.orientation = state.orientation === 'horizontal' ? 'vertical' : 'horizontal';
-      renderAll();
-    });
+    els.rotateShipBtn?.addEventListener('click', toggleOrientation);
 
     els.randomizeFleetBtn?.addEventListener('click', () => {
       state.draftShips = generateRandomFleet();
@@ -1225,19 +1766,15 @@
     });
 
     els.confirmAttackBtn?.addEventListener('click', () => {
-      void confirmAttack().catch((error) => {
-        state.lastResultMessage = `Attack failed: ${error?.message || 'unknown error'}.`;
+      void confirmCurrentAction().catch((error) => {
+        const map = {
+          RADAR_NEEDS_HIT: 'Radar needs a tile you already hit.',
+          NO_NEW_TARGETS: 'That power would only hit already-targeted cells.',
+          MINE_CELL_BLOCKED: 'You cannot arm a mine on a tile that was already hit.',
+        };
+        state.lastResultMessage = map[error?.message] || `Action failed: ${error?.message || 'unknown error'}.`;
         renderAll();
       });
-    });
-
-    els.radarBtn?.addEventListener('click', () => {
-      if (!state.roomData || !isMyTurn(state.roomData)) return;
-      const trackingBoard = getEnemyTrackingBoard(state.roomData);
-      if (trackingBoard.radarUsed) return;
-      state.radarMode = !state.radarMode;
-      if (state.radarMode) state.selectedAttackIndex = -1;
-      renderAll();
     });
 
     els.fleetShipList?.addEventListener('click', (event) => {
@@ -1247,30 +1784,54 @@
       renderAll();
     });
 
+    els.powerList?.addEventListener('click', (event) => {
+      const powerButton = event.target.closest('[data-power-id]');
+      if (!powerButton) return;
+      togglePower(powerButton.dataset.powerId || '');
+    });
+
     els.ownBoard?.addEventListener('click', handleBoardClick);
     els.enemyBoard?.addEventListener('click', handleBoardClick);
 
     window.addEventListener('keydown', (event) => {
+      if (isTypingTarget(event.target)) return;
       if (!state.roomData) return;
-      if (event.key === 'Enter' && state.roomData.phase === 'battle' && state.selectedAttackIndex >= 0 && !state.radarMode) {
-        event.preventDefault();
-        void confirmAttack().catch(() => {
-          state.lastResultMessage = 'Attack failed.';
-          renderAll();
-        });
-      }
-      if (event.key.toLowerCase() === 'r' && state.roomData.phase === 'battle') {
-        const trackingBoard = getEnemyTrackingBoard(state.roomData);
-        if (!trackingBoard.radarUsed && isMyTurn(state.roomData)) {
+
+      if (event.key === 'Enter') {
+        const canPlacementConfirm = state.roomData.phase === 'placement' && SHIPS.every((ship) => state.draftShips.some((placed) => placed.id === ship.id)) && !isPlacementLocked(state.roomData);
+        const canBattleConfirm = state.roomData.phase === 'battle' && isMyTurn(state.roomData);
+        if (canPlacementConfirm || canBattleConfirm) {
           event.preventDefault();
-          state.radarMode = !state.radarMode;
-          if (state.radarMode) state.selectedAttackIndex = -1;
-          renderAll();
+          void confirmCurrentAction().catch(() => {
+            state.lastResultMessage = 'Action failed.';
+            renderAll();
+          });
+        }
+        return;
+      }
+
+      const lower = event.key.toLowerCase();
+      if (lower === 'r') {
+        const shouldRotate = (state.roomData.phase === 'placement' && !isPlacementLocked(state.roomData))
+          || (state.roomData.phase === 'battle' && state.activePowerId === 'airstrike' && isMyTurn(state.roomData));
+        if (shouldRotate) {
+          event.preventDefault();
+          toggleOrientation();
+        }
+        return;
+      }
+
+      if (state.roomData.phase === 'battle' && isMyTurn(state.roomData)) {
+        const power = POWERS.find((entry) => entry.hotkey === event.key);
+        if (power) {
+          event.preventDefault();
+          togglePower(power.id);
+          return;
         }
       }
+
       if (event.key === 'Escape') {
-        state.selectedAttackIndex = -1;
-        state.radarMode = false;
+        clearBattleSelections();
         renderAll();
       }
     });

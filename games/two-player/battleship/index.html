@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Battleship - Neon Fleet is a live 2-player Firebase battleship duel with room codes, ship placement, and timed turns." />
+  <meta name="description" content="Battleship - Neon Fleet is a live 2-player Firebase battleship duel with room codes, ship placement, timed turns, and tactical powers." />
   <title>Battleship - Neon Fleet | PlayR</title>
   <link rel="stylesheet" href="../../shared/game-shell.css" />
   <link rel="stylesheet" href="game.css" />
@@ -31,7 +31,7 @@
       <div class="meta">
         <span class="tag">10x10 hidden grid</span>
         <span class="tag">Placement + battle phases</span>
-        <span class="tag">Classic rules with neon UI</span>
+        <span class="tag">Special powers online</span>
       </div>
       <p id="gameStatus">Connecting...</p>
     </header>
@@ -57,94 +57,106 @@
           </div>
         </section>
 
-        <section id="battleHud" class="battle-hud" hidden>
-          <div class="hud-card room-summary">
-            <div class="hud-heading">
-              <div>
-                <p class="kicker">Room</p>
-                <h2 id="roomCodeLabel">bnf-----</h2>
+        <section id="battleLayout" class="battle-layout" hidden>
+          <aside id="battleHud" class="battle-hud battle-sidebar battle-sidebar-left" hidden>
+            <div class="hud-card room-summary">
+              <div class="hud-heading">
+                <div>
+                  <p class="kicker">Room</p>
+                  <h2 id="roomCodeLabel">bnf-</h2>
+                </div>
+                <div class="summary-actions">
+                  <button id="copyRoomCodeBtn" class="action-btn secondary" type="button">Copy Code</button>
+                  <button id="copyInviteBtn" class="action-btn secondary" type="button">Copy Invite Link</button>
+                </div>
               </div>
-              <div class="summary-actions">
-                <button id="copyRoomCodeBtn" class="action-btn secondary" type="button">Copy Code</button>
-                <button id="copyInviteBtn" class="action-btn secondary" type="button">Copy Invite Link</button>
+              <div class="summary-grid">
+                <div class="summary-pill">
+                  <span class="summary-label">Phase</span>
+                  <strong id="phaseLabel">Lobby</strong>
+                </div>
+                <div class="summary-pill">
+                  <span class="summary-label">Turn</span>
+                  <strong id="turnLabel">Waiting</strong>
+                </div>
+                <div class="summary-pill timer-pill">
+                  <span class="summary-label">Timer</span>
+                  <strong id="timerLabel">--</strong>
+                </div>
+                <div class="summary-pill">
+                  <span class="summary-label">Selected</span>
+                  <strong id="selectionLabel">None</strong>
+                </div>
               </div>
-            </div>
-            <div class="summary-grid">
-              <div class="summary-pill">
-                <span class="summary-label">Phase</span>
-                <strong id="phaseLabel">Lobby</strong>
-              </div>
-              <div class="summary-pill">
-                <span class="summary-label">Turn</span>
-                <strong id="turnLabel">Waiting</strong>
-              </div>
-              <div class="summary-pill timer-pill">
-                <span class="summary-label">Timer</span>
-                <strong id="timerLabel">--</strong>
-              </div>
-              <div class="summary-pill">
-                <span class="summary-label">Selected</span>
-                <strong id="selectionLabel">None</strong>
-              </div>
-            </div>
-            <p id="resultBanner" class="room-status-banner">Waiting for room activity.</p>
-          </div>
-
-          <div class="hud-card player-status-card">
-            <h3>Captains</h3>
-            <div id="playerStatusList" class="player-status-list"></div>
-          </div>
-
-          <div class="hud-card fleet-controls-card">
-            <div class="control-header">
-              <div>
-                <p class="kicker">Command Deck</p>
-                <h3 id="controlTitle">Prepare your fleet</h3>
-              </div>
-              <button id="rotateShipBtn" class="action-btn secondary" type="button">Rotate: Horizontal</button>
+              <p id="resultBanner" class="room-status-banner">Waiting for room activity.</p>
             </div>
 
-            <div id="fleetShipList" class="fleet-ship-list"></div>
-
-            <div class="control-actions">
-              <button id="randomizeFleetBtn" class="action-btn secondary" type="button">Randomize Fleet</button>
-              <button id="clearFleetBtn" class="action-btn secondary" type="button">Clear Fleet</button>
-              <button id="lockFleetBtn" class="action-btn" type="button">Lock Fleet</button>
+            <div class="hud-card player-status-card">
+              <h3>Captains</h3>
+              <div id="playerStatusList" class="player-status-list"></div>
             </div>
+          </aside>
 
-            <div class="control-actions battle-actions">
-              <button id="radarBtn" class="action-btn secondary" type="button">Radar Ping</button>
-              <button id="confirmAttackBtn" class="action-btn" type="button">Confirm Attack</button>
-            </div>
+          <section id="battleStage" class="battle-stage" hidden>
+            <article class="board-card own-board-card">
+              <div class="board-card-header">
+                <div>
+                  <p class="kicker">Own Board</p>
+                  <h2>Your Fleet</h2>
+                </div>
+                <span id="fleetHealthLabel" class="board-chip">Fleet intact</span>
+              </div>
+              <div id="ownBoard" class="board-shell" aria-label="Your board"></div>
+            </article>
 
-            <p id="controlHint" class="hint">Place all five ships on your board, then lock in your fleet.</p>
-          </div>
+            <article class="board-card enemy-board-card">
+              <div class="board-card-header">
+                <div>
+                  <p class="kicker">Enemy Tracking</p>
+                  <h2>Fog of War</h2>
+                </div>
+                <span id="enemyBoardHint" class="board-chip">Pick a coordinate</span>
+              </div>
+              <div id="enemyBoard" class="board-shell" aria-label="Enemy board"></div>
+            </article>
+          </section>
+
+          <aside class="battle-sidebar battle-sidebar-right">
+            <section class="hud-card fleet-controls-card">
+              <div class="control-header">
+                <div>
+                  <p class="kicker">Command Deck</p>
+                  <h3 id="controlTitle">Prepare your fleet</h3>
+                </div>
+                <button id="rotateShipBtn" class="action-btn secondary" type="button">Rotate: Horizontal</button>
+              </div>
+
+              <div id="fleetShipList" class="fleet-ship-list"></div>
+
+              <div class="control-actions control-actions-spaced">
+                <button id="randomizeFleetBtn" class="action-btn secondary" type="button">Randomize Fleet</button>
+                <button id="clearFleetBtn" class="action-btn secondary" type="button">Clear Fleet</button>
+                <button id="lockFleetBtn" class="action-btn" type="button">Lock Fleet</button>
+                <button id="confirmAttackBtn" class="action-btn" type="button">Confirm Action</button>
+              </div>
+
+              <p id="controlHint" class="hint">Place all five ships on your board, then lock in your fleet.</p>
+            </section>
+
+            <section class="hud-card powers-card">
+              <div class="control-header">
+                <div>
+                  <p class="kicker">Special Ops</p>
+                  <h3>Powers</h3>
+                </div>
+                <span id="powerModeLabel" class="board-chip">Standard Shot</span>
+              </div>
+
+              <div id="powerList" class="power-list"></div>
+              <p id="powerHint" class="hint">Use one special power per turn. Number keys 1-4 pick a power, R rotates airstrikes, and Enter confirms.</p>
+            </section>
+          </aside>
         </section>
-
-        <section id="battleStage" class="battle-stage" hidden>
-          <article class="board-card own-board-card">
-            <div class="board-card-header">
-              <div>
-                <p class="kicker">Own Board</p>
-                <h2>Your Fleet</h2>
-              </div>
-              <span id="fleetHealthLabel" class="board-chip">Fleet intact</span>
-            </div>
-            <div id="ownBoard" class="board-shell" aria-label="Your board"></div>
-          </article>
-
-          <article class="board-card enemy-board-card">
-            <div class="board-card-header">
-              <div>
-                <p class="kicker">Enemy Tracking</p>
-                <h2>Fog of War</h2>
-              </div>
-              <span id="enemyBoardHint" class="board-chip">Pick a coordinate</span>
-            </div>
-            <div id="enemyBoard" class="board-shell" aria-label="Enemy board"></div>
-          </article>
-        </section>
-
       </article>
     </section>
   </div>

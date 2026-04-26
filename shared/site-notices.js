@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-25-battleship-ui-improvements-and-minor-bug-fixes',
+      title: 'Battleship UI improvements and minor bug fixes',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-25T18:05:00-04:00',
+      summary: 'Battleship now wraps the boards with cleaner side panels, adds a dedicated powers deck, and fixes the host room panel so it closes properly after room creation.',
+      details: [
+        'The room summary and captain status now sit beside the boards instead of stacking above them, while the command deck and powers live in their own right-side panel.',
+        'Radar, Airstrike, Mine, and Nuke now live in a dedicated powers panel with keyboard shortcuts for faster battle turns.',
+        'The host create-or-join panel now hides consistently after creating a room, matching the multiplayer room flow used by Tic-Tac-Toe.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-25-favicon-update',
       title: 'Favicon Update',
       category: 'update',
