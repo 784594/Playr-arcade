@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-26-created-connect-4',
+      title: 'Created Connect-4',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-26T09:45:00-04:00',
+      summary: 'Connect 4 now has a full multiplayer room flow with room codes, live chat, score tracking, animated coin drops, and round rematches instead of the older scaffold page.',
+      details: [
+        'Players can now create or join private Connect 4 rooms with c4- room codes and start live matches once both players are inside.',
+        'The new board uses animated rail-based coin drops, winner highlighting, and a rematch reset animation that clears the board between rounds.',
+        'Firestore rules now cover the Connect 4 room collection and chat messages so the new multiplayer flow follows the same authenticated room pattern as the other live games.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-25-ui-improvements',
       title: 'UI improvements',
       category: 'update',

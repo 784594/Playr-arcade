@@ -73,6 +73,11 @@ service cloud.firestore {
         && roomId.matches('^bnf-[a-z0-9]{6,16}$');
     }
 
+    function validConnect4RoomId(roomId) {
+      return roomId is string
+        && roomId.matches('^c4-[a-z0-9]{6,16}$');
+    }
+
     function validPresenceDoc() {
       return request.resource.data.keys().hasOnly(['uid', 'name', 'x', 'y', 'color', 'updatedAt', 'active'])
         && request.resource.data.uid is string
@@ -88,6 +93,22 @@ service cloud.firestore {
     }
 
     function validTttMessage() {
+      return request.resource.data.keys().hasOnly(['authorUid', 'authorName', 'authorProfile', 'text', 'createdAt'])
+        && request.resource.data.authorUid is string
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.authorName is string
+        && request.resource.data.authorName.size() >= 1
+        && request.resource.data.authorName.size() <= 24
+        && request.resource.data.text is string
+        && request.resource.data.text.size() >= 1
+        && request.resource.data.text.size() <= 220
+        && (
+          request.resource.data.authorProfile == null
+          || request.resource.data.authorProfile is map
+        );
+    }
+
+    function validConnect4Message() {
       return request.resource.data.keys().hasOnly(['authorUid', 'authorName', 'authorProfile', 'text', 'createdAt'])
         && request.resource.data.authorUid is string
         && request.resource.data.authorUid == request.auth.uid
@@ -326,6 +347,123 @@ service cloud.firestore {
       ];
     }
 
+    function connect4RoomFields() {
+      return [
+        'roomId',
+        'status',
+        'board',
+        'turn',
+        'winner',
+        'winLine',
+        'hostUid',
+        'hostName',
+        'guestUid',
+        'guestName',
+        'redUid',
+        'redName',
+        'yellowUid',
+        'yellowName',
+        'playerScores',
+        'draws',
+        'roundNumber',
+        'scoreRound',
+        'rematchVotes',
+        'lastMoveColumn',
+        'lastMoveIndex',
+        'createdAt',
+        'updatedAt',
+        'coinTossAt'
+      ];
+    }
+
+    function validConnect4Board(board) {
+      return board is list
+        && board.size() == 42;
+    }
+
+    function validConnect4RoomCreate(roomId) {
+      return request.resource.data.keys().hasOnly(connect4RoomFields())
+        && request.resource.data.roomId == roomId
+        && request.resource.data.status == 'waiting'
+        && validConnect4Board(request.resource.data.board)
+        && request.resource.data.turn == 'R'
+        && request.resource.data.winner == ''
+        && request.resource.data.winLine is list
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.hostName is string
+        && request.resource.data.guestUid == ''
+        && request.resource.data.guestName is string
+        && request.resource.data.redUid == request.auth.uid
+        && request.resource.data.redName is string
+        && request.resource.data.yellowUid == ''
+        && request.resource.data.yellowName is string
+        && request.resource.data.playerScores is map
+        && request.resource.data.draws is int
+        && request.resource.data.roundNumber is int
+        && request.resource.data.scoreRound is int
+        && request.resource.data.rematchVotes is map
+        && request.resource.data.lastMoveColumn is int
+        && request.resource.data.lastMoveIndex is int;
+    }
+
+    function connect4IsParticipant() {
+      return resource.data.hostUid == request.auth.uid || resource.data.guestUid == request.auth.uid;
+    }
+
+    function connect4IsJoiner() {
+      return resource.data.guestUid == '' && request.resource.data.guestUid == request.auth.uid;
+    }
+
+    function validConnect4ParticipantUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return request.resource.data.keys().hasOnly(connect4RoomFields())
+        && request.resource.data.roomId == resource.data.roomId
+        && request.resource.data.hostUid == resource.data.hostUid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && validConnect4Board(request.resource.data.board)
+        && changed.hasOnly([
+          'status',
+          'board',
+          'turn',
+          'winner',
+          'winLine',
+          'hostName',
+          'guestName',
+          'redUid',
+          'redName',
+          'yellowUid',
+          'yellowName',
+          'playerScores',
+          'draws',
+          'roundNumber',
+          'scoreRound',
+          'rematchVotes',
+          'lastMoveColumn',
+          'lastMoveIndex',
+          'updatedAt',
+          'coinTossAt'
+        ]);
+    }
+
+    function validConnect4JoinUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return request.resource.data.keys().hasOnly(connect4RoomFields())
+        && request.resource.data.roomId == resource.data.roomId
+        && request.resource.data.hostUid == resource.data.hostUid
+        && request.resource.data.hostName == resource.data.hostName
+        && request.resource.data.createdAt == resource.data.createdAt
+        && validConnect4Board(request.resource.data.board)
+        && changed.hasOnly([
+          'guestUid',
+          'guestName',
+          'playerScores',
+          'status',
+          'updatedAt'
+        ])
+        && resource.data.guestUid == ''
+        && request.resource.data.guestUid == request.auth.uid;
+    }
+
     function validBattleshipRoomCreate() {
       return request.resource.data.keys().hasOnly(battleshipRoomFields())
         && request.resource.data.hostUid == request.auth.uid
@@ -469,6 +607,22 @@ service cloud.firestore {
           && request.resource.data.text is string
           && request.resource.data.text.size() >= 1
           && request.resource.data.text.size() <= 220;
+        allow update, delete: if false;
+      }
+    }
+
+    match /connect4Rooms/{roomId} {
+      allow read: if signedIn() && validConnect4RoomId(roomId);
+      allow create: if signedIn() && validConnect4RoomId(roomId) && validConnect4RoomCreate(roomId);
+      allow update: if signedIn() && validConnect4RoomId(roomId) && (
+        connect4IsParticipant() && validConnect4ParticipantUpdate()
+        || connect4IsJoiner() && validConnect4JoinUpdate()
+      );
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if signedIn() && validConnect4RoomId(roomId);
+        allow create: if signedIn() && validConnect4RoomId(roomId) && validConnect4Message();
         allow update, delete: if false;
       }
     }
