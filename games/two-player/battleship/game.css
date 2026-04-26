@@ -352,6 +352,21 @@
   line-height: 1.5;
 }
 
+.ship-card strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ship-card-size {
+  display: inline;
+  margin-top: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
 .power-hotkey {
   color: #7cf0c5;
   font-size: 0.8rem;

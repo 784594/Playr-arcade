@@ -7,10 +7,11 @@
       audience: 'public',
       severity: 'info',
       publishedAt: '2026-04-25T18:45:00-04:00',
-      summary: 'Battleship now centers the boards more cleanly, hides room panels once you are inside, uses compact tooltip-based powers, and restocks powers over time.',
+      summary: 'Battleship now centers the boards more cleanly, hides room panels once you are inside, uses compact tooltip-based powers, and smooths out a few small command-deck UI details.',
       details: [
         'Battleship ship placement now stages positions before confirming them, uses longer placement and turn timers, and keeps your turn alive after a successful hit.',
         'Battleship powers now use compact cards with hover tooltips instead of inline descriptions, and each power restocks by 1 every 5 completed turns up to a max of 3.',
+        'Battleship ship cards now keep the ship size beside the ship name in one cleaner line, and the leftover waiting-for-second-captain helper text has been removed.',
         'Battleship and Infinite Craft multiplayer now hide their create-or-join panels more consistently once a player is already in a room.',
       ],
     },

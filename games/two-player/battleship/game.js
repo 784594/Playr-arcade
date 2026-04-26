@@ -896,8 +896,7 @@
       const selected = state.selectedShipId === ship.id;
       return `
         <button class="ship-card${selected ? ' is-selected' : ''}${placed ? ' is-placed' : ''}" type="button" data-ship-id="${ship.id}">
-          <strong>${ship.name}</strong>
-          <span>${ship.size} tiles · ${placed ? 'Placed' : 'Not placed'}</span>
+          <strong>${ship.name} <span class="ship-card-size">${ship.size} Tiles</span></strong>
         </button>
       `;
     }).join('');
@@ -1068,9 +1067,9 @@
                 : activePower?.id === 'nuke'
                   ? 'Nuke selected. Pick an enemy tile to blast a 3x3 area.'
                   : (isMyTurn(room) ? 'Pick an enemy coordinate and confirm your attack.' : 'Hold position. You can attack when the turn indicator points to you.'))
-          : room.phase === 'end'
+        : room.phase === 'end'
             ? (room.winnerUid === state.user?.uid ? 'Victory secured. Launch another room to play again.' : 'Your fleet was lost. Create another room for a rematch.')
-            : 'The room enters ship placement as soon as a second captain joins.';
+            : '';
     }
     if (els.rotateShipBtn) {
       const showRotate = (room.phase === 'placement' && !placementLocked) || (room.phase === 'battle' && activePower?.id === 'airstrike' && isMyTurn(room));
