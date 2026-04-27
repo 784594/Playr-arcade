@@ -1468,7 +1468,7 @@
         description: 'Owner Badge - Game maker!',
         showLabel: false,
         assetPath: createBadgeIcon({ shape: 'crown', primary: '#ffc967', accent: '#fff5d7' }),
-        displayGradient: 'linear-gradient(180deg, #fafcff 0%, #10141a 50%, #fafcff 100%)',
+        displayGradient: 'linear-gradient(90deg, #fafcff 0%, #fafcff 33.333%, #10141a 33.333%, #10141a 66.667%, #fafcff 66.667%, #fafcff 100%)',
       };
     }
 
@@ -1642,7 +1642,7 @@
       return { color: styledBadge.displayColor, gradient: '' };
     }
     if (isOwnerRecord(record || profile)) {
-      return { color: '', gradient: 'linear-gradient(180deg, #f8fbff 0%, #0f1116 50%, #f8fbff 100%)' };
+      return { color: '', gradient: 'linear-gradient(90deg, #f8fbff 0%, #f8fbff 33.333%, #0f1116 33.333%, #0f1116 66.667%, #f8fbff 66.667%, #f8fbff 100%)' };
     }
     return { color: '', gradient: '' };
   }
