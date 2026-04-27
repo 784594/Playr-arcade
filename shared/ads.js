@@ -34,6 +34,7 @@
     repetitive: 'Repetitive interaction behavior',
     lowDiversity: 'Low interaction diversity over time',
   };
+  let adsenseLoadScheduled = false;
   const LEVEL_BRACKETS = [
     { min: 1, max: 9, id: 'level-1-9', label: 'Level I', title: 'Levels 1-9' },
     { min: 10, max: 24, id: 'level-10-24', label: 'Level II', title: 'Levels 10-24' },
@@ -1468,7 +1469,7 @@
         description: 'Owner Badge - Game maker!',
         showLabel: false,
         assetPath: createBadgeIcon({ shape: 'crown', primary: '#ffc967', accent: '#fff5d7' }),
-        displayGradient: 'linear-gradient(90deg, #fafcff 0%, #fafcff 33.333%, #10141a 33.333%, #10141a 66.667%, #fafcff 66.667%, #fafcff 100%)',
+        displayGradient: 'linear-gradient(180deg, #fafcff 0%, #10141a 50%, #fafcff 100%)',
       };
     }
 
@@ -1642,7 +1643,7 @@
       return { color: styledBadge.displayColor, gradient: '' };
     }
     if (isOwnerRecord(record || profile)) {
-      return { color: '', gradient: 'linear-gradient(90deg, #f8fbff 0%, #f8fbff 33.333%, #0f1116 33.333%, #0f1116 66.667%, #f8fbff 66.667%, #f8fbff 100%)' };
+      return { color: '', gradient: 'linear-gradient(180deg, #f8fbff 0%, #0f1116 50%, #f8fbff 100%)' };
     }
     return { color: '', gradient: '' };
   }
@@ -1997,6 +1998,10 @@
     captureReferralFromUrl();
     applyPendingReferralToCurrentUser();
 
+    if (!isGameplayPage()) {
+      return;
+    }
+
     [
       'pointerdown',
       'keydown',
@@ -2094,6 +2099,33 @@
     document.head.appendChild(script);
   }
 
+  function scheduleAdsenseScript() {
+    if (adsenseLoadScheduled || document.getElementById(ADSENSE_SCRIPT_ID)) {
+      return;
+    }
+
+    const loadScript = () => {
+      adsenseLoadScheduled = false;
+      if (document.documentElement.dataset.playrAds === 'vip') {
+        return;
+      }
+      ensureAdsenseScript();
+    };
+
+    adsenseLoadScheduled = true;
+
+    if (document.readyState === 'complete') {
+      if (typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(loadScript, { timeout: 2000 });
+      } else {
+        window.setTimeout(loadScript, 250);
+      }
+      return;
+    }
+
+    window.addEventListener('load', loadScript, { once: true });
+  }
+
   function removeManagedAdsenseArtifacts() {
     document.getElementById(ADSENSE_SCRIPT_ID)?.remove();
 
@@ -2119,11 +2151,12 @@
     document.documentElement.dataset.playrAds = vip ? 'vip' : 'enabled';
 
     if (vip) {
+      adsenseLoadScheduled = false;
       removeManagedAdsenseArtifacts();
       return;
     }
 
-    ensureAdsenseScript();
+    scheduleAdsenseScript();
   }
 
   window.PlayrProgression = {

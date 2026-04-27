@@ -2342,7 +2342,7 @@ function toggleEquippedSettingsBadge(badgeId) {
   authState.profiles = readStoredProfiles();
   syncLegacyAuthState();
   exposePlayrAuth();
-  renderSettingsProgression(getCurrentAccount());
+  refreshSettingsProgressionIfOpen();
   setSettingsStatus(existingIndex >= 0 ? 'Tag unequipped.' : 'Tag equipped.', 'success');
 }
 
@@ -3397,6 +3397,7 @@ function renderGames() {
 }
 
 function renderLeaderboard() {
+  hydrateLeaderboardGames();
   const eligibleGames = games.filter((game) => game.leaderboardEligible);
   if (leaderboardCard) {
     leaderboardCard.classList.toggle('leaderboard-card-levels', uiState.activeLeaderboardRange === 'levels');
@@ -3695,11 +3696,40 @@ function updateLeaderboardAbout() {
   }
 }
 
+function isLeaderboardViewActive() {
+  return uiState.activeLibraryTab === 'leaderboard';
+}
+
+function refreshSettingsProgressionIfOpen() {
+  if (!settingsOverlay?.hidden) {
+    renderSettingsProgression(getCurrentAccount());
+  }
+}
+
+function scheduleNonCriticalHomepageWork() {
+  const run = () => {
+    renderStats();
+    renderPublishingPreview();
+    syncSiteNoticeBell();
+  };
+
+  if (typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(run, { timeout: 1500 });
+    return;
+  }
+
+  window.setTimeout(run, 120);
+}
+
 function refreshGameViews() {
-  hydrateLeaderboardGames();
   applyPersistedAdminOverrides();
   renderGames();
-  const filteredGames = getFilteredGames();
+  const shouldRenderLeaderboard = isLeaderboardViewActive();
+
+  if (!shouldRenderLeaderboard) {
+    return;
+  }
+
   const eligibleGames = games.filter((game) => game.leaderboardEligible);
 
   if (uiState.activeLeaderboardRange === 'levels' || uiState.activeLeaderboardRange === 'featured') {
@@ -3749,7 +3779,6 @@ function setLeaderboardPanelVisible(visible) {
 
 function init() {
   const cleanupOverscrollEasterEgg = initOverscrollEasterEgg();
-  hydrateLeaderboardGames();
   applyPersistedAdminOverrides();
 
   if (firebaseAuth) {
@@ -3758,10 +3787,6 @@ function init() {
 
       if (!hasHandledInitialAuthState) {
         hasHandledInitialAuthState = true;
-        if (!user) {
-          setAuthMode('signup');
-          openAuthOverlay('');
-        }
       }
 
       if (user) {
@@ -3771,25 +3796,25 @@ function init() {
       syncLegacyAuthState();
       exposePlayrAuth();
       renderAuthUi();
-      renderSettingsProgression(getCurrentAccount());
-      refreshGameViews();
-      updateLeaderboardAbout();
+      refreshSettingsProgressionIfOpen();
+      if (isLeaderboardViewActive()) {
+        refreshGameViews();
+        updateLeaderboardAbout();
+      }
     });
   }
 
   syncLegacyAuthState();
   exposePlayrAuth();
-  renderStats();
-  renderPublishingPreview();
   renderAuthUi();
-  renderSettingsProgression(getCurrentAccount());
-  renderNotificationsDropdown();
-  syncSiteNoticeBell();
   syncControlStates();
   syncFeaturedGameToActiveTab();
   refreshGameViews();
-  updateLeaderboardAbout();
-  setLeaderboardPanelVisible(uiState.activeLibraryTab === 'leaderboard');
+  if (isLeaderboardViewActive()) {
+    updateLeaderboardAbout();
+  }
+  scheduleNonCriticalHomepageWork();
+  setLeaderboardPanelVisible(isLeaderboardViewActive());
   setSupportPanelVisible(false);
   if (hasMineUi) {
     resetMineGame('easy');
@@ -3803,9 +3828,12 @@ function init() {
       uiState.activeLibraryTab = tabId;
       syncControlStates();
       syncFeaturedGameToActiveTab();
-      setLeaderboardPanelVisible(uiState.activeLibraryTab === 'leaderboard');
+      setLeaderboardPanelVisible(isLeaderboardViewActive());
       setSupportPanelVisible(false);
       refreshGameViews();
+      if (isLeaderboardViewActive()) {
+        updateLeaderboardAbout();
+      }
       if (uiState.activeLibraryTab !== 'leaderboard' && window.scrollY > 0) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
@@ -3996,14 +4024,19 @@ function init() {
       || event.key === 'playr.snake.bestScores.v2'
       || event.key === 'playr-simon-says-board-v1'
       || event.key === AUTH_STORAGE_KEYS.profiles) {
-      hydrateLeaderboardGames();
-      applyPersistedAdminOverrides();
-      refreshGameViews();
-      renderSettingsProgression(getCurrentAccount());
+      if (isLeaderboardViewActive()) {
+        hydrateLeaderboardGames();
+        applyPersistedAdminOverrides();
+        refreshGameViews();
+      }
+      refreshSettingsProgressionIfOpen();
     }
     if (event.key === SITE_NOTICE_STORAGE_KEY) {
-      renderNotificationsDropdown();
-      syncSiteNoticeBell();
+      if (uiState.notificationsOpen) {
+        renderNotificationsDropdown();
+      } else {
+        syncSiteNoticeBell();
+      }
     }
   });
 
