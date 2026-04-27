@@ -1246,6 +1246,11 @@ a {
   position: relative;
   overflow: hidden;
 }
+
+.leaderboard-card.panel-card {
+  width: 100%;
+  max-width: none;
+}
 .panel-card[role="button"] {
   cursor: pointer;
 }
@@ -1330,6 +1335,14 @@ a {
 
 .section {
   padding: 40px 0 0;
+}
+
+.leaderboard-section {
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(calc(100vw - 32px), 1640px);
+  max-width: none;
 }
 
 .mine-shell {
@@ -1872,14 +1885,26 @@ a {
   border-radius: var(--radius-xl);
   padding: 24px;
   display: grid;
-  grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
+  grid-template-columns: minmax(176px, 220px) minmax(0, 1fr);
   gap: 20px;
   align-items: start;
+  width: 100%;
+}
+
+.leaderboard-card-levels {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.leaderboard-card-featured {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .leaderboard-card-standalone {
   display: grid;
   gap: 16px;
+  grid-column: 1 / -1;
+  min-width: 0;
+  width: 100%;
 }
 
 .leaderboard-games-list {
@@ -1920,11 +1945,13 @@ a {
 .leaderboard-content {
   display: grid;
   gap: 16px;
+  min-width: 0;
 }
 
 .leaderboard-scores-shell {
   max-height: 600px;
   overflow-y: auto;
+  min-width: 0;
 }
 
 .leaderboard-header {
@@ -1934,6 +1961,16 @@ a {
   gap: 18px;
   align-items: end;
   margin-bottom: 18px;
+}
+
+.leaderboard-card-levels .leaderboard-header > div:first-child {
+  flex: 1 1 560px;
+  max-width: none;
+}
+
+.leaderboard-card-featured .leaderboard-header > div:first-child {
+  flex: 1 1 560px;
+  max-width: none;
 }
 
 .leaderboard-header h3 {
@@ -1967,12 +2004,21 @@ a {
   overflow-x: auto;
   border-radius: var(--radius-md);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  width: 100%;
 }
 
 .leaderboard-table {
   width: 100%;
   border-collapse: collapse;
   min-width: 560px;
+}
+
+.leaderboard-card-levels .leaderboard-table {
+  min-width: 100%;
+}
+
+.leaderboard-card-featured .leaderboard-table {
+  min-width: 100%;
 }
 
 .leaderboard-table th,

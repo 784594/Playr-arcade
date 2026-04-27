@@ -3343,6 +3343,12 @@ function getFeaturedGame() {
   return getGameById(uiState.featuredGameId);
 }
 
+function getFeaturedCompetitiveLeaderboardGame() {
+  const featuredCompetitive = getFeaturedGameForTab('competitive');
+  if (featuredCompetitive?.leaderboardEligible) return featuredCompetitive;
+  return games.find((game) => game.competitive === true && game.leaderboardEligible === true) || null;
+}
+
 function canLaunchGame(game) {
   if (!game) return false;
   if (multiplayerAccessConfig.requireLoginFor2P && game.category === 'two-player' && !isLoggedIn()) {
@@ -3392,6 +3398,10 @@ function renderGames() {
 
 function renderLeaderboard() {
   const eligibleGames = games.filter((game) => game.leaderboardEligible);
+  if (leaderboardCard) {
+    leaderboardCard.classList.toggle('leaderboard-card-levels', uiState.activeLeaderboardRange === 'levels');
+    leaderboardCard.classList.toggle('leaderboard-card-featured', uiState.activeLeaderboardRange === 'featured');
+  }
 
   const getPaddedRows = (rows, limit) => {
     const safeRows = Array.isArray(rows) ? rows.slice(0, limit) : [];
@@ -3455,6 +3465,55 @@ function renderLeaderboard() {
     return;
   }
 
+  if (uiState.activeLeaderboardRange === 'featured') {
+    const game = getFeaturedCompetitiveLeaderboardGame();
+    const rows = game ? getPaddedRows(game.leaderboardTop100 || [], 10) : getPaddedRows([], 10);
+    leaderboardCard.innerHTML = game ? `
+      <div class="leaderboard-card-standalone">
+        <div class="leaderboard-header">
+          <div>
+            <p class="panel-label">Featured competitive board</p>
+            <h3>${game.name}</h3>
+            <p>Today&apos;s featured competitive leaderboard shows the top 10 players for the daily spotlight game.</p>
+          </div>
+          <span class="tag accent">Top 10 only</span>
+        </div>
+        <p class="leaderboard-summary">${game.leaderboardLabel}. The featured game rotates daily from the competitive lineup.</p>
+        <div class="table-wrap">
+          <table class="leaderboard-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Player</th>
+                <th>${game.leaderboardLabel}</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map((row) => `
+                <tr>
+                  <td class="rank">#${row.rank}</td>
+                  <td>${row.player ? formatPlayerIdentityMarkup(row.player, { record: findProfileByDisplayName(row.player), compact: true }) : '<span class="leaderboard-empty-cell">--</span>'}</td>
+                  <td>${row.player ? row.value : '<span class="leaderboard-empty-cell">--</span>'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    ` : `
+      <div class="leaderboard-card-standalone">
+        <div class="leaderboard-header">
+          <div>
+            <p class="panel-label">Featured competitive board</p>
+            <h3>No featured leaderboard yet</h3>
+            <p>Add more competitive games with saved rankings and this slot will populate automatically.</p>
+          </div>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
   if (uiState.activeLeaderboardRange === 'donation') {
     leaderboardCard.innerHTML = `
       <div class="leaderboard-header">
@@ -3502,8 +3561,8 @@ function renderLeaderboard() {
     return;
   }
 
-  const rangeBadge = uiState.activeLeaderboardRange === 'daily'
-    ? 'Daily snapshot'
+  const rangeBadge = uiState.activeLeaderboardRange === 'featured'
+    ? 'Featured game'
     : uiState.activeLeaderboardRange === 'your-stats'
       ? 'Your stats preview'
       : 'All-time records';
@@ -3618,8 +3677,8 @@ function setActiveGame(gameId) {
 
 function updateLeaderboardAbout() {
   if (!leaderboardAbout) return;
-  if (uiState.activeLeaderboardRange === 'daily') {
-    leaderboardAbout.textContent = 'Daily view highlights each game\'s strongest runs from the current day.';
+  if (uiState.activeLeaderboardRange === 'featured') {
+    leaderboardAbout.textContent = 'Featured Game highlights one competitive leaderboard each day and keeps the focus on that game\'s top 10 players.';
   } else if (uiState.activeLeaderboardRange === 'all-time') {
     leaderboardAbout.textContent = 'All-time view keeps persistent records for long-term competition.';
   } else if (uiState.activeLeaderboardRange === 'levels') {
@@ -3643,7 +3702,7 @@ function refreshGameViews() {
   const filteredGames = getFilteredGames();
   const eligibleGames = games.filter((game) => game.leaderboardEligible);
 
-  if (uiState.activeLeaderboardRange === 'levels') {
+  if (uiState.activeLeaderboardRange === 'levels' || uiState.activeLeaderboardRange === 'featured') {
     renderLeaderboard();
     return;
   }
