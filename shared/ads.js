@@ -168,53 +168,13 @@
 
   function createLevelIcon(levelId) {
     const iconMap = {
-      'level-1-9': createSvgDataUri(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-          <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#0a1220" stroke="rgba(255,255,255,0.14)" />
-          <circle cx="16" cy="16" r="7.9" fill="#9af0ba" stroke="#ecfff3" stroke-width="1.5" />
-        </svg>
-      `),
-      'level-10-24': createSvgDataUri(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-          <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#0a1220" stroke="rgba(255,255,255,0.14)" />
-          <circle cx="16" cy="16" r="8.7" fill="#0c1729" stroke="#eafcff" stroke-width="1.4" />
-          <circle cx="16" cy="16" r="5.4" fill="#8eeaff" />
-        </svg>
-      `),
-      'level-25-49': createSvgDataUri(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-          <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#0a1220" stroke="rgba(255,255,255,0.14)" />
-          <path d="M16 6.1 25.9 16 16 25.9 6.1 16 16 6.1Z" fill="#66c7ff" stroke="#eef8ff" stroke-width="1.5" />
-        </svg>
-      `),
-      'level-50-74': createSvgDataUri(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-          <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#0a1220" stroke="rgba(255,255,255,0.14)" />
-          <path d="M10.2 6.1h11.6l5.8 9.9-5.8 9.9H10.2L4.4 16l5.8-9.9Z" fill="#5f8cff" stroke="#eef3ff" stroke-width="1.5" />
-        </svg>
-      `),
-      'level-75-99': createSvgDataUri(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-          <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#0a1220" stroke="rgba(255,255,255,0.14)" />
-          <path d="M16 5.2 24.6 8.2v6.6c0 5.4-2.9 9.2-8.6 10.9-5.7-1.7-8.6-5.5-8.6-10.9V8.2L16 5.2Z" fill="#ffad67" stroke="#fff1e0" stroke-width="1.5" />
-        </svg>
-      `),
-      'level-100-plus': createSvgDataUri(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-          <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#0a1220" stroke="rgba(255,255,255,0.14)" />
-          <path d="M7.1 24h17.8l1.2-10.8-5.2 3.4-4.9-6.9-4.9 6.9-5.2-3.4L7.1 24Z" fill="#b06cff" stroke="#f7ebff" stroke-width="1.5" />
-        </svg>
-      `),
-      'level-999': createSvgDataUri(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-          <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#090f1d" stroke="rgba(255,255,255,0.14)" />
-          <path d="M16 4.8 24.4 7.7v6.2c0 5.7-3.1 9.9-8.4 12-5.3-2.1-8.4-6.3-8.4-12V7.7L16 4.8Z" fill="#d9c4ff" stroke="#fff8ff" stroke-width="1.4" />
-          <path d="M9.5 20.4c2.9-2.7 5.7-4.3 8.4-4.9m-6 8c3.6-1.9 6.8-2.5 10-1.9" stroke="#7a2bff" stroke-width="1.7" stroke-linecap="round" />
-          <circle cx="9.3" cy="11.1" r="1.4" fill="#ffd86a" />
-          <circle cx="22.6" cy="11.1" r="1.4" fill="#ffd86a" />
-          <circle cx="16" cy="7.8" r="1.6" fill="#ffd86a" />
-        </svg>
-      `),
+      'level-1-9': '/images/level-icons/Untitled%20design1.png',
+      'level-10-24': '/images/level-icons/Untitled%20design2.png',
+      'level-25-49': '/images/level-icons/Untitled%20design3.png',
+      'level-50-74': '/images/level-icons/Untitled%20design4.png',
+      'level-75-99': '/images/level-icons/Untitled%20design5.png',
+      'level-100-plus': '/images/level-icons/Untitled%20design6.png',
+      'level-999': '/images/level-icons/Untitled%20design7.png',
     };
     return iconMap[levelId] || iconMap['level-1-9'];
   }
