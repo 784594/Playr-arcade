@@ -1418,14 +1418,14 @@
         showLabel: false,
         assetPath: donation.assetPath || createBadgeIcon({ shape: 'ring', primary: donation.color, accent: '#ffffff', text: '$' }),
         displayGradient: donation.id === 'donation-1'
-          ? 'linear-gradient(90deg, #dffff0 0%, #22ff4e 45%, #0a7f23 100%)'
+          ? 'linear-gradient(180deg, #dffff0 0%, #22ff4e 45%, #0a7f23 100%)'
           : donation.id === 'donation-2'
-            ? 'linear-gradient(90deg, #fff2c9 0%, #ffbf20 45%, #9d5c00 100%)'
+            ? 'linear-gradient(180deg, #fff2c9 0%, #ffbf20 45%, #9d5c00 100%)'
             : donation.id === 'donation-3'
-              ? 'linear-gradient(90deg, #ebfaff 0%, #3dc8ff 45%, #116d9d 100%)'
+              ? 'linear-gradient(180deg, #ebfaff 0%, #3dc8ff 45%, #116d9d 100%)'
               : donation.id === 'donation-4'
-                ? 'linear-gradient(90deg, #ffe3e3 0%, #ff2b2b 45%, #870d0d 100%)'
-                : 'linear-gradient(90deg, #f6e5ff 0%, #a638ff 45%, #5f1c93 100%)',
+                ? 'linear-gradient(180deg, #ffe3e3 0%, #ff2b2b 45%, #870d0d 100%)'
+                : 'linear-gradient(180deg, #f6e5ff 0%, #a638ff 45%, #5f1c93 100%)',
       };
     }
 
@@ -1455,7 +1455,7 @@
         description: 'VIP Badge - VIP Membership Tag',
         showLabel: false,
         assetPath: createBadgeIcon({ shape: 'spark', primary: '#ffd66d', accent: '#fff9db', text: '+' }),
-        displayGradient: 'linear-gradient(90deg, #fff7cf 0%, #ffd76b 35%, #b87c1c 70%, #fff2bf 100%)',
+        displayGradient: 'linear-gradient(180deg, #fff7cf 0%, #ffd76b 35%, #b87c1c 70%, #fff2bf 100%)',
       };
     }
 
@@ -1468,7 +1468,7 @@
         description: 'Owner Badge - Game maker!',
         showLabel: false,
         assetPath: createBadgeIcon({ shape: 'crown', primary: '#ffc967', accent: '#fff5d7' }),
-        displayGradient: 'linear-gradient(90deg, #fafcff 0%, #10141a 50%, #fafcff 100%)',
+        displayGradient: 'linear-gradient(180deg, #fafcff 0%, #10141a 50%, #fafcff 100%)',
       };
     }
 
@@ -1642,7 +1642,7 @@
       return { color: styledBadge.displayColor, gradient: '' };
     }
     if (isOwnerRecord(record || profile)) {
-      return { color: '', gradient: 'linear-gradient(90deg, #f8fbff 0%, #0f1116 50%, #f8fbff 100%)' };
+      return { color: '', gradient: 'linear-gradient(180deg, #f8fbff 0%, #0f1116 50%, #f8fbff 100%)' };
     }
     return { color: '', gradient: '' };
   }

@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-26-gradient-direction-update',
+      title: 'Gradient Direction Update',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-26T22:35:00-04:00',
+      summary: 'Owner, VIP, and donation display-name gradients now run top-to-bottom instead of left-to-right for a cleaner stacked color look.',
+      details: [
+        'Styled names now fade vertically so high-rank identity treatments read more cleanly in compact chat rows and leaderboard cells.',
+        'The update applies consistently to Owner, VIP, and every donation tier anywhere the shared identity renderer is used.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-26-tag-priority-gradient-update',
       title: 'Tag Priority & Gradient Update',
       category: 'update',
