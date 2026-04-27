@@ -3436,7 +3436,7 @@ function renderLeaderboard() {
           ${isExpanded ? 'Show Top 10' : 'Show Top 100'}
         </button>
       </div>
-      <p class="leaderboard-summary">Showing ${isExpanded ? 'Top 100' : 'Top 10'} account slots. Empty spots stay blank until more players post progression.</p>
+      <p class="leaderboard-summary">Showing ${isExpanded ? 'Top 100' : 'Top 10'}</p>
       <div class="table-wrap">
         <table class="leaderboard-table">
           <thead>

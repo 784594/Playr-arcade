@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-26-tag-priority-gradient-update',
+      title: 'Tag Priority & Gradient Update',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-26T21:10:00-04:00',
+      summary: 'Identity tags now follow a stricter rank order around player names, and premium tags like Owner, VIP, and donation badges can tint names with gradients.',
+      details: [
+        'Owner and donation badges now sit before the display name, while VIP, leaderboard, referral, and level badges sort after it in one shared priority order.',
+        'The settings tag picker now follows that same badge ranking so equipped tags stay in a consistent order across profiles, chats, and leaderboards.',
+        'Owner, VIP, and donation tags can now apply gradient display-name styling, and the highest-ranked visible styled tag wins when multiple colored tags are equipped.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-26-icon-updates',
       title: 'Icon Updates',
       category: 'update',

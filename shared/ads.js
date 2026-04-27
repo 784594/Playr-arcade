@@ -608,6 +608,16 @@
         color: var(--playr-name-color, inherit);
         text-shadow: 0 0 12px rgba(255, 255, 255, 0.18);
       }
+      .playr-identity-text[data-playr-gradient] {
+        background-image: var(--playr-name-gradient);
+        background-size: 100% 100%;
+        background-repeat: no-repeat;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+        text-shadow: 0 0 12px rgba(255, 255, 255, 0.14);
+      }
       .playr-badge-stack {
         display: inline-flex;
         align-items: center;
@@ -1407,6 +1417,15 @@
         description: `${donation.label} Badge - Supporter donation tag.`,
         showLabel: false,
         assetPath: donation.assetPath || createBadgeIcon({ shape: 'ring', primary: donation.color, accent: '#ffffff', text: '$' }),
+        displayGradient: donation.id === 'donation-1'
+          ? 'linear-gradient(90deg, #dffff0 0%, #22ff4e 45%, #0a7f23 100%)'
+          : donation.id === 'donation-2'
+            ? 'linear-gradient(90deg, #fff2c9 0%, #ffbf20 45%, #9d5c00 100%)'
+            : donation.id === 'donation-3'
+              ? 'linear-gradient(90deg, #ebfaff 0%, #3dc8ff 45%, #116d9d 100%)'
+              : donation.id === 'donation-4'
+                ? 'linear-gradient(90deg, #ffe3e3 0%, #ff2b2b 45%, #870d0d 100%)'
+                : 'linear-gradient(90deg, #f6e5ff 0%, #a638ff 45%, #5f1c93 100%)',
       };
     }
 
@@ -1422,6 +1441,7 @@
         animated: Boolean(referral.animated),
         animationClass: referral.animationClass || '',
         displayColor: referral.displayColor || '',
+        displayGradient: referral.displayGradient || '',
         assetPath: createReferralIcon(referral.badgeId),
       };
     }
@@ -1435,6 +1455,7 @@
         description: 'VIP Badge - VIP Membership Tag',
         showLabel: false,
         assetPath: createBadgeIcon({ shape: 'spark', primary: '#ffd66d', accent: '#fff9db', text: '+' }),
+        displayGradient: 'linear-gradient(90deg, #fff7cf 0%, #ffd76b 35%, #b87c1c 70%, #fff2bf 100%)',
       };
     }
 
@@ -1447,6 +1468,7 @@
         description: 'Owner Badge - Game maker!',
         showLabel: false,
         assetPath: createBadgeIcon({ shape: 'crown', primary: '#ffc967', accent: '#fff5d7' }),
+        displayGradient: 'linear-gradient(90deg, #fafcff 0%, #10141a 50%, #fafcff 100%)',
       };
     }
 
@@ -1523,11 +1545,12 @@
         assetPath: badge.assetPath || '',
         animated: Boolean(badge.animated),
         displayColor: badge.displayColor || '',
+        displayGradient: badge.displayGradient || '',
         showLabel: Boolean(badge.showLabel),
       });
     });
 
-    return badges;
+    return badges.sort(compareBadges);
   }
 
   function getEquippedBadgeIds(profile, availableBadges = []) {
@@ -1544,7 +1567,38 @@
       if (equipped.length >= EXTRA_EQUIPPED_BADGE_LIMIT) return;
       equipped.push(safeBadgeId);
     });
-    return equipped;
+    return equipped.sort((leftId, rightId) => compareBadges(
+      availableBadges.find((badge) => badge?.id === leftId),
+      availableBadges.find((badge) => badge?.id === rightId)
+    ));
+  }
+
+  function getBadgePriority(badge) {
+    const badgeId = String(badge?.id || '').trim();
+    if (badgeId === 'owner') return 0;
+    if (badgeId === 'vip') return 1;
+    if (badgeId.startsWith('donation-')) return 2;
+    if (badgeId === 'leaderboard-1st') return 3;
+    if (badgeId === 'leaderboard-top-3') return 4;
+    if (badgeId === 'leaderboard-top-10') return 5;
+    if (badgeId === 'leaderboard-top-25') return 6;
+    if (badgeId === 'leaderboard-top-50') return 7;
+    if (badgeId === 'leaderboard-top-100') return 8;
+    if (badgeId === 'referral-25') return 9;
+    if (badgeId === 'referral-10') return 10;
+    if (badgeId === 'referral-5') return 11;
+    if (badgeId === 'referral-3') return 12;
+    if (badgeId === 'referral-1') return 13;
+    if (badgeId === 'level') return 14;
+    return 20;
+  }
+
+  function compareBadges(left, right) {
+    const priorityDiff = getBadgePriority(left) - getBadgePriority(right);
+    if (priorityDiff !== 0) return priorityDiff;
+    return String(left?.title || left?.label || left?.id || '').localeCompare(
+      String(right?.title || right?.label || right?.id || '')
+    );
   }
 
   function getVisibleBadges(record, profile) {
@@ -1555,14 +1609,14 @@
         .map((badge) => [String(badge.id), badge])
     );
     const visible = [];
-    if (badgeMap.has('level')) {
-      visible.push(badgeMap.get('level'));
-    }
     getEquippedBadgeIds(profile, availableBadges).forEach((badgeId) => {
       const badge = badgeMap.get(badgeId);
       if (badge) visible.push(badge);
     });
-    return visible;
+    if (badgeMap.has('level')) {
+      visible.push(badgeMap.get('level'));
+    }
+    return visible.sort(compareBadges);
   }
 
   function formatBadgeMarkup(badge) {
@@ -1576,13 +1630,21 @@
     return `<span class="${escapeHtml(fullClassName)}" data-tooltip="${escapeHtml(description)}" tabindex="0">${icon}${text}</span>`;
   }
 
-  function getIdentityDisplayColor(record, profile, visibleBadges = []) {
+  function getIdentityDisplayStyle(record, profile, visibleBadges = []) {
     const directColor = String(profile?.progression?.cosmetics?.displayNameColor || '').trim();
-    if (directColor) return directColor;
-    const colorBadge = visibleBadges.find((badge) => String(badge?.displayColor || '').trim());
-    if (colorBadge?.displayColor) return colorBadge.displayColor;
-    if (isOwnerRecord(record || profile)) return '#ffd772';
-    return '';
+    if (directColor) return { color: directColor, gradient: '' };
+    const sortedBadges = [...visibleBadges].sort(compareBadges);
+    const styledBadge = sortedBadges.find((badge) => String(badge?.displayGradient || '').trim() || String(badge?.displayColor || '').trim());
+    if (styledBadge?.displayGradient) {
+      return { color: '', gradient: styledBadge.displayGradient };
+    }
+    if (styledBadge?.displayColor) {
+      return { color: styledBadge.displayColor, gradient: '' };
+    }
+    if (isOwnerRecord(record || profile)) {
+      return { color: '', gradient: 'linear-gradient(90deg, #f8fbff 0%, #0f1116 50%, #f8fbff 100%)' };
+    }
+    return { color: '', gradient: '' };
   }
 
   function formatIdentityMarkup(name, options = {}) {
@@ -1593,12 +1655,20 @@
     const badges = options.showBadges === false
       ? []
       : getVisibleBadges(record || { displayName }, fallbackProfile || { displayName });
-    const displayColor = getIdentityDisplayColor(record, fallbackProfile, badges);
+    const displayStyle = getIdentityDisplayStyle(record, fallbackProfile, badges);
     const compactClass = options.compact ? ' compact' : '';
+    const prefixBadges = badges.filter((badge) => badge?.id === 'owner' || String(badge?.id || '').startsWith('donation-'));
+    const suffixBadges = badges.filter((badge) => !prefixBadges.includes(badge));
+    const styleAttrs = displayStyle.gradient
+      ? ` data-playr-gradient="true" style="--playr-name-gradient:${escapeHtml(displayStyle.gradient)}"`
+      : displayStyle.color
+        ? ` data-playr-color="true" style="--playr-name-color:${escapeHtml(displayStyle.color)}"`
+        : '';
     return `
       <span class="playr-identity${compactClass}">
-        <span class="playr-identity-text"${displayColor ? ` data-playr-color="true" style="--playr-name-color:${escapeHtml(displayColor)}"` : ''}>${escapeHtml(displayName)}</span>
-        ${badges.length ? `<span class="playr-badge-stack">${badges.map((badge) => formatBadgeMarkup(badge)).join('')}</span>` : ''}
+        ${prefixBadges.length ? `<span class="playr-badge-stack">${prefixBadges.map((badge) => formatBadgeMarkup(badge)).join('')}</span>` : ''}
+        <span class="playr-identity-text"${styleAttrs}>${escapeHtml(displayName)}</span>
+        ${suffixBadges.length ? `<span class="playr-badge-stack">${suffixBadges.map((badge) => formatBadgeMarkup(badge)).join('')}</span>` : ''}
       </span>
     `;
   }
@@ -1618,6 +1688,8 @@
     const multiplayerToday = safeProfile.progression.daily.multiplayerSecondsByDay[getCurrentDateKey()] || 0;
     const availableBadges = getAvailableBadges(record, safeProfile);
     const equippedBadgeIds = getEquippedBadgeIds(safeProfile, availableBadges);
+    const visibleBadges = getVisibleBadges(record, safeProfile);
+    const displayStyle = getIdentityDisplayStyle(record, safeProfile, visibleBadges);
     const xpLeaderboardRank = getLocalXpLeaderboardRank(safeProfile);
     return {
       displayName: normalizeName(record?.displayName || safeProfile.displayName || 'Player'),
@@ -1638,12 +1710,13 @@
       recentQualifiedReferrals: getRecentReferralCount(safeProfile),
       title: safeProfile.progression.cosmetics.title,
       flair: safeProfile.progression.cosmetics.flair,
-      displayNameColor: getIdentityDisplayColor(record, safeProfile, getVisibleBadges(record, safeProfile)),
+      displayNameColor: displayStyle.color,
+      displayNameGradient: displayStyle.gradient,
       leaderboardRestricted: Boolean(safeProfile.progression.afk.leaderboardRestricted),
       xpLeaderboardRank,
       warningCooldownUntil: safeProfile.progression.afk.warningCooldownUntil || 0,
-      badges: getVisibleBadges(record, safeProfile),
-      availableBadges,
+      badges: visibleBadges,
+      availableBadges: [...availableBadges].sort(compareBadges),
       equippedBadgeIds,
       maxExtraBadgeSlots: EXTRA_EQUIPPED_BADGE_LIMIT,
       badgeAssets: {},
