@@ -44,11 +44,11 @@
     { min: 999, max: 999, id: 'level-999', label: 'Level MAX', title: 'Level 999' },
   ];
   const REFERRAL_TIERS = [
-    { count: 1, xp: 50, badgeId: 'referral-1', label: 'Rec I', description: 'Awarded after 1 qualified referral. Stays active for 1 week and refreshes when you earn another referral.' },
-    { count: 3, xp: 150, badgeId: 'referral-3', label: 'Rec II', description: 'Awarded after 3 qualified referrals. Stays active for 1 week and refreshes when you earn another referral.' },
-    { count: 5, xp: 300, badgeId: 'referral-5', label: 'Rec III', description: 'Awarded after 5 qualified referrals. Stays active for 1 week and refreshes when you earn another referral.', animated: true, animationClass: 'referral-animated-rec3' },
-    { count: 10, xp: 600, badgeId: 'referral-10', label: 'Scout', description: 'Awarded after 10 qualified referrals. Stays active for 1 week and refreshes when you earn another referral.', animated: true, animationClass: 'referral-animated-scout' },
-    { count: 25, xp: 1500, badgeId: 'referral-25', label: 'Signal', description: 'Awarded after 25 qualified referrals. Stays active for 1 week and refreshes when you earn another referral. The bonus VIP week needs another 25 referrals to renew.', animated: true, animationClass: 'referral-animated-signal', displayColor: '#c38bff' },
+    { count: 1, xp: 50, badgeId: 'referral-1', label: 'Rec I', description: 'Awarded after 1 qualified referral' },
+    { count: 3, xp: 150, badgeId: 'referral-3', label: 'Rec II', description: 'Awarded after 3 qualified referrals' },
+    { count: 5, xp: 300, badgeId: 'referral-5', label: 'Rec III', description: 'Awarded after 5 qualified referrals', animated: true, animationClass: 'referral-animated-rec3' },
+    { count: 10, xp: 600, badgeId: 'referral-10', label: 'Scout', description: 'Awarded after 10 qualified referrals', animated: true, animationClass: 'referral-animated-scout' },
+    { count: 25, xp: 1500, badgeId: 'referral-25', label: 'Signal', description: 'Awarded after 25 qualified referrals', animated: true, animationClass: 'referral-animated-signal', displayColor: '#c38bff' },
   ];
   const LEADERBOARD_BADGES = [
     { id: 'leaderboard-top-100', min: 51, max: 100, label: 'Top 100', title: 'Top 100', description: 'Currently ranked inside the local XP Top 100.' },
