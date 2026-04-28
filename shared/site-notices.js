@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-27-leaderboard-badge-icon-updates',
+      title: 'Leaderboard badge icon updates',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-27T15:20:00-04:00',
+      summary: 'Top-rank leaderboard badges now use the new custom icon set for 1st place, Top 3, Top 10, Top 25, Top 50, and Top 100.',
+      details: [
+        'The leaderboard badge chips now pull from the new PNG art set instead of using the old generated fallback icons.',
+        'This update covers every local XP leaderboard tier from 1st place through Top 100.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-27-referral-icon-updates',
       title: 'Referral icon updates',
       category: 'update',

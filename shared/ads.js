@@ -180,16 +180,16 @@
     return iconMap[levelId] || iconMap['level-1-9'];
   }
 
-  function createLeaderboardIcon(text, primary = '#6cbcff', accent = '#eff8ff') {
-    const fill = clampColor(primary, '#6cbcff');
-    const stroke = clampColor(accent, '#eff8ff');
-    return createSvgDataUri(`
-      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-        <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#091120" stroke="rgba(255,255,255,0.14)" />
-        <rect x="4.8" y="5.4" width="22.4" height="21.2" rx="6.6" fill="${fill}" stroke="${stroke}" stroke-width="1.4" />
-        <text x="16" y="20.2" text-anchor="middle" font-size="${text.length >= 3 ? 9.2 : 12.4}" font-weight="900" font-family="Arial, sans-serif" fill="#08111f">${escapeHtml(text)}</text>
-      </svg>
-    `);
+  function createLeaderboardIcon(badgeId) {
+    const iconMap = {
+      'leaderboard-1st': '/images/leaderboard-icons/1st_place.png',
+      'leaderboard-top-3': '/images/leaderboard-icons/top3.png',
+      'leaderboard-top-10': '/images/leaderboard-icons/top10.png',
+      'leaderboard-top-25': '/images/leaderboard-icons/top25.png',
+      'leaderboard-top-50': '/images/leaderboard-icons/top50.png',
+      'leaderboard-top-100': '/images/leaderboard-icons/top100.png',
+    };
+    return iconMap[badgeId] || iconMap['leaderboard-top-100'];
   }
 
   function createReferralIcon(tierId) {
@@ -1337,31 +1337,7 @@
         title: `${leaderboard.label} Badge`,
         description: `${leaderboard.label} Badge - ${leaderboard.description}`,
         showLabel: false,
-        assetPath: createLeaderboardIcon(
-          badgeId === 'leaderboard-1st'
-            ? '1'
-            : badgeId === 'leaderboard-top-3'
-              ? '3'
-              : badgeId === 'leaderboard-top-10'
-                ? '10'
-                : badgeId === 'leaderboard-top-25'
-                  ? '25'
-                  : badgeId === 'leaderboard-top-50'
-                    ? '50'
-                    : '100',
-          badgeId === 'leaderboard-1st'
-            ? '#ffd467'
-            : badgeId === 'leaderboard-top-3'
-              ? '#ff9467'
-              : badgeId === 'leaderboard-top-10'
-                ? '#79d8ff'
-                : badgeId === 'leaderboard-top-25'
-                  ? '#72c2ff'
-                  : badgeId === 'leaderboard-top-50'
-                    ? '#5da6ff'
-                    : '#4d8dff',
-          badgeId === 'leaderboard-1st' ? '#fff7dc' : '#eff8ff',
-        ),
+        assetPath: createLeaderboardIcon(badgeId),
       };
     }
 
