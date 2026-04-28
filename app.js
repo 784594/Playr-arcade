@@ -20,6 +20,7 @@ const SINGLE_PLAYER_PLACEHOLDERS = [
   { id: 'the-deep-sea', name: 'The Deep Sea', controls: 'Mouse Scroll' },
   { id: 'geometry-dash-clone', name: 'Geometry Dash Clone', controls: 'Mouse Click' },
   { id: 'cookie-clicker', name: 'Cookie Clicker', controls: 'Mouse' },
+  { id: 'draw-it', name: 'Draw It', controls: 'Mouse / touch' },
   { id: 'tower-builder', name: 'Tower Builder', controls: 'Mouse Click' },
   { id: 'memory-match', name: 'Memory Match', controls: 'Mouse' },
   { id: 'hextris', name: 'Hextris', controls: 'Arrow keys' },
@@ -125,6 +126,7 @@ const COMPLETED_SINGLE_PLAYER_IDS = new Set([
   'dino-run-clone',
   'doodle-jump-clone',
   'draw-a-perfect-circle',
+  'draw-it',
   'flappy-bird-clone',
   'frogger',
   'geometry-dash-clone',
@@ -208,6 +210,16 @@ const CLOUD_LEADERBOARD_CACHE_MS = 2 * 60 * 1000;
 const PROFILE_CACHE_TTL_MS = 2 * 60 * 1000;
 const SOCIAL_CACHE_TTL_MS = 45 * 1000;
 const PROFILE_WARNING_HISTORY_LIMIT = 25;
+const CUSTOM_PROFILE_BANNER_LIMIT = 5;
+const PROFILE_BANNER_DRAW_SIZE = { width: 1500, height: 420 };
+const MODERATION_DURATION_PRESETS = [
+  { id: '30m', label: '30 min', minutes: 30 },
+  { id: '1h', label: '1 hour', minutes: 60 },
+  { id: '12h', label: '12 hours', minutes: 12 * 60 },
+  { id: '1d', label: '1 day', minutes: 24 * 60 },
+  { id: '1w', label: '1 week', minutes: 7 * 24 * 60 },
+  { id: 'perm', label: 'Permanent', minutes: null },
+];
 
 const PROFILE_BANNER_PRESETS = [
   { id: 'aurora', type: 'gradient', label: 'Aurora', value: 'linear-gradient(135deg, rgba(74, 128, 245, 0.92), rgba(124, 240, 197, 0.82))' },
@@ -242,6 +254,7 @@ const PROFANITY_TERMS = [
 const MODERATION_CHAR_MAP = {
   '0': 'o',
   '1': 'i',
+  'l': 'i',
   '2': 'z',
   '3': 'e',
   '4': 'a',
@@ -255,6 +268,57 @@ const MODERATION_CHAR_MAP = {
   '!': 'i',
   '|': 'i',
 };
+
+function collapseRepeatedChars(value) {
+  return String(value || '').replace(/(.)\1{1,}/g, '$1');
+}
+
+function levenshteinDistanceWithinLimit(source, target, limit = 1) {
+  const a = String(source || '');
+  const b = String(target || '');
+  if (Math.abs(a.length - b.length) > limit) return limit + 1;
+  const prev = new Array(b.length + 1);
+  const curr = new Array(b.length + 1);
+  for (let j = 0; j <= b.length; j += 1) prev[j] = j;
+  for (let i = 1; i <= a.length; i += 1) {
+    curr[0] = i;
+    let rowMin = curr[0];
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      curr[j] = Math.min(
+        prev[j] + 1,
+        curr[j - 1] + 1,
+        prev[j - 1] + cost,
+      );
+      rowMin = Math.min(rowMin, curr[j]);
+    }
+    if (rowMin > limit) return limit + 1;
+    for (let j = 0; j <= b.length; j += 1) prev[j] = curr[j];
+  }
+  return prev[b.length];
+}
+
+function containsApproximateBlockedTerm(sourceText, blockedTerms = []) {
+  const source = String(sourceText || '');
+  if (!source) return false;
+  return blockedTerms.some((term) => {
+    const safeTerm = String(term || '');
+    if (!safeTerm) return false;
+    if (source.includes(safeTerm)) return true;
+    const minLen = Math.max(2, safeTerm.length - 1);
+    const maxLen = safeTerm.length + 1;
+    for (let start = 0; start < source.length; start += 1) {
+      for (let length = minLen; length <= maxLen; length += 1) {
+        const slice = source.slice(start, start + length);
+        if (!slice) continue;
+        if (levenshteinDistanceWithinLimit(slice, safeTerm, 1) <= 1) {
+          return true;
+        }
+      }
+    }
+    return false;
+  });
+}
 
 if (firebaseAuth && window.firebase?.auth?.Auth?.Persistence?.LOCAL) {
   firebaseAuth.setPersistence(window.firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
@@ -444,7 +508,10 @@ function subscribeToCurrentUserProfile(user) {
       emit: true,
     }) || remoteProfile;
     cacheResolvedProfile(syncedProfile);
-    if (Boolean(syncedProfile?.moderation?.ban?.active)) {
+    const syncedBan = mergeCloudProfileShape(syncedProfile).moderation?.ban || {};
+    const banStillActive = Boolean(syncedBan.active)
+      && (Boolean(syncedBan.permanent) || normalizeTimestampToMs(syncedBan.expiresAt) > Date.now() || normalizeTimestampToMs(syncedBan.expiresAt) === 0);
+    if (banStillActive) {
       localStorage.setItem('playrBanNotice', syncedProfile?.moderation?.ban?.reason || 'This account has been banned.');
       void firebaseAuth?.signOut?.().catch(() => {});
       return;
@@ -517,6 +584,42 @@ function getDefaultProfileBanner() {
   return PROFILE_BANNER_PRESETS[0];
 }
 
+function getCustomProfileBanners(profile = {}) {
+  return Array.isArray(profile?.profileTheme?.customBanners)
+    ? profile.profileTheme.customBanners.slice(0, CUSTOM_PROFILE_BANNER_LIMIT)
+    : [];
+}
+
+function getModerationPresetById(presetId) {
+  return MODERATION_DURATION_PRESETS.find((preset) => preset.id === String(presetId || '').trim()) || MODERATION_DURATION_PRESETS[1];
+}
+
+function formatModerationExpiry(stamp) {
+  const safeStamp = normalizeTimestampToMs(stamp);
+  if (!safeStamp) return 'Permanent';
+  return new Date(safeStamp).toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function buildModerationSummary(moderation = {}) {
+  const warnings = Math.max(0, Number(moderation.warningCount) || 0);
+  const muteActive = Boolean(moderation.mutedPermanent) || normalizeTimestampToMs(moderation.mutedUntil) > Date.now();
+  const banActive = Boolean(moderation.ban?.active) && (Boolean(moderation.ban?.permanent) || normalizeTimestampToMs(moderation.ban?.expiresAt) > Date.now() || normalizeTimestampToMs(moderation.ban?.expiresAt) === 0);
+  const parts = [`Warnings: ${warnings}`];
+  if (muteActive) {
+    parts.push(`Mute: ${moderation.mutedPermanent ? 'Permanent' : `Until ${formatModerationExpiry(moderation.mutedUntil)}`}`);
+  }
+  if (banActive) {
+    parts.push(`Ban: ${moderation.ban?.permanent ? 'Permanent' : `Until ${formatModerationExpiry(moderation.ban?.expiresAt)}`}`);
+  }
+  return parts.join(' • ');
+}
+
 function normalizeTimestampToMs(value) {
   if (!value) return 0;
   if (typeof value?.toMillis === 'function') return Math.max(0, Number(value.toMillis()) || 0);
@@ -563,8 +666,9 @@ function getCurrentModerationSnapshot(account = getCurrentAccount()) {
       warningCount: 0,
       warnings: [],
       mutedUntil: 0,
+      mutedPermanent: false,
       muteReason: '',
-      ban: { active: false, reason: '', bannedAt: 0, bannedByUid: '', bannedByName: '' },
+      ban: { active: false, permanent: false, reason: '', bannedAt: 0, expiresAt: 0, bannedByUid: '', bannedByName: '' },
     };
   }
   const profile = authState.profiles[uid] || {};
@@ -573,11 +677,14 @@ function getCurrentModerationSnapshot(account = getCurrentAccount()) {
     warningCount: Math.max(0, Number(moderation.warningCount) || 0),
     warnings: Array.isArray(moderation.warnings) ? moderation.warnings : [],
     mutedUntil: normalizeTimestampToMs(moderation.mutedUntil),
+    mutedPermanent: Boolean(moderation.mutedPermanent),
     muteReason: String(moderation.muteReason || '').trim(),
     ban: {
       active: Boolean(moderation.ban?.active),
+      permanent: Boolean(moderation.ban?.permanent),
       reason: String(moderation.ban?.reason || '').trim(),
       bannedAt: normalizeTimestampToMs(moderation.ban?.bannedAt),
+      expiresAt: normalizeTimestampToMs(moderation.ban?.expiresAt),
       bannedByUid: String(moderation.ban?.bannedByUid || '').trim(),
       bannedByName: String(moderation.ban?.bannedByName || '').trim(),
     },
@@ -585,11 +692,13 @@ function getCurrentModerationSnapshot(account = getCurrentAccount()) {
 }
 
 function isCurrentAccountMuted(account = getCurrentAccount()) {
-  return getCurrentModerationSnapshot(account).mutedUntil > Date.now();
+  const moderation = getCurrentModerationSnapshot(account);
+  return moderation.mutedPermanent || moderation.mutedUntil > Date.now();
 }
 
 function isCurrentAccountBanned(account = getCurrentAccount()) {
-  return getCurrentModerationSnapshot(account).ban.active === true;
+  const ban = getCurrentModerationSnapshot(account).ban;
+  return ban.active === true && (ban.permanent || ban.expiresAt > Date.now() || ban.expiresAt === 0);
 }
 
 function canCurrentAccountInteract(account = getCurrentAccount()) {
@@ -636,22 +745,64 @@ function cacheResolvedProfile(profile) {
   return cached;
 }
 
+function applyBannerStyleToElement(element, banner = {}) {
+  if (!element) return;
+  if (String(banner?.type || '') === 'vip-custom' && String(banner?.value || '').startsWith('data:image/')) {
+    element.style.background = '#0f1831';
+    element.style.backgroundImage = `url("${banner.value}")`;
+    element.style.backgroundSize = 'cover';
+    element.style.backgroundPosition = 'center';
+    return;
+  }
+  element.style.backgroundImage = '';
+  element.style.backgroundSize = '';
+  element.style.backgroundPosition = '';
+  element.style.background = banner?.value || getDefaultProfileBanner().value;
+}
+
 function mergeCloudProfileShape(profile = {}) {
   const banner = profile.profileTheme?.banner && typeof profile.profileTheme.banner === 'object'
     ? profile.profileTheme.banner
     : {};
+  const customBanners = Array.isArray(profile.profileTheme?.customBanners) ? profile.profileTheme.customBanners : [];
   const favoriteGame = profile.activity?.favoriteGameTitle || '';
+  const isVip = Boolean(profile?.isVip)
+    || (Array.isArray(profile?.roles) && profile.roles.includes('vip'))
+    || normalizeTimestampToMs(profile?.progression?.referral?.vipExpiresAt) > Date.now();
+  const normalizedCustomBanners = customBanners
+    .map((entry) => entry && typeof entry === 'object' ? {
+      id: String(entry.id || '').trim(),
+      label: String(entry.label || 'Custom banner').trim() || 'Custom banner',
+      dataUrl: String(entry.dataUrl || '').trim(),
+      width: Math.max(1, Number(entry.width) || 0),
+      height: Math.max(1, Number(entry.height) || 0),
+      createdAt: normalizeTimestampToMs(entry.createdAt),
+      updatedAt: normalizeTimestampToMs(entry.updatedAt),
+    } : null)
+    .filter((entry) => entry && entry.id && entry.dataUrl)
+    .slice(0, CUSTOM_PROFILE_BANNER_LIMIT);
+  const safeBannerType = ['solid', 'gradient', 'vip-custom'].includes(String(banner.type || '').trim()) ? String(banner.type).trim() : getDefaultProfileBanner().type;
+  const resolvedBanner = {
+    type: safeBannerType,
+    value: String(banner.value || getDefaultProfileBanner().value).trim() || getDefaultProfileBanner().value,
+    label: String(banner.label || getProfileBannerPresetByValue(banner.type, banner.value)?.label || getDefaultProfileBanner().label).trim(),
+    customBannerId: String(banner.customBannerId || '').trim(),
+    updatedAt: normalizeTimestampToMs(banner.updatedAt),
+  };
   return {
     ...profile,
     moderation: {
       warningCount: Math.max(0, Number(profile?.moderation?.warningCount) || 0),
       warnings: Array.isArray(profile?.moderation?.warnings) ? profile.moderation.warnings.slice(-PROFILE_WARNING_HISTORY_LIMIT) : [],
       mutedUntil: normalizeTimestampToMs(profile?.moderation?.mutedUntil),
+      mutedPermanent: Boolean(profile?.moderation?.mutedPermanent),
       muteReason: String(profile?.moderation?.muteReason || '').trim(),
       ban: {
         active: Boolean(profile?.moderation?.ban?.active),
+        permanent: Boolean(profile?.moderation?.ban?.permanent),
         reason: String(profile?.moderation?.ban?.reason || '').trim(),
         bannedAt: normalizeTimestampToMs(profile?.moderation?.ban?.bannedAt),
+        expiresAt: normalizeTimestampToMs(profile?.moderation?.ban?.expiresAt),
         bannedByUid: String(profile?.moderation?.ban?.bannedByUid || '').trim(),
         bannedByName: String(profile?.moderation?.ban?.bannedByName || '').trim(),
       },
@@ -662,12 +813,10 @@ function mergeCloudProfileShape(profile = {}) {
       favoriteGameSeconds: Math.max(0, Number(profile?.activity?.favoriteGameSeconds) || 0),
     },
     profileTheme: {
-      banner: {
-        type: ['solid', 'gradient', 'vip-custom'].includes(String(banner.type || '').trim()) ? String(banner.type).trim() : getDefaultProfileBanner().type,
-        value: String(banner.value || getDefaultProfileBanner().value).trim() || getDefaultProfileBanner().value,
-        label: String(banner.label || getProfileBannerPresetByValue(banner.type, banner.value)?.label || getDefaultProfileBanner().label).trim(),
-        updatedAt: normalizeTimestampToMs(banner.updatedAt),
-      },
+      banner: resolvedBanner.type === 'vip-custom' && !isVip
+        ? { ...getDefaultProfileBanner(), customBannerId: '', updatedAt: resolvedBanner.updatedAt }
+        : resolvedBanner,
+      customBanners: normalizedCustomBanners,
     },
   };
 }
@@ -1095,16 +1244,61 @@ function ensureProfileAndFriendsUi() {
         <div class="profile-warning-chip" id="profileWarnings"></div>
         <section class="settings-card profile-moderation" id="profileModeration" hidden>
           <h4>Owner Moderation</h4>
-          <textarea class="auth-input profile-moderation-message" id="profileModerationMessage" rows="3" placeholder="Custom warning or ban reason"></textarea>
-          <input class="auth-input" id="profileMuteDuration" type="number" min="1" step="1" value="60" placeholder="Mute duration in minutes" />
+          <p class="settings-muted profile-moderation-summary" id="profileModerationSummary">Choose an action to issue a warning, mute, or ban.</p>
           <div class="settings-inline-actions">
             <button class="button secondary" type="button" id="profileWarnBtn">Warn</button>
             <button class="button secondary" type="button" id="profileMuteBtn">Mute</button>
-            <button class="button secondary" type="button" id="profileUnmuteBtn">Unmute</button>
             <button class="button primary" type="button" id="profileBanBtn">Ban</button>
+            <button class="button secondary" type="button" id="profileUnmuteBtn">Unmute</button>
             <button class="button secondary" type="button" id="profileUnbanBtn">Unban</button>
           </div>
+          <div class="profile-moderation-composer" id="profileModerationComposer" hidden>
+            <h5 id="profileModerationTitle">Issue moderation action</h5>
+            <select class="auth-input" id="profileModerationDuration">
+              ${MODERATION_DURATION_PRESETS.map((preset) => `<option value="${escapeHtml(preset.id)}">${escapeHtml(preset.label)}</option>`).join('')}
+            </select>
+            <textarea class="auth-input profile-moderation-message" id="profileModerationMessage" rows="3" placeholder="Enter a reason"></textarea>
+            <div class="settings-inline-actions">
+              <button class="button secondary" type="button" id="profileComposeCancelBtn">Cancel</button>
+              <button class="button primary" type="button" id="profileComposeSubmitBtn">Apply</button>
+            </div>
+          </div>
         </section>
+      </section>
+    `;
+    document.body.appendChild(overlay);
+  }
+
+  if (!document.getElementById('vipBannerUpsellOverlay')) {
+    const overlay = document.createElement('div');
+    overlay.className = 'profile-overlay';
+    overlay.id = 'vipBannerUpsellOverlay';
+    overlay.hidden = true;
+    overlay.innerHTML = `
+      <section class="profile-modal panel-card vip-banner-upsell-modal" role="dialog" aria-modal="true" aria-labelledby="vipBannerUpsellTitle">
+        <div class="vip-banner-upsell-preview" id="vipBannerUpsellPreview"></div>
+        <div class="profile-modal-header">
+          <div>
+            <p class="eyebrow">VIP Custom Banners</p>
+            <h3 id="vipBannerUpsellTitle">This is a VIP option only!</h3>
+            <p class="settings-muted">You are basically there. Unlock VIP to apply this banner to your profile.</p>
+          </div>
+          <button class="chip-button" type="button" id="vipBannerUpsellCloseBtn">Close</button>
+        </div>
+        <div class="profile-stats-grid vip-banner-upsell-grid">
+          <div class="profile-stat-card">
+            <span>Referral Progress</span>
+            <strong id="vipBannerUpsellProgressLabel">0 / 25 referrals</strong>
+            <div class="vip-banner-progress-track">
+              <div class="vip-banner-progress-fill" id="vipBannerUpsellProgressBar"></div>
+            </div>
+          </div>
+          <div class="profile-stat-card">
+            <span>How to get VIP</span>
+            <strong>Reach 25 qualified referrals</strong>
+            <p class="settings-muted">Custom banners are saved for everyone, but only VIP accounts can actively use them. Animated banners and GIF exports can layer into this later.</p>
+          </div>
+        </div>
       </section>
     `;
     document.body.appendChild(overlay);
@@ -1130,13 +1324,23 @@ function ensureProfileAndFriendsUi() {
   profileUi.profileStatus = document.getElementById('profileStatus');
   profileUi.profileActionArea = document.getElementById('profileActionArea');
   profileUi.profileModeration = document.getElementById('profileModeration');
+  profileUi.profileModerationComposer = document.getElementById('profileModerationComposer');
+  profileUi.profileModerationSummary = document.getElementById('profileModerationSummary');
+  profileUi.profileModerationTitle = document.getElementById('profileModerationTitle');
   profileUi.profileModerationMessage = document.getElementById('profileModerationMessage');
-  profileUi.profileMuteDuration = document.getElementById('profileMuteDuration');
+  profileUi.profileModerationDuration = document.getElementById('profileModerationDuration');
   profileUi.profileWarnBtn = document.getElementById('profileWarnBtn');
   profileUi.profileMuteBtn = document.getElementById('profileMuteBtn');
   profileUi.profileBanBtn = document.getElementById('profileBanBtn');
+  profileUi.profileComposeCancelBtn = document.getElementById('profileComposeCancelBtn');
+  profileUi.profileComposeSubmitBtn = document.getElementById('profileComposeSubmitBtn');
   profileUi.profileUnmuteBtn = document.getElementById('profileUnmuteBtn');
   profileUi.profileUnbanBtn = document.getElementById('profileUnbanBtn');
+  profileUi.vipBannerUpsellOverlay = document.getElementById('vipBannerUpsellOverlay');
+  profileUi.vipBannerUpsellPreview = document.getElementById('vipBannerUpsellPreview');
+  profileUi.vipBannerUpsellProgressBar = document.getElementById('vipBannerUpsellProgressBar');
+  profileUi.vipBannerUpsellProgressLabel = document.getElementById('vipBannerUpsellProgressLabel');
+  profileUi.vipBannerUpsellCloseBtn = document.getElementById('vipBannerUpsellCloseBtn');
 }
 
 function ensureBannerSettingsCard() {
@@ -1147,19 +1351,26 @@ function ensureBannerSettingsCard() {
   card.id = 'settingsBannerCard';
   card.innerHTML = `
     <h4>Profile banner</h4>
-    <p class="settings-muted">Pick a solid or gradient banner for your profile panel. VIP custom banners can plug into this structure later.</p>
+    <p class="settings-muted">Pick a solid or gradient banner for your profile panel. Custom banners can be created in Draw It, but only VIP accounts can apply them.</p>
     <div class="banner-picker-grid" id="settingsBannerGrid"></div>
+    <div class="settings-card profile-custom-banner-card">
+      <h4>Custom banners</h4>
+      <p class="settings-muted">Saved to your account. You can keep up to 5 custom banners and delete old ones here when you need space.</p>
+      <div class="social-list" id="settingsCustomBannerList"></div>
+    </div>
   `;
   settingsGrid.appendChild(card);
   profileUi.settingsBannerCard = card;
   profileUi.settingsBannerGrid = card.querySelector('#settingsBannerGrid');
+  profileUi.settingsCustomBannerList = card.querySelector('#settingsCustomBannerList');
 }
 
 function renderBannerSettings(account = getCurrentAccount()) {
   ensureBannerSettingsCard();
   if (!profileUi.settingsBannerGrid) return;
-  const profile = authState.profiles[account?.uid] || {};
-  const activeBanner = mergeCloudProfileShape(profile).profileTheme.banner;
+  const profile = mergeCloudProfileShape(authState.profiles[account?.uid] || {});
+  const activeBanner = profile.profileTheme.banner;
+  const customBanners = getCustomProfileBanners(profile);
   profileUi.settingsBannerGrid.innerHTML = PROFILE_BANNER_PRESETS.map((preset) => {
     const active = preset.type === activeBanner.type && preset.value === activeBanner.value;
     const style = preset.type === 'solid'
@@ -1170,6 +1381,29 @@ function renderBannerSettings(account = getCurrentAccount()) {
         <span class="banner-swatch-preview" style="${style}"></span>
         <span>${escapeHtml(preset.label)}</span>
       </button>
+    `;
+  }).join('');
+
+  if (!profileUi.settingsCustomBannerList) return;
+  if (!customBanners.length) {
+    profileUi.settingsCustomBannerList.innerHTML = '<p class="settings-muted">No custom banners saved yet. Use Draw It to create one.</p>';
+    return;
+  }
+  profileUi.settingsCustomBannerList.innerHTML = customBanners.map((banner) => {
+    const active = activeBanner.type === 'vip-custom' && activeBanner.customBannerId === banner.id;
+    const applyLabel = isCurrentAccountVip(account) ? (active ? 'Applied' : 'Apply') : 'VIP only';
+    return `
+      <div class="social-row profile-custom-banner-row">
+        <div>
+          <strong>${escapeHtml(banner.label)}</strong>
+          <p class="social-meta">${escapeHtml(`${banner.width}x${banner.height}`)}</p>
+        </div>
+        <div class="social-actions">
+          <div class="profile-custom-banner-preview" style="background-image:url('${escapeHtml(banner.dataUrl)}')"></div>
+          <button class="button secondary" type="button" data-apply-custom-banner="${escapeHtml(banner.id)}">${escapeHtml(applyLabel)}</button>
+          <button class="button secondary" type="button" data-delete-custom-banner="${escapeHtml(banner.id)}">Delete</button>
+        </div>
+      </div>
     `;
   }).join('');
 }
@@ -1191,6 +1425,7 @@ function applySelectedBannerPreset(presetId) {
       type: preset.type,
       value: preset.value,
       label: preset.label,
+      customBannerId: '',
       updatedAt: Date.now(),
     },
   };
@@ -1201,6 +1436,98 @@ function applySelectedBannerPreset(presetId) {
   }
   renderBannerSettings(account);
   setSettingsStatus('Profile banner updated.', 'success');
+}
+
+function persistProfileThemeUpdate(account, nextTheme, successMessage = 'Profile banner updated.') {
+  if (!account?.uid) return false;
+  const profile = mergeCloudProfileShape(authState.profiles[account.uid] || {});
+  profile.profileTheme = {
+    ...(profile.profileTheme && typeof profile.profileTheme === 'object' ? profile.profileTheme : {}),
+    ...nextTheme,
+  };
+  cacheProfileLocally(profile);
+  cacheResolvedProfile(profile);
+  if (window.PlayrProgression?.importProfile) {
+    window.PlayrProgression.importProfile(account, profile, { prefer: 'remote', emit: true });
+  }
+  renderBannerSettings(account);
+  setSettingsStatus(successMessage, 'success');
+  return true;
+}
+
+function applySavedCustomBanner(customBannerId) {
+  const account = getCurrentAccount();
+  if (!account?.uid) {
+    setSettingsStatus('Log in to update your profile banner.', 'danger');
+    return;
+  }
+  const profile = mergeCloudProfileShape(authState.profiles[account.uid] || {});
+  const customBanner = getCustomProfileBanners(profile).find((entry) => entry.id === String(customBannerId || '').trim());
+  if (!customBanner) {
+    setSettingsStatus('That custom banner could not be found.', 'danger');
+    return;
+  }
+  if (!isCurrentAccountVip(account)) {
+    openVipBannerUpsell(customBanner);
+    setSettingsStatus('This is a VIP option only! Reach 25 qualified referrals to unlock VIP and use custom banners.', 'info');
+    return;
+  }
+  persistProfileThemeUpdate(account, {
+    banner: {
+      type: 'vip-custom',
+      value: customBanner.dataUrl,
+      label: customBanner.label,
+      customBannerId: customBanner.id,
+      updatedAt: Date.now(),
+    },
+  }, 'Custom banner applied.');
+}
+
+function deleteSavedCustomBanner(customBannerId) {
+  const account = getCurrentAccount();
+  if (!account?.uid) {
+    setSettingsStatus('Log in to manage custom banners.', 'danger');
+    return;
+  }
+  const profile = mergeCloudProfileShape(authState.profiles[account.uid] || {});
+  const safeId = String(customBannerId || '').trim();
+  const nextCustomBanners = getCustomProfileBanners(profile).filter((entry) => entry.id !== safeId);
+  const nextBanner = profile.profileTheme.banner?.customBannerId === safeId
+    ? { ...getDefaultProfileBanner(), customBannerId: '', updatedAt: Date.now() }
+    : profile.profileTheme.banner;
+  persistProfileThemeUpdate(account, {
+    banner: nextBanner,
+    customBanners: nextCustomBanners,
+  }, 'Custom banner removed.');
+}
+
+function saveNewCustomBanner({ label = 'Custom banner', dataUrl = '', width = 0, height = 0 } = {}) {
+  const account = getCurrentAccount();
+  if (!account?.uid) {
+    return { ok: false, reason: 'Log in to save a custom banner.' };
+  }
+  if (!String(dataUrl || '').startsWith('data:image/')) {
+    return { ok: false, reason: 'That banner image could not be saved.' };
+  }
+  const profile = mergeCloudProfileShape(authState.profiles[account.uid] || {});
+  const current = getCustomProfileBanners(profile);
+  if (current.length >= CUSTOM_PROFILE_BANNER_LIMIT) {
+    return { ok: false, reason: `You can save up to ${CUSTOM_PROFILE_BANNER_LIMIT} custom banners. Delete one in settings first.` };
+  }
+  const stamp = Date.now();
+  const bannerEntry = {
+    id: `custom-banner-${stamp}`,
+    label: String(label || 'Custom banner').trim().slice(0, 32) || 'Custom banner',
+    dataUrl: String(dataUrl || '').trim(),
+    width: Math.max(1, Number(width) || PROFILE_BANNER_DRAW_SIZE.width),
+    height: Math.max(1, Number(height) || PROFILE_BANNER_DRAW_SIZE.height),
+    createdAt: stamp,
+    updatedAt: stamp,
+  };
+  persistProfileThemeUpdate(account, {
+    customBanners: [...current, bannerEntry],
+  }, 'Custom banner saved to your account.');
+  return { ok: true, banner: bannerEntry, vipRequired: !isCurrentAccountVip(account) };
 }
 
 function openFriendsPanel() {
@@ -1250,6 +1577,7 @@ function closeProfilePanel() {
   profileUi.profileOverlay.hidden = true;
   profileUi.profileOverlay.dataset.profileUid = '';
   profileUi.profileOverlay.dataset.profileName = '';
+  closeModerationComposer();
   setProfilePanelStatus('');
   if (profileUi.friendsOverlay?.hidden) {
     closeFriendsSubscriptions();
@@ -1278,14 +1606,22 @@ async function renderOpenProfilePanel() {
   const currentAccount = getCurrentAccount();
   const isSelf = Boolean(currentAccount?.uid && currentAccount.uid === merged.uid);
   const ownerToolsVisible = isOwnerAccount(currentAccount) && !isSelf;
-  const isMuted = normalizeTimestampToMs(merged?.moderation?.mutedUntil) > Date.now();
-  const isBanned = Boolean(merged?.moderation?.ban?.active);
+  const isMuted = Boolean(merged?.moderation?.mutedPermanent) || normalizeTimestampToMs(merged?.moderation?.mutedUntil) > Date.now();
+  const isBanned = Boolean(merged?.moderation?.ban?.active)
+    && (Boolean(merged?.moderation?.ban?.permanent) || normalizeTimestampToMs(merged?.moderation?.ban?.expiresAt) > Date.now() || normalizeTimestampToMs(merged?.moderation?.ban?.expiresAt) === 0);
 
   profileUi.profileOverlay.dataset.profileUid = String(merged.uid || '').trim();
   profileUi.profileOverlay.dataset.profileName = merged.displayName || '';
   profileUi.profileName.textContent = merged.displayName || 'Player';
-  profileUi.profileMeta.textContent = `Joined ${formatProfileDate(merged.createdAt)}${isBanned ? ' • Banned account' : ''}${isMuted ? ' • Muted' : ''}`;
-  profileUi.profileBanner.style.background = banner.value || getDefaultProfileBanner().value;
+  const statusBits = [`Joined ${formatProfileDate(merged.createdAt)}`];
+  if (isBanned) {
+    statusBits.push(merged?.moderation?.ban?.permanent ? 'Permanently banned' : `Banned until ${formatModerationExpiry(merged?.moderation?.ban?.expiresAt)}`);
+  }
+  if (isMuted) {
+    statusBits.push(merged?.moderation?.mutedPermanent ? 'Permanently muted' : `Muted until ${formatModerationExpiry(merged?.moderation?.mutedUntil)}`);
+  }
+  profileUi.profileMeta.textContent = statusBits.join(' • ');
+  applyBannerStyleToElement(profileUi.profileBanner, banner);
   profileUi.profileStats.innerHTML = `
     <div class="profile-stat-card">
       <span>Favourite Game</span>
@@ -1326,21 +1662,90 @@ async function renderOpenProfilePanel() {
   profileUi.profileModeration.hidden = !ownerToolsVisible;
   profileUi.profileModeration.dataset.targetUid = String(merged.uid || '');
   if (ownerToolsVisible) {
-    if (profileUi.profileModerationMessage) {
-      profileUi.profileModerationMessage.value = isBanned
-        ? String(merged?.moderation?.ban?.reason || '')
-        : isMuted
-          ? String(merged?.moderation?.muteReason || '')
-          : '';
+    if (profileUi.profileModerationSummary) {
+      profileUi.profileModerationSummary.textContent = buildModerationSummary(merged.moderation || {});
     }
-    if (profileUi.profileMuteDuration) {
-      profileUi.profileMuteDuration.value = '60';
+    if (profileUi.profileModerationComposer) {
+      profileUi.profileModerationComposer.hidden = true;
+      profileUi.profileModerationComposer.dataset.action = '';
+    }
+    if (profileUi.profileModerationTitle) {
+      profileUi.profileModerationTitle.textContent = 'Issue moderation action';
+    }
+    if (profileUi.profileModerationMessage) {
+      profileUi.profileModerationMessage.value = '';
+    }
+    if (profileUi.profileModerationDuration) {
+      profileUi.profileModerationDuration.value = '1h';
     }
     if (profileUi.profileUnmuteBtn) profileUi.profileUnmuteBtn.hidden = !isMuted;
     if (profileUi.profileUnbanBtn) profileUi.profileUnbanBtn.hidden = !isBanned;
     if (profileUi.profileMuteBtn) profileUi.profileMuteBtn.hidden = isBanned;
     if (profileUi.profileBanBtn) profileUi.profileBanBtn.hidden = isBanned;
   }
+}
+
+function openModerationComposer(action) {
+  if (!profileUi.profileModerationComposer || !profileUi.profileModerationTitle || !profileUi.profileModerationDuration) return;
+  const safeAction = String(action || '').trim();
+  profileUi.profileModerationComposer.hidden = false;
+  profileUi.profileModerationComposer.dataset.action = safeAction;
+  profileUi.profileModerationTitle.textContent = safeAction === 'warn'
+    ? 'Warn player'
+    : safeAction === 'mute'
+      ? 'Mute player'
+      : 'Ban player';
+  profileUi.profileModerationDuration.hidden = safeAction === 'warn';
+  profileUi.profileModerationDuration.value = safeAction === 'ban' ? '1d' : '1h';
+  if (profileUi.profileModerationMessage) {
+    profileUi.profileModerationMessage.value = '';
+    profileUi.profileModerationMessage.placeholder = safeAction === 'warn'
+      ? 'Enter warning reason'
+      : safeAction === 'mute'
+        ? 'Enter mute reason'
+        : 'Enter ban reason';
+  }
+}
+
+function closeModerationComposer() {
+  if (!profileUi.profileModerationComposer) return;
+  profileUi.profileModerationComposer.hidden = true;
+  profileUi.profileModerationComposer.dataset.action = '';
+  if (profileUi.profileModerationMessage) {
+    profileUi.profileModerationMessage.value = '';
+  }
+}
+
+function openVipBannerUpsell(customBanner = null) {
+  ensureProfileAndFriendsUi();
+  if (!profileUi.vipBannerUpsellOverlay) return;
+  const account = getCurrentAccount();
+  const progression = getProgressionSnapshotForAccount(account);
+  const qualified = Math.max(0, Number(progression.qualifiedReferrals) || 0);
+  const target = 25;
+  const progress = Math.max(0, Math.min(1, qualified / target));
+  if (profileUi.vipBannerUpsellProgressLabel) {
+    profileUi.vipBannerUpsellProgressLabel.textContent = `${qualified} / ${target} referrals`;
+  }
+  if (profileUi.vipBannerUpsellProgressBar) {
+    profileUi.vipBannerUpsellProgressBar.style.width = `${Math.round(progress * 100)}%`;
+  }
+  if (profileUi.vipBannerUpsellPreview) {
+    const previewBanner = customBanner
+      ? {
+          type: 'vip-custom',
+          value: String(customBanner.dataUrl || '').trim(),
+          label: String(customBanner.label || 'Custom banner').trim(),
+        }
+      : getDefaultProfileBanner();
+    applyBannerStyleToElement(profileUi.vipBannerUpsellPreview, previewBanner);
+  }
+  profileUi.vipBannerUpsellOverlay.hidden = false;
+}
+
+function closeVipBannerUpsell() {
+  if (!profileUi.vipBannerUpsellOverlay) return;
+  profileUi.vipBannerUpsellOverlay.hidden = true;
 }
 
 async function applyOwnerModerationAction(action) {
@@ -1352,7 +1757,7 @@ async function applyOwnerModerationAction(action) {
   if (!targetProfile) return;
 
   const message = String(profileUi.profileModerationMessage?.value || '').trim();
-  const muteMinutes = Math.max(1, Math.floor(Number(profileUi.profileMuteDuration?.value) || 60));
+  const durationPreset = getModerationPresetById(profileUi.profileModerationDuration?.value || '');
   const moderation = mergeCloudProfileShape(targetProfile).moderation;
   const now = Date.now();
 
@@ -1366,29 +1771,36 @@ async function applyOwnerModerationAction(action) {
     }].slice(-PROFILE_WARNING_HISTORY_LIMIT);
   }
   if (action === 'mute') {
-    moderation.mutedUntil = now + (muteMinutes * 60 * 1000);
+    moderation.mutedPermanent = durationPreset.minutes == null;
+    moderation.mutedUntil = durationPreset.minutes == null ? 0 : now + (durationPreset.minutes * 60 * 1000);
     moderation.muteReason = message || 'Muted by owner.';
   }
   if (action === 'unmute') {
     moderation.mutedUntil = 0;
+    moderation.mutedPermanent = false;
     moderation.muteReason = '';
   }
   if (action === 'ban') {
     moderation.ban = {
       active: true,
+      permanent: durationPreset.minutes == null,
       reason: message || 'Banned by owner.',
       bannedAt: now,
+      expiresAt: durationPreset.minutes == null ? 0 : now + (durationPreset.minutes * 60 * 1000),
       bannedByUid: account.uid,
       bannedByName: account.displayName,
     };
     moderation.mutedUntil = 0;
+    moderation.mutedPermanent = false;
     moderation.muteReason = '';
   }
   if (action === 'unban') {
     moderation.ban = {
       active: false,
+      permanent: false,
       reason: '',
       bannedAt: 0,
+      expiresAt: 0,
       bannedByUid: '',
       bannedByName: '',
     };
@@ -1409,6 +1821,7 @@ async function applyOwnerModerationAction(action) {
     moderation,
   });
   setProfilePanelStatus(`Moderation action applied: ${action}.`, 'success');
+  closeModerationComposer();
   await renderOpenProfilePanel();
 }
 
@@ -1735,9 +2148,9 @@ function normalizeForModeration(displayName) {
     .split('')
     .map((char) => MODERATION_CHAR_MAP[char] || char)
     .join('');
-  return replaced
+  return collapseRepeatedChars(replaced
     .replace(/[\s_.\-]+/g, '')
-    .replace(/[^a-z]/g, '');
+    .replace(/[^a-z]/g, ''));
 }
 
 function validateDisplayName(displayName) {
@@ -1760,10 +2173,11 @@ function validateDisplayName(displayName) {
   }
 
   const moderationText = normalizeForModeration(cleaned);
-  // Also check with minimal normalization to catch obfuscation
-  const sparseCheck = cleaned.toLowerCase().replace(/[^a-z]/g, '');
+  const sparseCheck = collapseRepeatedChars(cleaned.toLowerCase().replace(/[^a-z]/g, ''));
+  const consonantCheck = moderationText.replace(/[aeiou]/g, '');
 
-  const hasReserved = RESERVED_RANK_TERMS.some((term) => moderationText.includes(term));
+  const hasReserved = containsApproximateBlockedTerm(moderationText, RESERVED_RANK_TERMS)
+    || containsApproximateBlockedTerm(sparseCheck, RESERVED_RANK_TERMS);
   if (hasReserved) {
     return {
       valid: false,
@@ -1772,7 +2186,10 @@ function validateDisplayName(displayName) {
     };
   }
 
-  const hasProfanity = PROFANITY_TERMS.some((term) => moderationText.includes(term) || sparseCheck.includes(term));
+  const profanityConsonants = PROFANITY_TERMS.map((term) => term.replace(/[aeiou]/g, ''));
+  const hasProfanity = containsApproximateBlockedTerm(moderationText, PROFANITY_TERMS)
+    || containsApproximateBlockedTerm(sparseCheck, PROFANITY_TERMS)
+    || containsApproximateBlockedTerm(consonantCheck, profanityConsonants);
   if (hasProfanity) {
     return {
       valid: false,
@@ -2433,6 +2850,15 @@ const FEATURED_TAB_CONFIG = {
 };
 
 const pageMode = document.body?.dataset.page || 'home';
+const initialHomeTab = (() => {
+  if (pageMode === 'leaderboard') return 'leaderboard';
+  try {
+    const requested = new URL(window.location.href).searchParams.get('tab');
+    return ['all', 'single-player', 'multiplayer', 'competitive'].includes(requested) ? requested : 'all';
+  } catch {
+    return 'all';
+  }
+})();
 const GAME_GRID_BATCH_SIZE = {
   all: 6,
   'single-player': 6,
@@ -2441,7 +2867,7 @@ const GAME_GRID_BATCH_SIZE = {
 };
 
 const uiState = {
-  activeLibraryTab: pageMode === 'leaderboard' ? 'leaderboard' : 'all',
+  activeLibraryTab: initialHomeTab,
   activeSignalFilter: 'all',
   activeGameId: games[0]?.id || null,
   activeLeaderboardRange: 'levels',
@@ -2667,15 +3093,26 @@ const profileUi = {
   profileStatus: null,
   profileActionArea: null,
   profileModeration: null,
+  profileModerationComposer: null,
+  profileModerationSummary: null,
+  profileModerationTitle: null,
   profileModerationMessage: null,
-  profileMuteDuration: null,
+  profileModerationDuration: null,
   profileWarnBtn: null,
   profileMuteBtn: null,
   profileBanBtn: null,
+  profileComposeCancelBtn: null,
+  profileComposeSubmitBtn: null,
   profileUnmuteBtn: null,
   profileUnbanBtn: null,
   settingsBannerCard: null,
   settingsBannerGrid: null,
+  settingsCustomBannerList: null,
+  vipBannerUpsellOverlay: null,
+  vipBannerUpsellPreview: null,
+  vipBannerUpsellProgressBar: null,
+  vipBannerUpsellProgressLabel: null,
+  vipBannerUpsellCloseBtn: null,
 };
 
 const profileCacheState = {
@@ -5518,13 +5955,13 @@ function init() {
 
   if (profileUi.profileWarnBtn) {
     profileUi.profileWarnBtn.addEventListener('click', () => {
-      void applyOwnerModerationAction('warn');
+      openModerationComposer('warn');
     });
   }
 
   if (profileUi.profileMuteBtn) {
     profileUi.profileMuteBtn.addEventListener('click', () => {
-      void applyOwnerModerationAction('mute');
+      openModerationComposer('mute');
     });
   }
 
@@ -5536,8 +5973,25 @@ function init() {
 
   if (profileUi.profileBanBtn) {
     profileUi.profileBanBtn.addEventListener('click', () => {
-      void applyOwnerModerationAction('ban');
+      openModerationComposer('ban');
     });
+  }
+
+  if (profileUi.profileComposeCancelBtn) {
+    profileUi.profileComposeCancelBtn.addEventListener('click', closeModerationComposer);
+  }
+
+  if (profileUi.profileComposeSubmitBtn) {
+    profileUi.profileComposeSubmitBtn.addEventListener('click', () => {
+      const action = profileUi.profileModerationComposer?.dataset.action || '';
+      if (action === 'warn' || action === 'mute' || action === 'ban') {
+        void applyOwnerModerationAction(action);
+      }
+    });
+  }
+
+  if (profileUi.vipBannerUpsellCloseBtn) {
+    profileUi.vipBannerUpsellCloseBtn.addEventListener('click', closeVipBannerUpsell);
   }
 
   if (profileUi.profileUnbanBtn) {
@@ -5631,6 +6085,18 @@ function init() {
     const bannerPreset = event.target.closest('[data-banner-preset]');
     if (bannerPreset) {
       applySelectedBannerPreset(bannerPreset.getAttribute('data-banner-preset') || '');
+      return;
+    }
+
+    const customBannerApplyBtn = event.target.closest('[data-apply-custom-banner]');
+    if (customBannerApplyBtn) {
+      applySavedCustomBanner(customBannerApplyBtn.getAttribute('data-apply-custom-banner') || '');
+      return;
+    }
+
+    const customBannerDeleteBtn = event.target.closest('[data-delete-custom-banner]');
+    if (customBannerDeleteBtn) {
+      deleteSavedCustomBanner(customBannerDeleteBtn.getAttribute('data-delete-custom-banner') || '');
     }
   });
 
@@ -5645,6 +6111,7 @@ function init() {
     if (event.key === 'Escape') {
       if (!profileUi.profileOverlay?.hidden) closeProfilePanel();
       if (!profileUi.friendsOverlay?.hidden) closeFriendsPanel();
+      if (!profileUi.vipBannerUpsellOverlay?.hidden) closeVipBannerUpsell();
     }
   });
 
@@ -5660,6 +6127,14 @@ function init() {
     profileUi.friendsOverlay.addEventListener('click', (event) => {
       if (event.target === profileUi.friendsOverlay) {
         closeFriendsPanel();
+      }
+    });
+  }
+
+  if (profileUi.vipBannerUpsellOverlay) {
+    profileUi.vipBannerUpsellOverlay.addEventListener('click', (event) => {
+      if (event.target === profileUi.vipBannerUpsellOverlay) {
+        closeVipBannerUpsell();
       }
     });
   }

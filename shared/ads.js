@@ -441,6 +441,7 @@
     const moderation = merged.moderation && typeof merged.moderation === 'object' ? merged.moderation : {};
     const profileTheme = merged.profileTheme && typeof merged.profileTheme === 'object' ? merged.profileTheme : {};
     const banner = profileTheme.banner && typeof profileTheme.banner === 'object' ? profileTheme.banner : {};
+    const customBanners = Array.isArray(profileTheme.customBanners) ? profileTheme.customBanners : [];
     const xp = clampXp(progression.xp);
     const levelInfo = getLevelInfoFromXp(xp);
 
@@ -534,22 +535,50 @@
           .slice(-25)
         : [],
       mutedUntil: Math.max(0, Number(moderation.mutedUntil) || 0),
+      mutedPermanent: Boolean(moderation.mutedPermanent),
       muteReason: String(moderation.muteReason || '').trim(),
       ban: {
         active: Boolean(moderation.ban?.active),
+        permanent: Boolean(moderation.ban?.permanent),
         reason: String(moderation.ban?.reason || '').trim(),
         bannedAt: Math.max(0, Number(moderation.ban?.bannedAt) || 0),
+        expiresAt: Math.max(0, Number(moderation.ban?.expiresAt) || 0),
         bannedByUid: String(moderation.ban?.bannedByUid || '').trim(),
         bannedByName: normalizeName(moderation.ban?.bannedByName || ''),
       },
     };
+    const normalizedCustomBanners = customBanners
+      .map((entry) => entry && typeof entry === 'object' ? {
+        id: String(entry.id || '').trim(),
+        label: normalizeName(entry.label || 'Custom banner'),
+        dataUrl: String(entry.dataUrl || '').trim(),
+        width: Math.max(1, Number(entry.width) || 0),
+        height: Math.max(1, Number(entry.height) || 0),
+        createdAt: Math.max(0, Number(entry.createdAt) || 0),
+        updatedAt: Math.max(0, Number(entry.updatedAt) || 0),
+      } : null)
+      .filter((entry) => entry && entry.id && entry.dataUrl)
+      .slice(0, 5);
+    const safeBannerType = ['solid', 'gradient', 'vip-custom'].includes(String(banner.type || '').trim()) ? String(banner.type).trim() : 'gradient';
+    const vipCustomBannerAllowed = merged.isVip || (Number(merged.progression.referral.vipExpiresAt) || 0) > Date.now();
+    const safeBanner = {
+      type: safeBannerType,
+      value: String(banner.value || DEFAULT_PROFILE_BANNER).trim() || DEFAULT_PROFILE_BANNER,
+      label: normalizeName(banner.label || 'Default banner'),
+      customBannerId: String(banner.customBannerId || '').trim(),
+      updatedAt: Math.max(0, Number(banner.updatedAt) || 0),
+    };
     merged.profileTheme = {
-      banner: {
-        type: ['solid', 'gradient', 'vip-custom'].includes(String(banner.type || '').trim()) ? String(banner.type).trim() : 'gradient',
-        value: String(banner.value || DEFAULT_PROFILE_BANNER).trim() || DEFAULT_PROFILE_BANNER,
-        label: normalizeName(banner.label || 'Default banner'),
-        updatedAt: Math.max(0, Number(banner.updatedAt) || 0),
-      },
+      banner: safeBannerType === 'vip-custom' && !vipCustomBannerAllowed
+        ? {
+            type: 'gradient',
+            value: DEFAULT_PROFILE_BANNER,
+            label: 'Aurora',
+            customBannerId: '',
+            updatedAt: safeBanner.updatedAt,
+          }
+        : safeBanner,
+      customBanners: normalizedCustomBanners,
     };
 
     if (isOwnerRecord(record || merged)) {

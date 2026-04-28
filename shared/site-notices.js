@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-28-draw-it-banners-and-profile-polish',
+      title: 'Draw It, banner saves, and profile polish',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-28T12:30:00-04:00',
+      summary: 'PlayR now has a new Draw It canvas game, stronger display-name filtering, slimmer owner moderation controls, and a tighter shared header layout.',
+      details: [
+        'Draw It adds four canvas modes: 16:9 wallpaper, 20:9 wallpaper, freeform expansion, and the site profile-banner size, with finished previews plus PNG/JPEG/WEBP downloads.',
+        'Profile settings now support saved custom banner art, while applying those custom banners remains a VIP-only option with a live preview and referral-progress upsell toward the 25-referral VIP path.',
+        'Owner moderation tools inside profiles now stay collapsed until Warn, Mute, or Ban is chosen, and the shared header/leaderboard page navigation was tightened so the tabs stay on one line more reliably.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-27-profile-friends-moderation',
       title: 'Profiles, friends, and moderation',
       category: 'update',

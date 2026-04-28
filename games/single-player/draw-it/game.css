@@ -1,0 +1,209 @@
+.draw-it-page {
+  --draw-bg: linear-gradient(180deg, rgba(5, 14, 34, 0.96), rgba(8, 18, 46, 0.98));
+}
+
+.draw-layout {
+  grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.85fr);
+  align-items: start;
+}
+
+.draw-toolbar {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.mode-grid,
+.tool-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.mode-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.tool-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.tool-grid label {
+  display: grid;
+  gap: 8px;
+  color: rgba(231, 240, 255, 0.88);
+  font-size: 0.92rem;
+}
+
+.tool-grid input,
+.tool-grid select {
+  width: 100%;
+}
+
+.mode-chip {
+  min-height: 44px;
+  border-radius: 16px;
+  border: 1px solid rgba(146, 176, 255, 0.16);
+  background: rgba(255, 255, 255, 0.05);
+  color: #eef4ff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.mode-chip:hover,
+.mode-chip:focus-visible,
+.mode-chip.active {
+  outline: none;
+  transform: translateY(-1px);
+  border-color: rgba(122, 240, 197, 0.45);
+  background: rgba(122, 240, 197, 0.12);
+}
+
+.draw-stage-shell {
+  overflow: auto;
+  max-height: 72vh;
+  border-radius: 22px;
+  border: 1px solid rgba(146, 176, 255, 0.16);
+  background: rgba(8, 16, 36, 0.82);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+.draw-stage {
+  display: inline-block;
+  min-width: 100%;
+  padding: 18px;
+}
+
+#drawCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.draw-side-panel,
+.export-panel,
+.recent-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.draw-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.draw-meta-grid p {
+  margin: 0;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(146, 176, 255, 0.12);
+}
+
+.draw-meta-grid span,
+.draw-note {
+  color: rgba(191, 207, 236, 0.86);
+}
+
+.draw-meta-grid span {
+  display: block;
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 7px;
+}
+
+.draw-note {
+  margin: 0;
+  line-height: 1.6;
+  font-size: 0.92rem;
+}
+
+#exportPreview {
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid rgba(146, 176, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.recent-list {
+  display: grid;
+  gap: 10px;
+}
+
+.recent-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(146, 176, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.recent-item img {
+  width: 84px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid rgba(146, 176, 255, 0.12);
+  background: #fff;
+}
+
+.recent-item strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.draw-unsaved-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(4, 9, 18, 0.76);
+  backdrop-filter: blur(5px);
+}
+
+.draw-unsaved-overlay[hidden] {
+  display: none !important;
+}
+
+.draw-unsaved-modal {
+  width: min(520px, 100%);
+  display: grid;
+  gap: 14px;
+}
+
+.draw-unsaved-modal h3 {
+  margin: 0;
+}
+
+@media (max-width: 980px) {
+  .draw-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .tool-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .mode-grid,
+  .draw-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .draw-stage {
+    padding: 12px;
+  }
+}

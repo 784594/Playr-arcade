@@ -25,13 +25,26 @@ service cloud.firestore {
       return loweredName.matches('.*(fuck|shit|bitch|asshole|bastard|dick|pussy|cunt|slut|whore|porn|sex|nude|nsfw|xxx|cock|fck|fcuk|shyt|btch|faggot|fag|nigga|nigger|retard|tranny|homo).*');
     }
 
+    function hasObfuscatedProfanity(loweredName) {
+      return loweredName.matches('.*[f][uuvv@4][c(kq)][kq].*')
+        || loweredName.matches('.*[s5$][h#][i1!l|][t7+].*')
+        || loweredName.matches('.*[b8][i1!l|][t7+][c(kq)][h#].*')
+        || loweredName.matches('.*[a@4v][s5$z][s5$z][h#][o0][l1!i|][e3].*')
+        || loweredName.matches('.*[p9][uuvv@4][s5$][s5$][yuv].*')
+        || loweredName.matches('.*[c(kq)][uuvv@4][n][t7+].*')
+        || loweredName.matches('.*[n][i1!l|][g9][g9][a@4].*')
+        || loweredName.matches('.*[n][i1!l|][g9][g9][e3][r].*')
+        || loweredName.matches('.*[r][e3][t7+][a@4][r][d].*');
+    }
+
     function validDisplayName(displayName) {
       return displayName is string
         && displayName.size() >= 3
         && displayName.size() <= 24
         && displayName.matches('^[A-Za-z0-9 _.\\-]{3,24}$')
         && !hasReservedTerms(normalizedName(displayName))
-        && !hasProfanity(normalizedName(displayName));
+        && !hasProfanity(normalizedName(displayName))
+        && !hasObfuscatedProfanity(normalizedName(displayName));
     }
 
     function validDisplayNameReservationDoc(normalized) {
@@ -75,6 +88,11 @@ service cloud.firestore {
           !('verified' in request.resource.data)
           || request.resource.data.verified == null
           || request.resource.data.verified is map
+        )
+        && (
+          !('profileTheme' in request.resource.data)
+          || request.resource.data.profileTheme == null
+          || request.resource.data.profileTheme is map
         )
         && (
           !('progression' in request.resource.data)

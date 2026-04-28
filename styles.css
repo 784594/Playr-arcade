@@ -127,6 +127,7 @@ a {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
 .notifications-shell {
@@ -292,6 +293,7 @@ a {
   min-height: 40px;
   padding: 0 16px;
   white-space: nowrap;
+  font-size: 0.96rem;
   color: #eaf2ff;
   border-color: rgba(122, 167, 255, 0.45);
   background: linear-gradient(135deg, rgba(74, 128, 245, 0.92), rgba(104, 162, 255, 0.9));
@@ -300,6 +302,7 @@ a {
 
 .support-tab-button {
   min-height: 40px;
+  font-size: 0.96rem;
   color: #eaf2ff;
   border-color: rgba(122, 167, 255, 0.38);
   background: linear-gradient(135deg, rgba(48, 112, 238, 0.88), rgba(108, 160, 255, 0.86));
@@ -1217,10 +1220,27 @@ a {
   margin-top: 16px;
 }
 
+.profile-moderation-summary {
+  margin: 10px 0 0;
+}
+
 .profile-moderation-message {
   min-height: 100px;
   resize: vertical;
   padding: 12px;
+}
+
+.profile-moderation-composer {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.profile-moderation-composer h5 {
+  margin: 0;
+  font-size: 1rem;
 }
 
 .banner-picker-grid {
@@ -1252,6 +1272,61 @@ a {
   height: 54px;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.profile-custom-banner-card {
+  margin-top: 16px;
+}
+
+.profile-custom-banner-row {
+  align-items: center;
+}
+
+.profile-custom-banner-preview {
+  width: 92px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background-color: rgba(255, 255, 255, 0.06);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.vip-banner-upsell-modal {
+  position: relative;
+  overflow: hidden;
+}
+
+.vip-banner-upsell-preview {
+  height: 158px;
+  margin: -22px -22px 18px;
+  border-radius: 20px 20px 0 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  opacity: 0.98;
+}
+
+.vip-banner-upsell-grid {
+  margin-top: 18px;
+}
+
+.vip-banner-progress-track {
+  position: relative;
+  width: 100%;
+  height: 10px;
+  margin-top: 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.vip-banner-progress-fill {
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(74, 128, 245, 0.96), rgba(124, 240, 197, 0.9));
+  box-shadow: 0 0 18px rgba(74, 128, 245, 0.26);
+  transition: width 180ms ease;
 }
 
 .leaderboard-admin-shell {
@@ -1324,6 +1399,14 @@ a {
   gap: 8px;
   max-width: 100%;
   overflow-x: auto;
+}
+
+.topnav .chip-button,
+.topbar-controls > .chip-button,
+.topbar-controls > .button {
+  font-size: 0.92rem;
+  padding-left: 13px;
+  padding-right: 13px;
 }
 
 .topnav a:not(.chip-button),

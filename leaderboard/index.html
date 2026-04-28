@@ -16,7 +16,7 @@
 </head>
 <body data-page="leaderboard">
   <div class="page-shell">
-    <header class="topbar info-topbar">
+    <header class="topbar">
       <a class="brand" href="/" aria-label="Back to PlayR home">
         <span class="brand-mark">
           <img class="brand-logo" src="/images/background-removed-background-removed.png" alt="PlayR logo" />
@@ -27,13 +27,14 @@
         </span>
       </a>
       <div class="topbar-controls">
-        <nav class="topnav info-nav" aria-label="Leaderboard page links">
-          <a class="chip-button" href="/">Home</a>
-          <a class="chip-button" href="/games">Games</a>
+        <nav class="topnav" aria-label="Site navigation">
+          <a class="chip-button" href="/">All Games</a>
+          <a class="chip-button" href="/?tab=single-player">1P Games</a>
+          <a class="chip-button" href="/?tab=multiplayer">Multiplayer</a>
+          <a class="chip-button" href="/?tab=competitive">Competitive</a>
           <a class="chip-button active" href="/leaderboard">Leaderboard</a>
-          <a class="chip-button" href="/support">Support</a>
-          <a class="chip-button" href="/updates">Updates</a>
         </nav>
+        <a class="chip-button support-tab-button" href="/support">Support Me</a>
         <button class="button secondary login-button" type="button" id="loginBtn">Log in</button>
         <div class="notifications-shell">
           <button

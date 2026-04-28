@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Draw wallpapers, freeform sketches, and profile-banner art inside PlayR." />
+  <title>Draw It | PlayR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../shared/game-shell.css" />
+  <link rel="stylesheet" href="game.css" />
+  <script src="/shared/ads.js"></script>
+  <script defer src="/shared/site-footer.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script defer src="../../shared/game-shell.js"></script>
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <div class="page draw-it-page" id="gameRoot" data-game-title="Draw It">
+    <div class="top">
+      <a class="back-link" href="/">Back to hub</a>
+      <div class="board-meta">
+        <span class="tag">Type: single-player</span>
+        <span class="tag">Controls: mouse or touch</span>
+      </div>
+    </div>
+
+    <header class="header hero">
+      <p class="eyebrow">PlayR Canvas Lab</p>
+      <h1>Draw It</h1>
+      <p class="hero-copy">Sketch wallpapers, freeform art, or profile-banner concepts. Finish a drawing to preview it, download it, and optionally save banner-mode art to your account.</p>
+      <p class="status-line" id="drawStatus">Pick a canvas mode and start drawing.</p>
+    </header>
+
+    <section class="main-grid draw-layout">
+      <article class="play-area">
+        <div class="draw-toolbar panel">
+          <div class="mode-grid" id="modeGrid" aria-label="Canvas mode selection">
+            <button class="mode-chip active" type="button" data-mode="wallpaper-pc">16:9 wallpaper</button>
+            <button class="mode-chip" type="button" data-mode="wallpaper-phone">20:9 wallpaper</button>
+            <button class="mode-chip" type="button" data-mode="freeform">Freeform</button>
+            <button class="mode-chip" type="button" data-mode="profile-banner">Profile banner</button>
+          </div>
+          <div class="tool-grid">
+            <label>
+              Brush
+              <input id="brushSizeInput" type="range" min="2" max="36" value="8" />
+            </label>
+            <label>
+              Colour
+              <input id="brushColorInput" type="color" value="#183a8f" />
+            </label>
+            <label>
+              Background
+              <input id="backgroundColorInput" type="color" value="#ffffff" />
+            </label>
+          </div>
+          <p class="draw-note" id="bannerModeNote" hidden>Banner mode reminder: if a saved custom banner is applied and later found to be offensive, the account can be banned.</p>
+        </div>
+
+        <div class="draw-stage-shell" id="drawStageShell">
+          <div class="draw-stage" id="drawStage">
+            <canvas id="drawCanvas" aria-label="Drawing board"></canvas>
+          </div>
+        </div>
+      </article>
+
+      <aside class="panel draw-side-panel">
+        <h2>Controls</h2>
+        <div class="actions">
+          <button id="clearBtn" class="action-btn" type="button">Clear</button>
+          <button id="finishBtn" class="action-btn action-btn-primary" type="button">Finished</button>
+        </div>
+
+        <div class="draw-meta-grid">
+          <p><span>Mode</span><strong id="modeLabel">16:9 wallpaper</strong></p>
+          <p><span>Canvas size</span><strong id="sizeLabel">1600 x 900</strong></p>
+          <p><span>Strokes</span><strong id="strokeCountLabel">0</strong></p>
+          <p><span>Last saved</span><strong id="lastSavedLabel">None yet</strong></p>
+        </div>
+
+        <section class="panel export-panel" id="exportPanel" hidden>
+          <h3>Final drawing</h3>
+          <img id="exportPreview" alt="Finished drawing preview" />
+          <div class="tool-grid">
+            <label>
+              Download format
+              <select id="downloadFormatSelect">
+                <option value="png">PNG</option>
+                <option value="jpeg">JPEG</option>
+                <option value="webp">WEBP</option>
+                <option value="svg">SVG</option>
+              </select>
+            </label>
+            <label>
+              File name
+              <input id="fileNameInput" type="text" value="playr-draw-it" maxlength="40" />
+            </label>
+          </div>
+          <div class="actions">
+            <button id="downloadBtn" class="action-btn action-btn-primary" type="button">Download</button>
+            <button id="saveBannerBtn" class="action-btn" type="button" hidden>Save as custom banner</button>
+          </div>
+          <p class="draw-note" id="saveBannerHint" hidden>Saved banner art stays on your account. Applying it is a VIP-only option from Settings.</p>
+          <p class="draw-note">Animated banners can slot in later for VIP, and that future path can unlock GIF export for animated pieces only.</p>
+        </section>
+
+        <section class="panel recent-panel">
+          <h3>Recent local drawings</h3>
+          <div class="recent-list" id="recentList"></div>
+        </section>
+      </aside>
+    </section>
+  </div>
+
+  <div class="draw-unsaved-overlay" id="unsavedOverlay" hidden>
+    <section class="panel draw-unsaved-modal" role="dialog" aria-modal="true" aria-labelledby="unsavedTitle">
+      <h3 id="unsavedTitle">Hey! Your work isnt saved!</h3>
+      <p class="draw-note">Download your current art before leaving if you want to keep it.</p>
+      <div class="tool-grid">
+        <label>
+          Download format
+          <select id="unsavedFormatSelect">
+            <option value="png">PNG</option>
+            <option value="jpeg">JPEG</option>
+            <option value="webp">WEBP</option>
+            <option value="svg">SVG</option>
+          </select>
+        </label>
+      </div>
+      <div class="actions">
+        <button id="unsavedDownloadBtn" class="action-btn action-btn-primary" type="button">Download first</button>
+        <button id="unsavedStayBtn" class="action-btn" type="button">Keep drawing</button>
+        <button id="unsavedLeaveBtn" class="action-btn" type="button">Leave anyway</button>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
