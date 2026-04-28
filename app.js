@@ -2294,9 +2294,9 @@ function renderSettingsProgression(account = getCurrentAccount()) {
     settingsReferralRewards.innerHTML = [
       { count: 1, reward: '+50 XP + Recruiter I tag' },
       { count: 3, reward: '+150 XP + Recruiter II tag' },
-      { count: 5, reward: '+300 XP + animated Recruiter III tag' },
-      { count: 10, reward: '+600 XP + Scoutmaster tag' },
-      { count: 25, reward: '+1500 XP + Signal Sovereign tag + 1-week VIP perk' },
+      { count: 5, reward: '+300 XP + Recruiter III tag' },
+      { count: 10, reward: '+600 XP + animated Scoutmaster tag' },
+      { count: 25, reward: '+1500 XP + animated Signal Sovereign tag + 1-week VIP perk' },
     ].map((tier) => `
       <div class="settings-tier-row ${progression.qualifiedReferrals >= tier.count ? 'claimed' : ''}">
         <strong>${tier.count}</strong>

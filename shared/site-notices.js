@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-27-referral-icon-updates',
+      title: 'Referral icon updates',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-27T15:05:00-04:00',
+      summary: 'Referral badges now use the new custom icon set, with animation reserved for only the 10-referral and 25-referral tiers.',
+      details: [
+        'Recruiter I, Recruiter II, Recruiter III, Scoutmaster, and Signal Sovereign now pull from the new referral PNG icon set under the shared images folder.',
+        'The 5-referral badge is now static, while the 10-referral and 25-referral badges keep the small animated treatment for extra emphasis.',
+        'Referral reward text in settings was updated too so the descriptions match the live badge visuals.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-27-homepage-page-split',
       title: 'Homepage Load Lightening',
       category: 'update',

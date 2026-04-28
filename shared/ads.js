@@ -47,7 +47,7 @@
   const REFERRAL_TIERS = [
     { count: 1, xp: 50, badgeId: 'referral-1', label: 'Rec I', description: 'Awarded after 1 qualified referral' },
     { count: 3, xp: 150, badgeId: 'referral-3', label: 'Rec II', description: 'Awarded after 3 qualified referrals' },
-    { count: 5, xp: 300, badgeId: 'referral-5', label: 'Rec III', description: 'Awarded after 5 qualified referrals', animated: true, animationClass: 'referral-animated-rec3' },
+    { count: 5, xp: 300, badgeId: 'referral-5', label: 'Rec III', description: 'Awarded after 5 qualified referrals' },
     { count: 10, xp: 600, badgeId: 'referral-10', label: 'Scout', description: 'Awarded after 10 qualified referrals', animated: true, animationClass: 'referral-animated-scout' },
     { count: 25, xp: 1500, badgeId: 'referral-25', label: 'Signal', description: 'Awarded after 25 qualified referrals', animated: true, animationClass: 'referral-animated-signal', displayColor: '#c38bff' },
   ];
@@ -193,54 +193,11 @@
   }
 
   function createReferralIcon(tierId) {
-    if (tierId === 'referral-1') {
-      return createSvgDataUri(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-          <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#0a1221" stroke="rgba(255,255,255,0.14)" />
-          <circle cx="16" cy="16" r="8.6" fill="#6bc7ff" stroke="#ecf7ff" stroke-width="1.6" />
-          <text x="16" y="20.3" text-anchor="middle" font-size="11.6" font-weight="900" font-family="Arial, sans-serif" fill="#08111f">1</text>
-        </svg>
-      `);
-    }
-    if (tierId === 'referral-3') {
-      return createSvgDataUri(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-          <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#0a1221" stroke="rgba(255,255,255,0.14)" />
-          <path d="M16 5.6 26.4 16 16 26.4 5.6 16 16 5.6Z" fill="#59a5ff" stroke="#eef6ff" stroke-width="1.6" />
-          <text x="16" y="20.2" text-anchor="middle" font-size="11.4" font-weight="900" font-family="Arial, sans-serif" fill="#08111f">3</text>
-        </svg>
-      `);
-    }
-    if (tierId === 'referral-5') {
-      return createSvgDataUri(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-          <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#0a1221" stroke="rgba(255,255,255,0.14)" />
-          <path d="M10 5.9h12l6 10.1-6 10.1H10L4 16l6-10.1Z" fill="#ffd15f" stroke="#fff6de" stroke-width="1.5" />
-          <text x="16" y="20.1" text-anchor="middle" font-size="11.2" font-weight="900" font-family="Arial, sans-serif" fill="#1a1404">5</text>
-        </svg>
-      `);
-    }
-    if (tierId === 'referral-10') {
-      return createSvgDataUri(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-          <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#0a1221" stroke="rgba(255,255,255,0.14)" />
-          <circle cx="16" cy="16" r="9" fill="#ff9557" stroke="#fff1e8" stroke-width="1.5" />
-          <path d="M16 8.4 18.2 13.6l5.4 2.4-5.4 2.4L16 23.6l-2.2-5.2-5.4-2.4 5.4-2.4L16 8.4Z" fill="#3c1204" />
-          <circle cx="16" cy="16" r="2.6" fill="#fff4ea" />
-        </svg>
-      `);
-    }
-    if (tierId === 'referral-25') {
-      return createSvgDataUri(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-          <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#0a1221" stroke="rgba(255,255,255,0.14)" />
-          <path d="M16 5.2 24.7 8.2v6.6c0 5.5-3 9.3-8.7 11-5.7-1.7-8.7-5.5-8.7-11V8.2L16 5.2Z" fill="#b85dff" stroke="#f7ebff" stroke-width="1.5" />
-          <path d="M11.2 15.8c2.1-2.4 4-3.7 5.7-4.1m-5.7 7c2.7-1.8 5.6-2.6 8.7-2.4" stroke="#fff6ff" stroke-width="1.7" stroke-linecap="round" />
-          <circle cx="10.2" cy="20.3" r="1.4" fill="#fff6ff" />
-          <circle cx="21.2" cy="11.2" r="1.4" fill="#fff6ff" />
-        </svg>
-      `);
-    }
+    if (tierId === 'referral-1') return '/images/referral%20badge%20icons/1ref.png';
+    if (tierId === 'referral-3') return '/images/referral%20badge%20icons/3ref.png';
+    if (tierId === 'referral-5') return '/images/referral%20badge%20icons/5ref.png';
+    if (tierId === 'referral-10') return '/images/referral%20badge%20icons/10ref.png';
+    if (tierId === 'referral-25') return '/images/referral%20badge%20icons/25ref.png';
     return createBadgeIcon({ shape: 'network', primary: '#78afff', accent: '#eef5ff' });
   }
 
