@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-27-xp-hard-cap-safeguard',
+      title: 'XP hard cap safeguard',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-27T16:05:00-04:00',
+      summary: 'PlayR progression now enforces a hard maximum XP value so runaway account totals cannot cause site-wide lag.',
+      details: [
+        'The shared progression system now clamps all XP reads and writes to a fixed upper bound before level calculations run.',
+        'Deferred leaderboard bonuses and session-end XP awards were updated too, so the safety cap applies everywhere the site can grant progression.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-27-homepage-game-grid-batching',
       title: 'Homepage game grid batching',
       category: 'update',

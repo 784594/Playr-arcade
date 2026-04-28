@@ -8,6 +8,7 @@
   const TRUSTED_VIP_IDENTIFIERS = new Set(['owner@playr.io']);
   const OWNER_XP_RECOVERY_STORAGE_KEY = 'playrOwnerXpRecoveryV1';
   const OWNER_XP_RECOVERY_THRESHOLD = 1000000000;
+  const MAX_XP = 999999999;
   const EXTRA_EQUIPPED_BADGE_LIMIT = 5;
   const ACTIVE_TICK_MS = 5000;
   const ACTIVE_WINDOW_MS = 10000;
@@ -124,6 +125,10 @@
   function clampColor(value, fallback = '#8ed8ff') {
     const safe = String(value || '').trim();
     return /^#[0-9a-f]{6}$/i.test(safe) ? safe : fallback;
+  }
+
+  function clampXp(value) {
+    return Math.max(0, Math.min(MAX_XP, Math.floor(Number(value) || 0)));
   }
 
   function createBadgeIcon({
@@ -329,7 +334,7 @@
   }
 
   function getLevelInfoFromXp(xpValue) {
-    const xp = Math.max(0, Number(xpValue) || 0);
+    const xp = clampXp(xpValue);
     let level;
     let currentThreshold;
     let nextThreshold;
@@ -410,7 +415,7 @@
     const distinctDaysPlayed = Array.isArray(progression.distinctDaysPlayed) ? progression.distinctDaysPlayed : [];
     const afk = progression.afk && typeof progression.afk === 'object' ? progression.afk : {};
     const support = progression.support && typeof progression.support === 'object' ? progression.support : {};
-    const xp = Math.max(0, Number(progression.xp) || 0);
+    const xp = clampXp(progression.xp);
     const levelInfo = getLevelInfoFromXp(xp);
 
     merged.roles = roles;
@@ -992,7 +997,7 @@
         delete pending[dayKey];
         return;
       }
-      profile.progression.xp += amount;
+      profile.progression.xp = clampXp(profile.progression.xp + amount);
       awarded[dayKey] = Math.max(0, Number(awarded[dayKey]) || 0) + amount;
       delete pending[dayKey];
       awardedXp += amount;
@@ -1281,7 +1286,7 @@
       if (created?.key) {
         const profile = ensureProfileShape(created.profiles[created.key], record);
         if (delta > 0) {
-          profile.progression.xp += delta;
+          profile.progression.xp = clampXp(profile.progression.xp + delta);
           profile.updatedAt = now;
         }
         if (queuedBonusDelta > 0) {
@@ -1785,7 +1790,7 @@
       REFERRAL_TIERS.forEach((tier) => {
         if (referrerProfile.progression.referral.qualifiedCount >= tier.count && !referrerProfile.progression.referral.rewardedTiers.includes(tier.count)) {
           referrerProfile.progression.referral.rewardedTiers.push(tier.count);
-          referrerProfile.progression.xp += tier.xp;
+          referrerProfile.progression.xp = clampXp(referrerProfile.progression.xp + tier.xp);
         }
       });
 
@@ -1821,7 +1826,7 @@
     const gain = Math.max(0, Number(amount) || 0);
     if (!gain) return getProgressionSnapshot(record, profile);
 
-    profile.progression.xp += gain;
+    profile.progression.xp = clampXp(profile.progression.xp + gain);
     profile.updatedAt = Date.now();
     const nextLevel = getLevelInfoFromXp(profile.progression.xp).level;
     profiles[key] = profile;
@@ -2061,7 +2066,7 @@
     }
 
     const previousLevel = getLevelInfoFromXp(profile.progression.xp).level;
-    profile.progression.xp = Math.max(0, profile.progression.xp + delta);
+    profile.progression.xp = clampXp(profile.progression.xp + delta);
     profile.updatedAt = Date.now();
     const nextLevel = getLevelInfoFromXp(profile.progression.xp).level;
     profiles[key] = profile;
