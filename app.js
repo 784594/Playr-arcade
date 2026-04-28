@@ -1198,6 +1198,8 @@ const publishingGrid = document.getElementById('publishingGrid');
 const libraryTabs = document.getElementById('libraryTabs');
 const librarySearchShell = document.getElementById('librarySearchShell');
 const gameSearch = document.getElementById('gameSearch');
+const gameGridFooter = document.getElementById('gameGridFooter');
+const showMoreGamesBtn = document.getElementById('showMoreGamesBtn');
 const supportBtn = document.getElementById('supportBtn');
 const supportSection = document.getElementById('support');
 const donateBtn = document.getElementById('donateBtn');
@@ -1315,6 +1317,12 @@ const FEATURED_TAB_CONFIG = {
 };
 
 const pageMode = document.body?.dataset.page || 'home';
+const GAME_GRID_BATCH_SIZE = {
+  all: 6,
+  'single-player': 6,
+  multiplayer: 6,
+  competitive: 6,
+};
 
 const uiState = {
   activeLibraryTab: pageMode === 'leaderboard' ? 'leaderboard' : 'all',
@@ -1327,6 +1335,7 @@ const uiState = {
   librarySearchQuery: '',
   featuredGameId: null,
   featuredLaunchUrl: null,
+  visibleGameCount: GAME_GRID_BATCH_SIZE.all,
   lastScrollY: typeof window !== 'undefined' ? window.scrollY : 0,
   scrollDirection: 'idle',
 };
@@ -2968,6 +2977,14 @@ function getFilteredGames() {
   return filtered;
 }
 
+function getGameGridBatchSize(tabId = uiState.activeLibraryTab) {
+  return GAME_GRID_BATCH_SIZE[tabId] || GAME_GRID_BATCH_SIZE.all;
+}
+
+function resetVisibleGameCount(tabId = uiState.activeLibraryTab) {
+  uiState.visibleGameCount = getGameGridBatchSize(tabId);
+}
+
 function updateFilterSummary(filteredGames) {
   if (!filterSummary) return;
   const tabLabelMap = {
@@ -2987,10 +3004,13 @@ function updateFilterSummary(filteredGames) {
   const tabLabel = tabLabelMap[uiState.activeLibraryTab] || 'All Games';
   const signalLabel = signalLabelMap[uiState.activeSignalFilter] || 'All';
   const count = filteredGames.length;
+  const showingCount = uiState.activeLibraryTab === 'leaderboard'
+    ? count
+    : Math.min(count, uiState.visibleGameCount);
   const displayTab = uiState.activeLibraryTab === 'multiplayer' ? 'Multiplayer' : tabLabel;
   const displayText = uiState.activeSignalFilter === 'all'
-    ? `${displayTab}: ${count} game${count === 1 ? '' : 's'} shown.`
-    : `${displayTab} + ${signalLabel}: ${count} game${count === 1 ? '' : 's'} shown.`;
+    ? `${displayTab}: showing ${showingCount} of ${count} game${count === 1 ? '' : 's'}.`
+    : `${displayTab} + ${signalLabel}: showing ${showingCount} of ${count} game${count === 1 ? '' : 's'}.`;
   filterSummary.textContent = displayText;
 }
 
@@ -3380,9 +3400,11 @@ function renderGames() {
         <p>Try a different tab or filter while we keep expanding the hub.</p>
       </article>
     `;
+    if (gameGridFooter) gameGridFooter.hidden = true;
     return;
   }
-  gameGrid.innerHTML = filteredGames
+  const visibleGames = filteredGames.slice(0, Math.min(filteredGames.length, uiState.visibleGameCount));
+  gameGrid.innerHTML = visibleGames
     .map(
       (game) => `
         <article class="game-card" tabindex="0" role="button" data-game-id="${game.id}" data-launch-url="${game.launchUrl || ''}">
@@ -3401,6 +3423,13 @@ function renderGames() {
       `,
     )
     .join('');
+  if (gameGridFooter && showMoreGamesBtn) {
+    const hasMore = filteredGames.length > visibleGames.length;
+    gameGridFooter.hidden = !hasMore;
+    showMoreGamesBtn.textContent = hasMore
+      ? `Show more (${filteredGames.length - visibleGames.length} left)`
+      : 'Show more';
+  }
 }
 
 function renderLeaderboard() {
@@ -3833,6 +3862,7 @@ function init() {
       if (!button) return;
       const tabId = button.dataset.libraryTab;
       uiState.activeLibraryTab = tabId;
+      resetVisibleGameCount(tabId);
       syncControlStates();
       syncFeaturedGameToActiveTab();
       setLeaderboardPanelVisible(isLeaderboardViewActive());
@@ -3885,6 +3915,7 @@ function init() {
       const button = event.target.closest('[data-signal-filter]');
       if (!button) return;
       uiState.activeSignalFilter = button.dataset.signalFilter;
+      resetVisibleGameCount();
       syncControlStates();
       refreshGameViews();
     });
@@ -3893,7 +3924,15 @@ function init() {
   if (gameSearch) {
     gameSearch.addEventListener('input', () => {
       uiState.librarySearchQuery = gameSearch.value;
+      resetVisibleGameCount();
       refreshGameViews();
+    });
+  }
+
+  if (showMoreGamesBtn) {
+    showMoreGamesBtn.addEventListener('click', () => {
+      uiState.visibleGameCount += getGameGridBatchSize();
+      renderGames();
     });
   }
 

@@ -1685,6 +1685,16 @@ a {
   gap: 18px;
 }
 
+.game-grid-footer {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+.game-grid-more-btn {
+  min-width: 180px;
+}
+
 .publishing-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

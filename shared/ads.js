@@ -6,6 +6,8 @@
   const LEGACY_USER_STORAGE_KEY = 'playrCurrentUser';
   const PENDING_REFERRAL_STORAGE_KEY = 'playrPendingReferralCode';
   const TRUSTED_VIP_IDENTIFIERS = new Set(['owner@playr.io']);
+  const OWNER_XP_RECOVERY_STORAGE_KEY = 'playrOwnerXpRecoveryV1';
+  const OWNER_XP_RECOVERY_THRESHOLD = 1000000000;
   const EXTRA_EQUIPPED_BADGE_LIMIT = 5;
   const ACTIVE_TICK_MS = 5000;
   const ACTIVE_WINDOW_MS = 10000;
@@ -201,6 +203,15 @@
     return createBadgeIcon({ shape: 'network', primary: '#78afff', accent: '#eef5ff' });
   }
 
+  const LEVEL_100_THRESHOLD = (() => {
+    const thresholds = [0];
+    while (thresholds.length < 100) {
+      const sourceLevel = thresholds.length;
+      thresholds.push(thresholds[thresholds.length - 1] + getXpRequiredForLevel(sourceLevel));
+    }
+    return thresholds[99] || 0;
+  })();
+
   function slugify(value) {
     return String(value || '')
       .trim()
@@ -319,14 +330,25 @@
 
   function getLevelInfoFromXp(xpValue) {
     const xp = Math.max(0, Number(xpValue) || 0);
-    let level = 1;
-    let currentThreshold = 0;
-    let nextThreshold = getXpRequiredForLevel(1);
+    let level;
+    let currentThreshold;
+    let nextThreshold;
 
-    while (xp >= nextThreshold) {
-      currentThreshold = nextThreshold;
-      level += 1;
-      nextThreshold = currentThreshold + getXpRequiredForLevel(level);
+    if (xp >= LEVEL_100_THRESHOLD) {
+      const extraLevels = Math.floor((xp - LEVEL_100_THRESHOLD) / 15000);
+      level = 100 + extraLevels;
+      currentThreshold = LEVEL_100_THRESHOLD + (extraLevels * 15000);
+      nextThreshold = currentThreshold + 15000;
+    } else {
+      level = 1;
+      currentThreshold = 0;
+      nextThreshold = getXpRequiredForLevel(1);
+
+      while (xp >= nextThreshold) {
+        currentThreshold = nextThreshold;
+        level += 1;
+        nextThreshold = currentThreshold + getXpRequiredForLevel(level);
+      }
     }
 
     const uncappedLevel = level;
@@ -492,6 +514,45 @@
     return null;
   }
 
+  function runOwnerXpRecoveryMigration() {
+    const alreadyRecovered = window.localStorage.getItem(OWNER_XP_RECOVERY_STORAGE_KEY) === 'done';
+    const profiles = readProfiles();
+    let changed = false;
+
+    Object.entries(profiles).forEach(([key, profile]) => {
+      if (!profile || typeof profile !== 'object') return;
+      const identifierType = String(profile.identifierType || '').trim().toLowerCase();
+      const identifier = normalizeIdentifier(profile.identifier);
+      if (identifierType !== 'email' || !TRUSTED_VIP_IDENTIFIERS.has(identifier)) return;
+
+      const rawXp = Math.max(0, Number(profile?.progression?.xp) || 0);
+      if (!alreadyRecovered && rawXp >= OWNER_XP_RECOVERY_THRESHOLD) {
+        profiles[key] = {
+          ...profile,
+          progression: {
+            ...(profile.progression && typeof profile.progression === 'object' ? profile.progression : {}),
+            xp: 0,
+            pendingXpFraction: 0,
+            lastLevelNotified: 1,
+            daily: {
+              ...((profile.progression && profile.progression.daily && typeof profile.progression.daily === 'object') ? profile.progression.daily : {}),
+              pendingLeaderboardXpByDay: {},
+            },
+          },
+        };
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      writeProfiles(profiles);
+    }
+
+    if (!alreadyRecovered) {
+      window.localStorage.setItem(OWNER_XP_RECOVERY_STORAGE_KEY, 'done');
+    }
+  }
+
   function getOrCreateProfile(record) {
     if (!record) return null;
     const profiles = readProfiles();
@@ -523,6 +584,8 @@
     writeProfiles(profiles);
     return { key: profileKey, profile: nextProfile, profiles };
   }
+
+  runOwnerXpRecoveryMigration();
 
   function saveProfile(profileKey, profile, existingProfiles = null) {
     const profiles = existingProfiles || readProfiles();

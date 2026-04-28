@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-27-homepage-game-grid-batching',
+      title: 'Homepage game grid batching',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-27T15:45:00-04:00',
+      summary: 'The homepage game library now loads in smaller batches with a Show more button so the first render stays lighter.',
+      details: [
+        'All Games, 1P Games, Multiplayer, and Competitive now start with a smaller first slice of game cards instead of painting the whole list immediately.',
+        'Search and discovery filters still work across the full catalog, but extra cards now expand in chunks through the new Show more control.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-27-leaderboard-badge-icon-updates',
       title: 'Leaderboard badge icon updates',
       category: 'update',
