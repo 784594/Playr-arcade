@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-27-homepage-page-split',
+      title: 'Homepage Load Lightening',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-27T13:30:00-04:00',
+      summary: 'The heavyweight leaderboard and support surfaces now live on their own pages so the main PlayR homepage can stay lighter and respond faster.',
+      details: [
+        'The header leaderboard button now opens a dedicated rankings page instead of expanding the full leaderboard experience inside the homepage.',
+        'Support Me now opens its own lightweight support page, which trims extra homepage sections and keeps the arcade focused on loading the game library first.',
+        'The shared homepage script was also made page-aware so leaderboard-only UI no longer assumes the featured-game and game-grid widgets exist everywhere.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-26-gradient-direction-update',
       title: 'Gradient Direction Update',
       category: 'update',

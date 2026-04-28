@@ -1314,8 +1314,10 @@ const FEATURED_TAB_CONFIG = {
   leaderboard: { anchorId: 'snake' },
 };
 
+const pageMode = document.body?.dataset.page || 'home';
+
 const uiState = {
-  activeLibraryTab: 'all',
+  activeLibraryTab: pageMode === 'leaderboard' ? 'leaderboard' : 'all',
   activeSignalFilter: 'all',
   activeGameId: games[0]?.id || null,
   activeLeaderboardRange: 'levels',
@@ -3316,6 +3318,9 @@ function revealEntireMineBoard() {
 }
 
 function setFeaturedGame(game) {
+  if (!game || !featuredTitle || !featuredSummary || !featuredControls || !featuredMetric || !featuredRotation || !featuredStatus || !featuredMode) {
+    return;
+  }
   uiState.featuredGameId = game.id;
   featuredTitle.textContent = formatTitle(game);
   featuredSummary.textContent = game.summary;
@@ -3332,6 +3337,7 @@ function setFeaturedGame(game) {
 }
 
 function syncFeaturedGameToActiveTab() {
+  if (!featuredGameCard) return;
   setFeaturedGame(getFeaturedGameForTab(uiState.activeLibraryTab));
 }
 
@@ -3364,6 +3370,7 @@ function promptLoginForMultiplayer() {
 }
 
 function renderGames() {
+  if (!gameGrid) return;
   const filteredGames = getFilteredGames();
   updateFilterSummary(filteredGames);
   if (filteredGames.length === 0) {
@@ -3890,39 +3897,41 @@ function init() {
     });
   }
 
-  gameGrid.addEventListener('click', (event) => {
-    const card = event.target.closest('.game-card');
-    if (!card) return;
-    const game = getGameById(card.dataset.gameId || '');
-    if (!game) return;
-    if (game.launchUrl) {
-      if (!canLaunchGame(game)) {
-        promptLoginForMultiplayer();
+  if (gameGrid) {
+    gameGrid.addEventListener('click', (event) => {
+      const card = event.target.closest('.game-card');
+      if (!card) return;
+      const game = getGameById(card.dataset.gameId || '');
+      if (!game) return;
+      if (game.launchUrl) {
+        if (!canLaunchGame(game)) {
+          promptLoginForMultiplayer();
+          return;
+        }
+        window.location.href = game.launchUrl;
         return;
       }
-      window.location.href = game.launchUrl;
-      return;
-    }
-    setActiveGame(card.dataset.gameId);
-  });
+      setActiveGame(card.dataset.gameId);
+    });
 
-  gameGrid.addEventListener('keydown', (event) => {
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-    const card = event.target.closest('.game-card');
-    if (!card) return;
-    event.preventDefault();
-    const game = getGameById(card.dataset.gameId || '');
-    if (!game) return;
-    if (game.launchUrl) {
-      if (!canLaunchGame(game)) {
-        promptLoginForMultiplayer();
+    gameGrid.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const card = event.target.closest('.game-card');
+      if (!card) return;
+      event.preventDefault();
+      const game = getGameById(card.dataset.gameId || '');
+      if (!game) return;
+      if (game.launchUrl) {
+        if (!canLaunchGame(game)) {
+          promptLoginForMultiplayer();
+          return;
+        }
+        window.location.href = game.launchUrl;
         return;
       }
-      window.location.href = game.launchUrl;
-      return;
-    }
-    setActiveGame(card.dataset.gameId);
-  });
+      setActiveGame(card.dataset.gameId);
+    });
+  }
 
   if (leaderboardCard) {
     leaderboardCard.addEventListener('click', (event) => {
