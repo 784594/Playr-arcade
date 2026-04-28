@@ -9,6 +9,7 @@
   const OWNER_XP_RECOVERY_STORAGE_KEY = 'playrOwnerXpRecoveryV1';
   const OWNER_XP_RECOVERY_THRESHOLD = 1000000000;
   const MAX_XP = 999999999;
+  const DEFAULT_PROFILE_BANNER = 'linear-gradient(135deg, rgba(74, 128, 245, 0.92), rgba(124, 240, 197, 0.82))';
   const EXTRA_EQUIPPED_BADGE_LIMIT = 5;
   const ACTIVE_TICK_MS = 5000;
   const ACTIVE_WINDOW_MS = 10000;
@@ -116,6 +117,11 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  function cloneSerializable(value) {
+    if (value == null) return value;
+    return JSON.parse(JSON.stringify(value));
   }
 
   function createSvgDataUri(markup) {
@@ -308,6 +314,21 @@
     return path.includes('/games/two-player/') || path.includes('/utils/two-player/');
   }
 
+  function getCurrentGameIdentity() {
+    const root = document.getElementById('gameRoot');
+    const title = normalizeName(root?.dataset?.gameTitle || document.title.replace(/\s+\|\s+PlayR.*$/i, '') || 'PlayR');
+    const path = String(window.location.pathname || '').replace(/\/+$/, '');
+    const fallbackKey = title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '') || 'playr';
+    const slug = path.split('/').filter(Boolean).pop() || fallbackKey;
+    return {
+      key: slug,
+      title: title || 'PlayR',
+    };
+  }
+
   function getXpRequiredForLevel(level) {
     const safeLevel = Math.max(1, Math.floor(Number(level) || 1));
     if (safeLevel >= 100) return 15000;
@@ -415,11 +436,20 @@
     const distinctDaysPlayed = Array.isArray(progression.distinctDaysPlayed) ? progression.distinctDaysPlayed : [];
     const afk = progression.afk && typeof progression.afk === 'object' ? progression.afk : {};
     const support = progression.support && typeof progression.support === 'object' ? progression.support : {};
+    const activity = merged.activity && typeof merged.activity === 'object' ? merged.activity : {};
+    const activityByGame = activity.byGame && typeof activity.byGame === 'object' ? activity.byGame : {};
+    const moderation = merged.moderation && typeof merged.moderation === 'object' ? merged.moderation : {};
+    const profileTheme = merged.profileTheme && typeof merged.profileTheme === 'object' ? merged.profileTheme : {};
+    const banner = profileTheme.banner && typeof profileTheme.banner === 'object' ? profileTheme.banner : {};
     const xp = clampXp(progression.xp);
     const levelInfo = getLevelInfoFromXp(xp);
 
     merged.roles = roles;
     merged.isVip = roles.includes('vip');
+    merged.progressionUpdatedAt = Math.max(
+      0,
+      Number(merged.progressionUpdatedAt) || Number(merged.updatedAt) || 0
+    );
     merged.progression = {
       xp,
       totalActiveSeconds: Math.max(0, Number(progression.totalActiveSeconds) || 0),
@@ -472,6 +502,54 @@
         highestDonationBadgeId: String(support.highestDonationBadgeId || ''),
       },
       level: levelInfo.level,
+    };
+    merged.activity = {
+      byGame: Object.fromEntries(
+        Object.entries(activityByGame).map(([gameKey, entry]) => {
+          const safeEntry = entry && typeof entry === 'object' ? entry : {};
+          const seconds = Math.max(0, Number(safeEntry.seconds) || 0);
+          return [String(gameKey || '').trim(), {
+            key: String(safeEntry.key || gameKey || '').trim(),
+            title: normalizeName(safeEntry.title || gameKey || 'PlayR'),
+            seconds,
+            updatedAt: Math.max(0, Number(safeEntry.updatedAt) || 0),
+          }];
+        }).filter(([gameKey]) => Boolean(gameKey))
+      ),
+      favoriteGameKey: String(activity.favoriteGameKey || '').trim(),
+      favoriteGameTitle: normalizeName(activity.favoriteGameTitle || ''),
+      favoriteGameSeconds: Math.max(0, Number(activity.favoriteGameSeconds) || 0),
+    };
+    merged.moderation = {
+      warningCount: Math.max(0, Number(moderation.warningCount) || 0),
+      warnings: Array.isArray(moderation.warnings)
+        ? moderation.warnings
+          .map((entry) => entry && typeof entry === 'object' ? {
+            message: String(entry.message || '').trim(),
+            createdAt: Math.max(0, Number(entry.createdAt) || 0),
+            issuedByUid: String(entry.issuedByUid || '').trim(),
+            issuedByName: normalizeName(entry.issuedByName || ''),
+          } : null)
+          .filter(Boolean)
+          .slice(-25)
+        : [],
+      mutedUntil: Math.max(0, Number(moderation.mutedUntil) || 0),
+      muteReason: String(moderation.muteReason || '').trim(),
+      ban: {
+        active: Boolean(moderation.ban?.active),
+        reason: String(moderation.ban?.reason || '').trim(),
+        bannedAt: Math.max(0, Number(moderation.ban?.bannedAt) || 0),
+        bannedByUid: String(moderation.ban?.bannedByUid || '').trim(),
+        bannedByName: normalizeName(moderation.ban?.bannedByName || ''),
+      },
+    };
+    merged.profileTheme = {
+      banner: {
+        type: ['solid', 'gradient', 'vip-custom'].includes(String(banner.type || '').trim()) ? String(banner.type).trim() : 'gradient',
+        value: String(banner.value || DEFAULT_PROFILE_BANNER).trim() || DEFAULT_PROFILE_BANNER,
+        label: normalizeName(banner.label || 'Default banner'),
+        updatedAt: Math.max(0, Number(banner.updatedAt) || 0),
+      },
     };
 
     if (isOwnerRecord(record || merged)) {
@@ -580,6 +658,7 @@
         ...existing,
         ...record,
       }).includes('vip'),
+      progressionUpdatedAt: Math.max(0, Number(existing.progressionUpdatedAt) || Number(existing.updatedAt) || Date.now()),
       updatedAt: Date.now(),
       createdAt: existing.createdAt || Date.now(),
     };
@@ -599,6 +678,80 @@
     return profiles[profileKey];
   }
 
+  function buildStoredProfileSnapshot(record, profile) {
+    const safeProfile = ensureProfileShape(profile, record);
+    return cloneSerializable({
+      uid: safeProfile.uid || record?.uid || '',
+      displayName: normalizeName(record?.displayName || safeProfile.displayName || 'Player'),
+      identifier: record?.identifier || safeProfile.identifier || '',
+      identifierType: record?.identifierType || safeProfile.identifierType || 'uid',
+      verified: record?.verified || safeProfile.verified || false,
+      roles: Array.isArray(safeProfile.roles) ? [...safeProfile.roles] : [],
+      isVip: Boolean(safeProfile.isVip),
+      progressionUpdatedAt: Math.max(0, Number(safeProfile.progressionUpdatedAt) || 0),
+      progression: safeProfile.progression,
+      activity: safeProfile.activity,
+      moderation: safeProfile.moderation,
+      profileTheme: safeProfile.profileTheme,
+      updatedAt: Math.max(0, Number(safeProfile.updatedAt) || 0),
+      createdAt: Math.max(0, Number(safeProfile.createdAt) || 0),
+    });
+  }
+
+  function markProgressionUpdated(profile, now = Date.now()) {
+    const stamp = Math.max(0, Number(now) || Date.now());
+    profile.progressionUpdatedAt = stamp;
+    profile.updatedAt = Math.max(stamp, Number(profile.updatedAt) || 0);
+    return profile;
+  }
+
+  function importProfile(record, incomingProfile = {}, options = {}) {
+    if (!record) return null;
+    const created = getOrCreateProfile(record);
+    if (!created?.key || !created.profile) return null;
+    const existingProfile = ensureProfileShape(created.profile, record);
+    const remoteProfile = incomingProfile && typeof incomingProfile === 'object' ? incomingProfile : {};
+    const localStamp = Math.max(0, Number(existingProfile.progressionUpdatedAt) || Number(existingProfile.updatedAt) || 0);
+    const remoteStamp = Math.max(0, Number(remoteProfile.progressionUpdatedAt) || Number(remoteProfile.updatedAt) || 0);
+    const preferMode = options.prefer === 'remote' ? 'remote' : options.prefer === 'local' ? 'local' : 'newer';
+    const keepLocal = preferMode === 'local' || (preferMode === 'newer' && localStamp > remoteStamp && remoteStamp > 0);
+
+    if (keepLocal) {
+      if (options.emit !== false) {
+        emitProgressionChange(record, existingProfile);
+      }
+      return getProgressionSnapshot(record, existingProfile);
+    }
+
+    const mergedRoles = buildRoles({
+      ...existingProfile,
+      ...remoteProfile,
+      ...record,
+    });
+    const mergedProfile = ensureProfileShape({
+      ...existingProfile,
+      ...remoteProfile,
+      uid: record.uid || remoteProfile.uid || existingProfile.uid || '',
+      displayName: normalizeName(record.displayName || remoteProfile.displayName || existingProfile.displayName || 'Player'),
+      identifier: record.identifier || remoteProfile.identifier || existingProfile.identifier || '',
+      identifierType: record.identifierType || remoteProfile.identifierType || existingProfile.identifierType || 'uid',
+      verified: record.verified || remoteProfile.verified || existingProfile.verified || false,
+      roles: mergedRoles,
+      isVip: mergedRoles.includes('vip'),
+      progressionUpdatedAt: remoteStamp || localStamp || Date.now(),
+      updatedAt: Math.max(remoteStamp, Number(remoteProfile.updatedAt) || 0, Number(existingProfile.updatedAt) || 0),
+      createdAt: existingProfile.createdAt || Number(remoteProfile.createdAt) || Date.now(),
+      progression: remoteProfile.progression && typeof remoteProfile.progression === 'object'
+        ? remoteProfile.progression
+        : existingProfile.progression,
+    }, record);
+    const savedProfile = saveProfile(created.key, mergedProfile, created.profiles);
+    if (options.emit !== false) {
+      emitProgressionChange(record, savedProfile);
+    }
+    return getProgressionSnapshot(record, savedProfile);
+  }
+
   function getProfileForRecord(record) {
     const created = getOrCreateProfile(record);
     return created ? created.profile : null;
@@ -608,6 +761,26 @@
     const code = profile?.progression?.referral?.code || '';
     if (!code) return '';
     return `${window.location.origin}/?ref=${encodeURIComponent(code)}`;
+  }
+
+  function refreshFavoriteGame(profile) {
+    const entries = Object.values(profile?.activity?.byGame || {});
+    if (!entries.length) {
+      profile.activity.favoriteGameKey = '';
+      profile.activity.favoriteGameTitle = '';
+      profile.activity.favoriteGameSeconds = 0;
+      return;
+    }
+    const favorite = entries
+      .slice()
+      .sort((left, right) => {
+        const secondsDiff = (Number(right?.seconds) || 0) - (Number(left?.seconds) || 0);
+        if (secondsDiff !== 0) return secondsDiff;
+        return normalizeName(left?.title || '').localeCompare(normalizeName(right?.title || ''));
+      })[0];
+    profile.activity.favoriteGameKey = String(favorite?.key || '').trim();
+    profile.activity.favoriteGameTitle = normalizeName(favorite?.title || '');
+    profile.activity.favoriteGameSeconds = Math.max(0, Number(favorite?.seconds) || 0);
   }
 
   function injectSharedStyles() {
@@ -1005,7 +1178,7 @@
 
     if (awardedXp > 0) {
       const nextLevel = getLevelInfoFromXp(profile.progression.xp).level;
-      profile.updatedAt = now;
+      markProgressionUpdated(profile, now);
       if (nextLevel > previousLevel) {
         profile.progression.lastLevelNotified = nextLevel;
         showLevelUpOverlay(nextLevel, awardedXp);
@@ -1184,6 +1357,7 @@
   }
 
   function saveProfileAndEmit(record, key, profiles, profile) {
+    markProgressionUpdated(profile);
     profiles[key] = profile;
     writeProfiles(profiles);
     emitProgressionChange(record, profile);
@@ -1251,11 +1425,11 @@
           if (!latest) return;
           const liveProfile = ensureProfileShape(latest.profiles[latest.key], record);
           liveProfile.progression.afk.warningCooldownUntil = Date.now() + WARNING_COOLDOWN_MS;
-          liveProfile.updatedAt = Date.now();
+          markProgressionUpdated(liveProfile);
           saveProfileAndEmit(record, latest.key, latest.profiles, liveProfile);
         });
       }
-      profile.updatedAt = now;
+      markProgressionUpdated(profile, now);
       saveProfileAndEmit(record, key, profiles, profile);
     }
 
@@ -1265,7 +1439,7 @@
       profile.progression.afk.leaderboardRestrictionReason = stageInfo.reason || AFK_REASON_MESSAGES.lowDiversity;
       profile.progression.afk.leaderboardRestrictionAt = now;
       profile.progression.afk.lastStageReached = 4;
-      profile.updatedAt = now;
+      markProgressionUpdated(profile, now);
       saveProfileAndEmit(record, key, profiles, profile);
     }
   }
@@ -1287,11 +1461,11 @@
         const profile = ensureProfileShape(created.profiles[created.key], record);
         if (delta > 0) {
           profile.progression.xp = clampXp(profile.progression.xp + delta);
-          profile.updatedAt = now;
+          markProgressionUpdated(profile, now);
         }
         if (queuedBonusDelta > 0) {
           queueDeferredLeaderboardBonus(profile, getCurrentDateKey(), queuedBonusDelta);
-          profile.updatedAt = now;
+          markProgressionUpdated(profile, now);
         }
         created.profiles[created.key] = profile;
         writeProfiles(created.profiles);
@@ -1669,7 +1843,7 @@
     return `
       <span class="playr-identity${compactClass}">
         ${prefixBadges.length ? `<span class="playr-badge-stack">${prefixBadges.map((badge) => formatBadgeMarkup(badge)).join('')}</span>` : ''}
-        <span class="playr-identity-text"${styleAttrs}>${escapeHtml(displayName)}</span>
+        <span class="playr-identity-text" data-profile-trigger="true" data-profile-display-name="${escapeHtml(displayName)}" data-profile-uid="${escapeHtml(String(record?.uid || fallbackProfile?.uid || '').trim())}" role="button" tabindex="0"${styleAttrs}>${escapeHtml(displayName)}</span>
         ${suffixBadges.length ? `<span class="playr-badge-stack">${suffixBadges.map((badge) => formatBadgeMarkup(badge)).join('')}</span>` : ''}
       </span>
     `;
@@ -1714,6 +1888,12 @@
       flair: safeProfile.progression.cosmetics.flair,
       displayNameColor: displayStyle.color,
       displayNameGradient: displayStyle.gradient,
+      favoriteGameKey: safeProfile.activity.favoriteGameKey,
+      favoriteGameTitle: safeProfile.activity.favoriteGameTitle,
+      favoriteGameSeconds: safeProfile.activity.favoriteGameSeconds,
+      warningCount: Math.max(0, Number(safeProfile.moderation.warningCount) || 0),
+      moderation: cloneSerializable(safeProfile.moderation),
+      banner: cloneSerializable(safeProfile.profileTheme.banner),
       leaderboardRestricted: Boolean(safeProfile.progression.afk.leaderboardRestricted),
       xpLeaderboardRank,
       warningCooldownUntil: safeProfile.progression.afk.warningCooldownUntil || 0,
@@ -1741,6 +1921,7 @@
         },
       },
     }, availableBadges);
+    markProgressionUpdated(profile);
     const saved = saveProfile(created.key, profile, created.profiles);
     emitProgressionChange(record, saved);
     return getProgressionSnapshot(record, saved);
@@ -1808,6 +1989,7 @@
         referrerProfile.progression.referral.vipExpiresAt = now + REFERRAL_WINDOW_MS;
       }
 
+      markProgressionUpdated(referrerProfile, now);
       profiles[referrerKey] = referrerProfile;
       writeProfiles(profiles);
       emitProgressionChange(referrerProfile, referrerProfile);
@@ -1827,7 +2009,7 @@
     if (!gain) return getProgressionSnapshot(record, profile);
 
     profile.progression.xp = clampXp(profile.progression.xp + gain);
-    profile.updatedAt = Date.now();
+    markProgressionUpdated(profile);
     const nextLevel = getLevelInfoFromXp(profile.progression.xp).level;
     profiles[key] = profile;
     writeProfiles(profiles);
@@ -1853,13 +2035,26 @@
     const profile = ensureProfileShape(profiles[key], record);
     const safeSeconds = Math.max(0, Number(seconds) || 0);
     const dayKey = getCurrentDateKey();
+    const gameIdentity = getCurrentGameIdentity();
     profile.progression.totalActiveSeconds += safeSeconds;
     if (metadata.multiplayer) {
       profile.progression.totalMultiplayerSeconds += safeSeconds;
       profile.progression.daily.multiplayerSecondsByDay[dayKey] = Math.max(0, Number(profile.progression.daily.multiplayerSecondsByDay[dayKey]) || 0) + safeSeconds;
     }
     profile.progression.daily.activeSecondsByDay[dayKey] = Math.max(0, Number(profile.progression.daily.activeSecondsByDay[dayKey]) || 0) + safeSeconds;
+    if (gameIdentity.key) {
+      const currentGame = profile.activity.byGame[gameIdentity.key] && typeof profile.activity.byGame[gameIdentity.key] === 'object'
+        ? profile.activity.byGame[gameIdentity.key]
+        : { key: gameIdentity.key, title: gameIdentity.title, seconds: 0, updatedAt: 0 };
+      currentGame.key = gameIdentity.key;
+      currentGame.title = gameIdentity.title;
+      currentGame.seconds = Math.max(0, Number(currentGame.seconds) || 0) + safeSeconds;
+      currentGame.updatedAt = Date.now();
+      profile.activity.byGame[gameIdentity.key] = currentGame;
+      refreshFavoriteGame(profile);
+    }
     addDistinctPlayDay(profile, dayKey);
+    markProgressionUpdated(profile);
 
     profiles[key] = profile;
     writeProfiles(profiles);
@@ -1889,6 +2084,7 @@
     const profile = ensureProfileShape(profiles[key], record);
     if (profile.progression.referral.code !== refCode) {
       profile.progression.referral.referredBy = refCode;
+      markProgressionUpdated(profile);
       profiles[key] = profile;
       writeProfiles(profiles);
       emitProgressionChange(record, profile);
@@ -1905,6 +2101,7 @@
     const profile = ensureProfileShape(profiles[key], record);
     if (!profile.progression.referral.referredBy && profile.progression.referral.code !== pendingCode) {
       profile.progression.referral.referredBy = pendingCode;
+      markProgressionUpdated(profile);
       profiles[key] = profile;
       writeProfiles(profiles);
       emitProgressionChange(record, profile);
@@ -1963,7 +2160,7 @@
       if (latest?.key) {
         const liveProfile = ensureProfileShape(latest.profiles[latest.key], record);
         queueDeferredLeaderboardBonus(liveProfile, dayKey, queuedBonusDelta);
-        liveProfile.updatedAt = now;
+        markProgressionUpdated(liveProfile, now);
         latest.profiles[latest.key] = liveProfile;
         writeProfiles(latest.profiles);
         emitProgressionChange(record, liveProfile);
@@ -2067,7 +2264,7 @@
 
     const previousLevel = getLevelInfoFromXp(profile.progression.xp).level;
     profile.progression.xp = clampXp(profile.progression.xp + delta);
-    profile.updatedAt = Date.now();
+    markProgressionUpdated(profile);
     const nextLevel = getLevelInfoFromXp(profile.progression.xp).level;
     profiles[key] = profile;
     writeProfiles(profiles);
@@ -2176,6 +2373,13 @@
     formatBadgeMarkup,
     setEquippedBadges(badgeIds, record = getCurrentRecord()) {
       return setEquippedBadges(record, badgeIds);
+    },
+    exportProfile(record = getCurrentRecord()) {
+      const profile = record ? getProfileForRecord(record) : null;
+      return profile ? buildStoredProfileSnapshot(record, profile) : null;
+    },
+    importProfile(record, profileData, options = {}) {
+      return importProfile(record, profileData, options);
     },
     isOwnerRecord(record = getCurrentRecord()) {
       return isOwnerRecord(record);

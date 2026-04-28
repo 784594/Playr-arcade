@@ -201,6 +201,24 @@ if (firebaseDb) {
 
 const DISPLAY_NAME_COLLECTION = 'displayNames';
 const USER_PROFILE_COLLECTION = 'userProfiles';
+const FRIEND_REQUESTS_COLLECTION = 'friendRequests';
+const FRIENDSHIPS_COLLECTION = 'friendships';
+const PROFILE_SYNC_DEBOUNCE_MS = 900;
+const CLOUD_LEADERBOARD_CACHE_MS = 2 * 60 * 1000;
+const PROFILE_CACHE_TTL_MS = 2 * 60 * 1000;
+const SOCIAL_CACHE_TTL_MS = 45 * 1000;
+const PROFILE_WARNING_HISTORY_LIMIT = 25;
+
+const PROFILE_BANNER_PRESETS = [
+  { id: 'aurora', type: 'gradient', label: 'Aurora', value: 'linear-gradient(135deg, rgba(74, 128, 245, 0.92), rgba(124, 240, 197, 0.82))' },
+  { id: 'ember', type: 'gradient', label: 'Ember', value: 'linear-gradient(135deg, rgba(255, 119, 89, 0.96), rgba(255, 195, 113, 0.82))' },
+  { id: 'violet', type: 'gradient', label: 'Violet', value: 'linear-gradient(135deg, rgba(137, 94, 255, 0.94), rgba(255, 127, 205, 0.82))' },
+  { id: 'ocean', type: 'gradient', label: 'Ocean', value: 'linear-gradient(135deg, rgba(31, 84, 163, 0.96), rgba(72, 203, 255, 0.78))' },
+  { id: 'midnight', type: 'solid', label: 'Midnight', value: '#11203d' },
+  { id: 'jade', type: 'solid', label: 'Jade', value: '#0d6d5f' },
+  { id: 'ember-solid', type: 'solid', label: 'Ember Solid', value: '#9b372f' },
+  { id: 'platinum', type: 'solid', label: 'Platinum', value: '#41536f' },
+];
 
 const RESERVED_RANK_TERMS = [
   'admin', 'administrator', 'mod', 'moderator', 'staff', 'support', 'dev', 'developer',
@@ -291,6 +309,184 @@ function getProgressionSnapshotForAccount(account = getCurrentAccount()) {
   return api.getProgressionSnapshot(account);
 }
 
+function getProgressionProfileExport(account = getCurrentAccount()) {
+  const api = getProgressionApi();
+  if (!api || !account || typeof api.exportProfile !== 'function') return null;
+  return api.exportProfile(account);
+}
+
+function cacheProfileLocally(profile, { persist = true } = {}) {
+  if (!profile || typeof profile !== 'object') return null;
+  const normalizedProfile = mergeCloudProfileShape(profile);
+  const uid = String(normalizedProfile.uid || '').trim();
+  if (!uid) return null;
+  const previous = authState.profiles[uid] || {};
+  authState.profiles[uid] = {
+    ...previous,
+    ...normalizedProfile,
+    uid,
+  };
+  if (persist) {
+    persistProfiles(authState.profiles);
+  }
+  return authState.profiles[uid];
+}
+
+function applyCloudProfileToLocalAccount(account, remoteProfile, options = {}) {
+  if (!account || !remoteProfile || typeof remoteProfile !== 'object') return null;
+  const progressionApi = getProgressionApi();
+  if (progressionApi && typeof progressionApi.importProfile === 'function') {
+    progressionApi.importProfile(account, remoteProfile, {
+      prefer: options.prefer || 'newer',
+      emit: options.emit !== false,
+    });
+  }
+  const exported = getProgressionProfileExport(account) || remoteProfile;
+  return cacheProfileLocally(exported, { persist: options.persist !== false });
+}
+
+function buildCurrentAccountCloudProfile(account = getCurrentAccount()) {
+  if (!account) return null;
+  const exported = getProgressionProfileExport(account);
+  if (!exported) return null;
+  const roles = Array.isArray(account.roles) ? [...account.roles] : [];
+  return {
+    ...exported,
+    uid: account.uid,
+    displayName: account.displayName,
+    normalizedDisplayName: normalizeDisplayNameForLookup(account.displayName),
+    identifier: account.identifier,
+    identifierType: account.identifierType,
+    verified: account.verified || exported.verified || false,
+    roles,
+    isVip: Boolean(account.isVip || exported.isVip),
+    progressionUpdatedAt: Math.max(0, Number(exported.progressionUpdatedAt) || Date.now()),
+    updatedAt: Date.now(),
+  };
+}
+
+async function syncCurrentAccountProfileToFirestore({ immediate = false } = {}) {
+  const account = getCurrentAccount();
+  if (!firebaseDb || !account?.uid) return;
+
+  if (!immediate) {
+    window.clearTimeout(authState.profileSyncTimer);
+    authState.profileSyncTimer = window.setTimeout(() => {
+      void syncCurrentAccountProfileToFirestore({ immediate: true });
+    }, PROFILE_SYNC_DEBOUNCE_MS);
+    return;
+  }
+
+  window.clearTimeout(authState.profileSyncTimer);
+  authState.profileSyncTimer = 0;
+
+  const profile = buildCurrentAccountCloudProfile(account);
+  if (!profile) return;
+
+  cacheProfileLocally(profile);
+
+  const timestamp = window.firebase.firestore.FieldValue.serverTimestamp();
+  try {
+    await firebaseDb.collection(USER_PROFILE_COLLECTION).doc(account.uid).set({
+      uid: account.uid,
+      displayName: account.displayName,
+      normalizedDisplayName: normalizeDisplayNameForLookup(account.displayName),
+      identifier: account.identifier,
+      identifierType: account.identifierType,
+      roles: profile.roles || [],
+      isVip: Boolean(profile.isVip),
+      verified: profile.verified || false,
+      progression: profile.progression || null,
+      activity: profile.activity || null,
+      moderation: profile.moderation || null,
+      profileTheme: profile.profileTheme || null,
+      progressionUpdatedAt: profile.progressionUpdatedAt || Date.now(),
+      updatedAt: timestamp,
+    }, { merge: true });
+  } catch {
+    // Keep local progression responsive even if cloud sync is temporarily unavailable.
+  }
+}
+
+function stopCurrentUserProfileSubscription() {
+  if (typeof authState.profileSyncUnsubscribe === 'function') {
+    authState.profileSyncUnsubscribe();
+  }
+  authState.profileSyncUnsubscribe = null;
+}
+
+function subscribeToCurrentUserProfile(user) {
+  stopCurrentUserProfileSubscription();
+  if (!firebaseDb || !user?.uid) return;
+
+  authState.profileSyncUnsubscribe = firebaseDb.collection(USER_PROFILE_COLLECTION).doc(user.uid).onSnapshot((snapshot) => {
+    if (!snapshot.exists) {
+      void syncCurrentAccountProfileToFirestore({ immediate: true });
+      return;
+    }
+
+    const account = getCurrentAccount() || {
+      uid: user.uid,
+      identifier: user.email || user.phoneNumber || user.uid,
+      identifierType: user.email ? 'email' : (user.phoneNumber ? 'phone' : 'uid'),
+      displayName: user.displayName || authState.profiles[user.uid]?.displayName || 'Player',
+      roles: authState.profiles[user.uid]?.roles || [],
+      isVip: Boolean(authState.profiles[user.uid]?.isVip),
+      verified: {
+        email: Boolean(user.emailVerified),
+        phone: Boolean(user.phoneNumber),
+      },
+    };
+    const remoteProfile = mergeCloudProfileShape({ uid: user.uid, ...(snapshot.data() || {}) });
+    authState.suspendProgressionSyncUntil = Date.now() + 1500;
+    const syncedProfile = applyCloudProfileToLocalAccount(account, remoteProfile, {
+      prefer: 'newer',
+      emit: true,
+    }) || remoteProfile;
+    cacheResolvedProfile(syncedProfile);
+    if (Boolean(syncedProfile?.moderation?.ban?.active)) {
+      localStorage.setItem('playrBanNotice', syncedProfile?.moderation?.ban?.reason || 'This account has been banned.');
+      void firebaseAuth?.signOut?.().catch(() => {});
+      return;
+    }
+    const localStamp = Math.max(0, Number(syncedProfile?.progressionUpdatedAt) || 0);
+    const remoteStamp = Math.max(0, Number(remoteProfile?.progressionUpdatedAt) || 0);
+    if (localStamp > remoteStamp) {
+      void syncCurrentAccountProfileToFirestore({ immediate: true });
+    }
+  }, () => {});
+}
+
+async function refreshCloudLeaderboardProfiles({ force = false } = {}) {
+  if (!firebaseDb || authState.cloudLeaderboardFetchInFlight) return;
+  const now = Date.now();
+  if (!force && (now - authState.lastCloudLeaderboardSyncAt) < CLOUD_LEADERBOARD_CACHE_MS) {
+    return;
+  }
+
+  authState.cloudLeaderboardFetchInFlight = true;
+  try {
+    const snapshot = await firebaseDb.collection(USER_PROFILE_COLLECTION).get();
+    snapshot.forEach((doc) => {
+      const data = doc.data() || {};
+      if (!data.uid) {
+        data.uid = doc.id;
+      }
+      cacheProfileLocally(data, { persist: false });
+      cacheResolvedProfile(mergeCloudProfileShape(data));
+    });
+    authState.lastCloudLeaderboardSyncAt = Date.now();
+    persistProfiles(authState.profiles);
+    if (isLeaderboardViewActive()) {
+      renderLeaderboard();
+    }
+  } catch {
+    // Fall back to the locally cached leaderboard snapshot if Firestore is unavailable.
+  } finally {
+    authState.cloudLeaderboardFetchInFlight = false;
+  }
+}
+
 function formatPlayerIdentityMarkup(name, options = {}) {
   const api = getProgressionApi();
   if (!api || typeof api.formatIdentityMarkup !== 'function') {
@@ -302,6 +498,918 @@ function formatPlayerIdentityMarkup(name, options = {}) {
       .replace(/'/g, '&#39;');
   }
   return api.formatIdentityMarkup(name, options);
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getProfileBannerPresetByValue(type, value) {
+  return PROFILE_BANNER_PRESETS.find((preset) => preset.type === type && preset.value === value) || null;
+}
+
+function getDefaultProfileBanner() {
+  return PROFILE_BANNER_PRESETS[0];
+}
+
+function normalizeTimestampToMs(value) {
+  if (!value) return 0;
+  if (typeof value?.toMillis === 'function') return Math.max(0, Number(value.toMillis()) || 0);
+  if (typeof value?.seconds === 'number') return Math.max(0, (Number(value.seconds) * 1000) + Math.floor(Number(value.nanoseconds || 0) / 1000000));
+  const asNumber = Number(value);
+  if (Number.isFinite(asNumber) && asNumber > 0) return asNumber;
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+function formatProfileDate(value) {
+  const stamp = normalizeTimestampToMs(value);
+  if (!stamp) return 'Unknown';
+  return new Date(stamp).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+function formatDurationLabel(totalSeconds) {
+  const safeSeconds = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+  if (!safeSeconds) return '0 min';
+  const days = Math.floor(safeSeconds / 86400);
+  const hours = Math.floor((safeSeconds % 86400) / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  if (days > 0) {
+    return `${days}d ${hours}h`;
+  }
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  return `${minutes} min`;
+}
+
+function normalizeFriendshipId(uidA, uidB) {
+  return [String(uidA || '').trim(), String(uidB || '').trim()].filter(Boolean).sort().join('__');
+}
+
+function getCurrentModerationSnapshot(account = getCurrentAccount()) {
+  const uid = String(account?.uid || '').trim();
+  if (!uid) {
+    return {
+      warningCount: 0,
+      warnings: [],
+      mutedUntil: 0,
+      muteReason: '',
+      ban: { active: false, reason: '', bannedAt: 0, bannedByUid: '', bannedByName: '' },
+    };
+  }
+  const profile = authState.profiles[uid] || {};
+  const moderation = profile.moderation && typeof profile.moderation === 'object' ? profile.moderation : {};
+  return {
+    warningCount: Math.max(0, Number(moderation.warningCount) || 0),
+    warnings: Array.isArray(moderation.warnings) ? moderation.warnings : [],
+    mutedUntil: normalizeTimestampToMs(moderation.mutedUntil),
+    muteReason: String(moderation.muteReason || '').trim(),
+    ban: {
+      active: Boolean(moderation.ban?.active),
+      reason: String(moderation.ban?.reason || '').trim(),
+      bannedAt: normalizeTimestampToMs(moderation.ban?.bannedAt),
+      bannedByUid: String(moderation.ban?.bannedByUid || '').trim(),
+      bannedByName: String(moderation.ban?.bannedByName || '').trim(),
+    },
+  };
+}
+
+function isCurrentAccountMuted(account = getCurrentAccount()) {
+  return getCurrentModerationSnapshot(account).mutedUntil > Date.now();
+}
+
+function isCurrentAccountBanned(account = getCurrentAccount()) {
+  return getCurrentModerationSnapshot(account).ban.active === true;
+}
+
+function canCurrentAccountInteract(account = getCurrentAccount()) {
+  return Boolean(account && !isCurrentAccountBanned(account) && !isCurrentAccountMuted(account));
+}
+
+function upsertProfileCacheEntry(key, data) {
+  if (!key) return;
+  profileCacheState.byLookup[key] = {
+    ...(profileCacheState.byLookup[key] || {}),
+    ...data,
+    cachedAt: Date.now(),
+  };
+}
+
+function getCachedProfileEntry(target = {}) {
+  const keys = [
+    String(target.uid || '').trim() ? `uid:${String(target.uid || '').trim()}` : '',
+    normalizeDisplayNameForLookup(target.displayName || target.normalizedDisplayName || '') ? `name:${normalizeDisplayNameForLookup(target.displayName || target.normalizedDisplayName || '')}` : '',
+  ].filter(Boolean);
+  for (const key of keys) {
+    const entry = profileCacheState.byLookup[key];
+    if (entry && (Date.now() - Number(entry.cachedAt || 0)) <= PROFILE_CACHE_TTL_MS) {
+      return entry;
+    }
+  }
+  return null;
+}
+
+function cacheResolvedProfile(profile) {
+  if (!profile || typeof profile !== 'object') return null;
+  const uid = String(profile.uid || '').trim();
+  const displayName = String(profile.displayName || '').trim();
+  const normalizedName = normalizeDisplayNameForLookup(displayName);
+  const cached = {
+    profile,
+    uid,
+    displayName,
+    normalizedName,
+    cachedAt: Date.now(),
+  };
+  if (uid) upsertProfileCacheEntry(`uid:${uid}`, cached);
+  if (normalizedName) upsertProfileCacheEntry(`name:${normalizedName}`, cached);
+  return cached;
+}
+
+function mergeCloudProfileShape(profile = {}) {
+  const banner = profile.profileTheme?.banner && typeof profile.profileTheme.banner === 'object'
+    ? profile.profileTheme.banner
+    : {};
+  const favoriteGame = profile.activity?.favoriteGameTitle || '';
+  return {
+    ...profile,
+    moderation: {
+      warningCount: Math.max(0, Number(profile?.moderation?.warningCount) || 0),
+      warnings: Array.isArray(profile?.moderation?.warnings) ? profile.moderation.warnings.slice(-PROFILE_WARNING_HISTORY_LIMIT) : [],
+      mutedUntil: normalizeTimestampToMs(profile?.moderation?.mutedUntil),
+      muteReason: String(profile?.moderation?.muteReason || '').trim(),
+      ban: {
+        active: Boolean(profile?.moderation?.ban?.active),
+        reason: String(profile?.moderation?.ban?.reason || '').trim(),
+        bannedAt: normalizeTimestampToMs(profile?.moderation?.ban?.bannedAt),
+        bannedByUid: String(profile?.moderation?.ban?.bannedByUid || '').trim(),
+        bannedByName: String(profile?.moderation?.ban?.bannedByName || '').trim(),
+      },
+    },
+    activity: {
+      ...(profile.activity && typeof profile.activity === 'object' ? profile.activity : {}),
+      favoriteGameTitle: String(favoriteGame || '').trim(),
+      favoriteGameSeconds: Math.max(0, Number(profile?.activity?.favoriteGameSeconds) || 0),
+    },
+    profileTheme: {
+      banner: {
+        type: ['solid', 'gradient', 'vip-custom'].includes(String(banner.type || '').trim()) ? String(banner.type).trim() : getDefaultProfileBanner().type,
+        value: String(banner.value || getDefaultProfileBanner().value).trim() || getDefaultProfileBanner().value,
+        label: String(banner.label || getProfileBannerPresetByValue(banner.type, banner.value)?.label || getDefaultProfileBanner().label).trim(),
+        updatedAt: normalizeTimestampToMs(banner.updatedAt),
+      },
+    },
+  };
+}
+
+async function resolveUserProfileRecord(target = {}) {
+  const normalizedName = normalizeDisplayNameForLookup(target.displayName || target.normalizedDisplayName || '');
+  const uid = String(target.uid || '').trim();
+  const cached = getCachedProfileEntry({ uid, displayName: normalizedName });
+  if (cached?.profile) {
+    return cached.profile;
+  }
+
+  if (uid && authState.profiles[uid]) {
+    const localProfile = mergeCloudProfileShape(authState.profiles[uid]);
+    cacheResolvedProfile(localProfile);
+    return localProfile;
+  }
+
+  if (!firebaseDb) {
+    const localByName = normalizedName ? findProfileByDisplayName(normalizedName) : null;
+    const fallback = localByName ? mergeCloudProfileShape(localByName) : null;
+    if (fallback) cacheResolvedProfile(fallback);
+    return fallback;
+  }
+
+  let resolvedUid = uid;
+  if (!resolvedUid && normalizedName) {
+    const nameSnapshot = await firebaseDb.collection(DISPLAY_NAME_COLLECTION).doc(normalizedName).get();
+    if (nameSnapshot.exists) {
+      resolvedUid = String(nameSnapshot.data()?.uid || '').trim();
+    }
+  }
+
+  if (!resolvedUid) {
+    const fallback = normalizedName ? findProfileByDisplayName(normalizedName) : null;
+    const merged = fallback ? mergeCloudProfileShape(fallback) : null;
+    if (merged) cacheResolvedProfile(merged);
+    return merged;
+  }
+
+  const profileSnapshot = await firebaseDb.collection(USER_PROFILE_COLLECTION).doc(resolvedUid).get();
+  const remoteProfile = profileSnapshot.exists
+    ? mergeCloudProfileShape({ uid: resolvedUid, ...(profileSnapshot.data() || {}) })
+    : mergeCloudProfileShape({ uid: resolvedUid, displayName: target.displayName || 'Player' });
+  cacheProfileLocally(remoteProfile);
+  cacheResolvedProfile(remoteProfile);
+  return remoteProfile;
+}
+
+async function ensureCloudLevelsCache() {
+  await refreshCloudLeaderboardProfiles();
+  return Object.values(authState.profiles)
+    .filter((profile) => profile && typeof profile === 'object' && !Boolean(profile?.moderation?.ban?.active))
+    .map((profile) => mergeCloudProfileShape(profile));
+}
+
+async function computeXpLeaderboardRankForProfile(profile) {
+  if (!profile) return 0;
+  const uid = String(profile.uid || '').trim();
+  const displayName = normalizeDisplayNameForLookup(profile.displayName || '');
+  const entries = await ensureCloudLevelsCache();
+  const ranked = entries
+    .filter((entry) => entry && String(entry.displayName || '').trim())
+    .sort((left, right) => {
+      const xpDiff = Math.max(0, Number(right?.progression?.xp) || 0) - Math.max(0, Number(left?.progression?.xp) || 0);
+      if (xpDiff !== 0) return xpDiff;
+      return normalizeDisplayNameForLookup(left.displayName || '').localeCompare(normalizeDisplayNameForLookup(right.displayName || ''));
+    });
+  const index = ranked.findIndex((entry) => {
+    if (uid && String(entry.uid || '').trim() === uid) return true;
+    return displayName && normalizeDisplayNameForLookup(entry.displayName || '') === displayName;
+  });
+  return index >= 0 ? index + 1 : 0;
+}
+
+function getCurrentRelationshipStatus(targetUid) {
+  const safeUid = String(targetUid || '').trim();
+  if (!safeUid) return 'none';
+  if (socialState.friendDocs[safeUid]) return 'friends';
+  if (socialState.outgoingRequests[safeUid]) return 'outgoing';
+  if (socialState.incomingRequests[safeUid]) return 'incoming';
+  return 'none';
+}
+
+function closeFriendsSubscriptions() {
+  ['friendshipsUnsub', 'incomingUnsub', 'outgoingUnsub'].forEach((key) => {
+    if (typeof socialState[key] === 'function') {
+      socialState[key]();
+    }
+    socialState[key] = null;
+  });
+  socialState.loadedAt = 0;
+}
+
+function updateFriendsBell() {
+  if (!profileUi.friendsUnreadDot) return;
+  const unreadCount = Object.keys(socialState.incomingRequests || {}).length;
+  profileUi.friendsUnreadDot.hidden = unreadCount === 0;
+}
+
+function renderFriendsPanel() {
+  if (!profileUi.friendsList || !profileUi.friendsIncoming || !profileUi.friendsOutgoing) return;
+
+  const friendEntries = Object.values(socialState.friendDocs || {})
+    .sort((left, right) => String(left.displayName || '').localeCompare(String(right.displayName || '')));
+  const incomingEntries = Object.values(socialState.incomingRequests || {})
+    .sort((left, right) => normalizeTimestampToMs(right.createdAt) - normalizeTimestampToMs(left.createdAt));
+  const outgoingEntries = Object.values(socialState.outgoingRequests || {})
+    .sort((left, right) => normalizeTimestampToMs(right.createdAt) - normalizeTimestampToMs(left.createdAt));
+
+  profileUi.friendsList.innerHTML = friendEntries.length
+    ? friendEntries.map((entry) => `
+        <article class="social-row">
+          <button class="social-name-button" type="button" data-open-profile-uid="${escapeHtml(entry.uid)}" data-open-profile-name="${escapeHtml(entry.displayName || 'Player')}">
+            ${formatPlayerIdentityMarkup(entry.displayName || 'Player', { record: findProfileByDisplayName(entry.displayName || '') || authState.profiles[entry.uid] || { uid: entry.uid, displayName: entry.displayName || 'Player' }, compact: true })}
+          </button>
+          <span class="social-meta">Friends since ${formatProfileDate(entry.createdAt)}</span>
+        </article>
+      `).join('')
+    : '<p class="settings-muted">No friends added yet.</p>';
+
+  profileUi.friendsIncoming.innerHTML = incomingEntries.length
+    ? incomingEntries.map((entry) => `
+        <article class="social-row">
+          <button class="social-name-button" type="button" data-open-profile-uid="${escapeHtml(entry.uid)}" data-open-profile-name="${escapeHtml(entry.displayName || 'Player')}">
+            ${escapeHtml(entry.displayName || 'Player')}
+          </button>
+          <div class="social-actions">
+            <button class="button primary" type="button" data-friend-accept="${escapeHtml(entry.uid)}">Accept</button>
+            <button class="button secondary" type="button" data-friend-reject="${escapeHtml(entry.uid)}">Reject</button>
+          </div>
+        </article>
+      `).join('')
+    : '<p class="settings-muted">No incoming requests.</p>';
+
+  profileUi.friendsOutgoing.innerHTML = outgoingEntries.length
+    ? outgoingEntries.map((entry) => `
+        <article class="social-row">
+          <button class="social-name-button" type="button" data-open-profile-uid="${escapeHtml(entry.uid)}" data-open-profile-name="${escapeHtml(entry.displayName || 'Player')}">
+            ${escapeHtml(entry.displayName || 'Player')}
+          </button>
+          <div class="social-actions">
+            <span class="social-meta">Pending</span>
+            <button class="button secondary" type="button" data-friend-cancel="${escapeHtml(entry.uid)}">Cancel</button>
+          </div>
+        </article>
+      `).join('')
+    : '<p class="settings-muted">No outgoing requests.</p>';
+
+  updateFriendsBell();
+}
+
+function subscribeFriendsData() {
+  const account = getCurrentAccount();
+  if (!firebaseDb || !account?.uid) {
+    closeFriendsSubscriptions();
+    socialState.friendDocs = {};
+    socialState.incomingRequests = {};
+    socialState.outgoingRequests = {};
+    renderFriendsPanel();
+    return;
+  }
+
+  if (
+    socialState.friendshipsUnsub
+    && socialState.incomingUnsub
+    && socialState.outgoingUnsub
+    && (Date.now() - socialState.loadedAt) < SOCIAL_CACHE_TTL_MS
+  ) {
+    renderFriendsPanel();
+    return;
+  }
+
+  closeFriendsSubscriptions();
+  socialState.loadedAt = Date.now();
+
+  socialState.friendshipsUnsub = firebaseDb.collection(FRIENDSHIPS_COLLECTION)
+    .where('participants', 'array-contains', account.uid)
+    .onSnapshot((snapshot) => {
+      const next = {};
+      snapshot.forEach((doc) => {
+        const data = doc.data() || {};
+        const participants = Array.isArray(data.participants) ? data.participants : [];
+        const otherUid = participants.find((uid) => uid !== account.uid) || '';
+        if (!otherUid) return;
+        const names = data.participantNames && typeof data.participantNames === 'object' ? data.participantNames : {};
+        next[otherUid] = {
+          uid: otherUid,
+          displayName: String(names[otherUid] || authState.profiles[otherUid]?.displayName || 'Player').trim(),
+          createdAt: data.createdAt || data.updatedAt || 0,
+          raw: data,
+        };
+      });
+      socialState.friendDocs = next;
+      renderFriendsPanel();
+      if (!profileUi.profileOverlay?.hidden) {
+        void renderOpenProfilePanel();
+      }
+    }, () => {});
+
+  socialState.incomingUnsub = firebaseDb.collection(FRIEND_REQUESTS_COLLECTION)
+    .where('recipientUid', '==', account.uid)
+    .onSnapshot((snapshot) => {
+      const next = {};
+      snapshot.forEach((doc) => {
+        const data = doc.data() || {};
+        if (String(data.status || '') !== 'pending') return;
+        const senderUid = String(data.senderUid || '').trim();
+        if (!senderUid) return;
+        next[senderUid] = {
+          uid: senderUid,
+          displayName: String(data.senderName || authState.profiles[senderUid]?.displayName || 'Player').trim(),
+          createdAt: data.createdAt || 0,
+          raw: data,
+        };
+      });
+      socialState.incomingRequests = next;
+      renderFriendsPanel();
+      if (!profileUi.profileOverlay?.hidden) {
+        void renderOpenProfilePanel();
+      }
+    }, () => {});
+
+  socialState.outgoingUnsub = firebaseDb.collection(FRIEND_REQUESTS_COLLECTION)
+    .where('senderUid', '==', account.uid)
+    .onSnapshot((snapshot) => {
+      const next = {};
+      snapshot.forEach((doc) => {
+        const data = doc.data() || {};
+        if (String(data.status || '') !== 'pending') return;
+        const recipientUid = String(data.recipientUid || '').trim();
+        if (!recipientUid) return;
+        next[recipientUid] = {
+          uid: recipientUid,
+          displayName: String(data.recipientName || authState.profiles[recipientUid]?.displayName || 'Player').trim(),
+          createdAt: data.createdAt || 0,
+          raw: data,
+        };
+      });
+      socialState.outgoingRequests = next;
+      renderFriendsPanel();
+      if (!profileUi.profileOverlay?.hidden) {
+        void renderOpenProfilePanel();
+      }
+    }, () => {});
+}
+
+async function sendFriendRequestByProfile(targetProfile) {
+  const account = getCurrentAccount();
+  if (!firebaseDb || !account?.uid) {
+    setAuthMode('login');
+    openAuthOverlay('Log in to add friends.');
+    return;
+  }
+  if (!canCurrentAccountInteract(account)) {
+    setSettingsStatus('This account cannot send friend requests right now.', 'danger');
+    return;
+  }
+
+  const targetUid = String(targetProfile?.uid || '').trim();
+  const targetName = String(targetProfile?.displayName || '').trim();
+  if (!targetUid || !targetName) {
+    setProfilePanelStatus('Could not find that player profile right now.', 'danger');
+    return;
+  }
+  if (targetUid === account.uid) {
+    setProfilePanelStatus('You cannot add yourself.', 'info');
+    return;
+  }
+  if (getCurrentRelationshipStatus(targetUid) === 'friends') {
+    setProfilePanelStatus('You are already friends.', 'info');
+    return;
+  }
+  if (getCurrentRelationshipStatus(targetUid) === 'outgoing') {
+    setProfilePanelStatus('Friend request already sent.', 'info');
+    return;
+  }
+
+  const requestId = normalizeFriendshipId(account.uid, targetUid);
+  const timestamp = window.firebase.firestore.FieldValue.serverTimestamp();
+  await firebaseDb.collection(FRIEND_REQUESTS_COLLECTION).doc(requestId).set({
+    senderUid: account.uid,
+    senderName: account.displayName,
+    recipientUid: targetUid,
+    recipientName: targetName,
+    status: 'pending',
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  }, { merge: true });
+  setProfilePanelStatus(`Friend request sent to ${targetName}.`, 'success');
+}
+
+async function respondToFriendRequest(otherUid, action) {
+  const account = getCurrentAccount();
+  const safeOtherUid = String(otherUid || '').trim();
+  if (!firebaseDb || !account?.uid || !safeOtherUid) return;
+  const requestId = normalizeFriendshipId(account.uid, safeOtherUid);
+  const requestRef = firebaseDb.collection(FRIEND_REQUESTS_COLLECTION).doc(requestId);
+  const friendshipRef = firebaseDb.collection(FRIENDSHIPS_COLLECTION).doc(requestId);
+  const timestamp = window.firebase.firestore.FieldValue.serverTimestamp();
+
+  if (action === 'accept') {
+    const otherName = socialState.incomingRequests[safeOtherUid]?.displayName || authState.profiles[safeOtherUid]?.displayName || 'Player';
+    const batch = firebaseDb.batch();
+    batch.set(friendshipRef, {
+      participants: [account.uid, safeOtherUid].sort(),
+      participantNames: {
+        [account.uid]: account.displayName,
+        [safeOtherUid]: otherName,
+      },
+      createdByUid: account.uid,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    }, { merge: true });
+    batch.set(requestRef, {
+      senderUid: safeOtherUid,
+      recipientUid: account.uid,
+      senderName: otherName,
+      recipientName: account.displayName,
+      status: 'accepted',
+      respondedAt: timestamp,
+      updatedAt: timestamp,
+    }, { merge: true });
+    await batch.commit();
+    return;
+  }
+
+  await requestRef.set({
+    status: action === 'cancel' ? 'cancelled' : 'rejected',
+    updatedAt: timestamp,
+    respondedAt: timestamp,
+  }, { merge: true });
+}
+
+function setProfilePanelStatus(message, tone = 'info') {
+  if (!profileUi.profileStatus) return;
+  profileUi.profileStatus.textContent = message || '';
+  profileUi.profileStatus.dataset.tone = tone;
+}
+
+function setFriendsPanelStatus(message, tone = 'info') {
+  if (!profileUi.friendsStatus) return;
+  profileUi.friendsStatus.textContent = message || '';
+  profileUi.friendsStatus.dataset.tone = tone;
+}
+
+function ensureProfileAndFriendsUi() {
+  if (profileUi.injected || typeof document === 'undefined' || !document.body) return;
+  profileUi.injected = true;
+
+  if (topbarControls && !document.getElementById('friendsBtn')) {
+    const notificationsShell = topbarControls.querySelector('.notifications-shell');
+    const shell = document.createElement('div');
+    shell.className = 'friends-shell';
+    shell.innerHTML = `
+      <button class="chip-button notification-button friends-button" type="button" id="friendsBtn" aria-label="Open friends" aria-expanded="false" aria-haspopup="true">
+        <span class="friends-button-glyph" aria-hidden="true">&#128101;<small>+</small></span>
+        <span class="notification-dot" id="friendsUnreadDot" hidden></span>
+      </button>
+    `;
+    if (notificationsShell) {
+      topbarControls.insertBefore(shell, notificationsShell);
+    } else {
+      topbarControls.appendChild(shell);
+    }
+  }
+
+  if (!document.getElementById('friendsOverlay')) {
+    const overlay = document.createElement('div');
+    overlay.className = 'friends-overlay';
+    overlay.id = 'friendsOverlay';
+    overlay.hidden = true;
+    overlay.innerHTML = `
+      <section class="friends-modal panel-card" role="dialog" aria-modal="true" aria-labelledby="friendsTitle">
+        <div class="friends-modal-header">
+          <div>
+            <p class="eyebrow">Social</p>
+            <h3 id="friendsTitle">Friends</h3>
+          </div>
+          <button class="chip-button" type="button" id="friendsCloseBtn">Close</button>
+        </div>
+        <div class="friends-add-row">
+          <input class="auth-input" id="friendsAddInput" type="text" maxlength="24" placeholder="Add by display name" />
+          <button class="button primary" type="button" id="friendsAddBtn">Add</button>
+        </div>
+        <p class="friends-status" id="friendsStatus"></p>
+        <div class="friends-sections">
+          <section class="settings-card">
+            <h4>Current Friends</h4>
+            <div id="friendsList" class="social-list"></div>
+          </section>
+          <section class="settings-card">
+            <h4>Incoming Requests</h4>
+            <div id="friendsIncoming" class="social-list"></div>
+          </section>
+          <section class="settings-card">
+            <h4>Outgoing Requests</h4>
+            <div id="friendsOutgoing" class="social-list"></div>
+          </section>
+        </div>
+      </section>
+    `;
+    document.body.appendChild(overlay);
+  }
+
+  if (!document.getElementById('profileOverlay')) {
+    const overlay = document.createElement('div');
+    overlay.className = 'profile-overlay';
+    overlay.id = 'profileOverlay';
+    overlay.hidden = true;
+    overlay.innerHTML = `
+      <section class="profile-modal panel-card" role="dialog" aria-modal="true" aria-labelledby="profileName">
+        <div class="profile-banner" id="profileBanner"></div>
+        <div class="profile-modal-header">
+          <div>
+            <p class="eyebrow">Player Profile</p>
+            <h3 id="profileName">Loading...</h3>
+            <p class="settings-muted" id="profileMeta">Fetching profile...</p>
+          </div>
+          <div class="profile-header-actions" id="profileActionArea"></div>
+          <button class="chip-button" type="button" id="profileCloseBtn">Close</button>
+        </div>
+        <p class="profile-status" id="profileStatus"></p>
+        <div class="profile-stats-grid" id="profileStats"></div>
+        <div class="profile-warning-chip" id="profileWarnings"></div>
+        <section class="settings-card profile-moderation" id="profileModeration" hidden>
+          <h4>Owner Moderation</h4>
+          <textarea class="auth-input profile-moderation-message" id="profileModerationMessage" rows="3" placeholder="Custom warning or ban reason"></textarea>
+          <input class="auth-input" id="profileMuteDuration" type="number" min="1" step="1" value="60" placeholder="Mute duration in minutes" />
+          <div class="settings-inline-actions">
+            <button class="button secondary" type="button" id="profileWarnBtn">Warn</button>
+            <button class="button secondary" type="button" id="profileMuteBtn">Mute</button>
+            <button class="button secondary" type="button" id="profileUnmuteBtn">Unmute</button>
+            <button class="button primary" type="button" id="profileBanBtn">Ban</button>
+            <button class="button secondary" type="button" id="profileUnbanBtn">Unban</button>
+          </div>
+        </section>
+      </section>
+    `;
+    document.body.appendChild(overlay);
+  }
+
+  profileUi.friendsBtn = document.getElementById('friendsBtn');
+  profileUi.friendsUnreadDot = document.getElementById('friendsUnreadDot');
+  profileUi.friendsOverlay = document.getElementById('friendsOverlay');
+  profileUi.friendsCloseBtn = document.getElementById('friendsCloseBtn');
+  profileUi.friendsStatus = document.getElementById('friendsStatus');
+  profileUi.friendsList = document.getElementById('friendsList');
+  profileUi.friendsIncoming = document.getElementById('friendsIncoming');
+  profileUi.friendsOutgoing = document.getElementById('friendsOutgoing');
+  profileUi.friendsAddInput = document.getElementById('friendsAddInput');
+  profileUi.friendsAddBtn = document.getElementById('friendsAddBtn');
+  profileUi.profileOverlay = document.getElementById('profileOverlay');
+  profileUi.profileCloseBtn = document.getElementById('profileCloseBtn');
+  profileUi.profileBanner = document.getElementById('profileBanner');
+  profileUi.profileName = document.getElementById('profileName');
+  profileUi.profileMeta = document.getElementById('profileMeta');
+  profileUi.profileStats = document.getElementById('profileStats');
+  profileUi.profileWarnings = document.getElementById('profileWarnings');
+  profileUi.profileStatus = document.getElementById('profileStatus');
+  profileUi.profileActionArea = document.getElementById('profileActionArea');
+  profileUi.profileModeration = document.getElementById('profileModeration');
+  profileUi.profileModerationMessage = document.getElementById('profileModerationMessage');
+  profileUi.profileMuteDuration = document.getElementById('profileMuteDuration');
+  profileUi.profileWarnBtn = document.getElementById('profileWarnBtn');
+  profileUi.profileMuteBtn = document.getElementById('profileMuteBtn');
+  profileUi.profileBanBtn = document.getElementById('profileBanBtn');
+  profileUi.profileUnmuteBtn = document.getElementById('profileUnmuteBtn');
+  profileUi.profileUnbanBtn = document.getElementById('profileUnbanBtn');
+}
+
+function ensureBannerSettingsCard() {
+  ensureProfileAndFriendsUi();
+  if (!settingsGrid || profileUi.settingsBannerCard) return;
+  const card = document.createElement('section');
+  card.className = 'settings-card';
+  card.id = 'settingsBannerCard';
+  card.innerHTML = `
+    <h4>Profile banner</h4>
+    <p class="settings-muted">Pick a solid or gradient banner for your profile panel. VIP custom banners can plug into this structure later.</p>
+    <div class="banner-picker-grid" id="settingsBannerGrid"></div>
+  `;
+  settingsGrid.appendChild(card);
+  profileUi.settingsBannerCard = card;
+  profileUi.settingsBannerGrid = card.querySelector('#settingsBannerGrid');
+}
+
+function renderBannerSettings(account = getCurrentAccount()) {
+  ensureBannerSettingsCard();
+  if (!profileUi.settingsBannerGrid) return;
+  const profile = authState.profiles[account?.uid] || {};
+  const activeBanner = mergeCloudProfileShape(profile).profileTheme.banner;
+  profileUi.settingsBannerGrid.innerHTML = PROFILE_BANNER_PRESETS.map((preset) => {
+    const active = preset.type === activeBanner.type && preset.value === activeBanner.value;
+    const style = preset.type === 'solid'
+      ? `background:${preset.value};`
+      : `background:${preset.value};`;
+    return `
+      <button class="banner-swatch${active ? ' is-active' : ''}" type="button" data-banner-preset="${escapeHtml(preset.id)}" aria-pressed="${active ? 'true' : 'false'}">
+        <span class="banner-swatch-preview" style="${style}"></span>
+        <span>${escapeHtml(preset.label)}</span>
+      </button>
+    `;
+  }).join('');
+}
+
+function applySelectedBannerPreset(presetId) {
+  const account = getCurrentAccount();
+  if (!account?.uid) {
+    setSettingsStatus('Log in to update your profile banner.', 'danger');
+    return;
+  }
+  const preset = PROFILE_BANNER_PRESETS.find((entry) => entry.id === String(presetId || '').trim());
+  if (!preset) {
+    setSettingsStatus('That banner preset is unavailable.', 'danger');
+    return;
+  }
+  const profile = mergeCloudProfileShape(authState.profiles[account.uid] || {});
+  profile.profileTheme = {
+    banner: {
+      type: preset.type,
+      value: preset.value,
+      label: preset.label,
+      updatedAt: Date.now(),
+    },
+  };
+  cacheProfileLocally(profile);
+  cacheResolvedProfile(profile);
+  if (window.PlayrProgression?.importProfile) {
+    window.PlayrProgression.importProfile(account, profile, { prefer: 'remote', emit: true });
+  }
+  renderBannerSettings(account);
+  setSettingsStatus('Profile banner updated.', 'success');
+}
+
+function openFriendsPanel() {
+  ensureProfileAndFriendsUi();
+  if (!profileUi.friendsOverlay) return;
+  if (!getCurrentAccount()) {
+    setAuthMode('login');
+    openAuthOverlay('Log in to use friends.');
+    return;
+  }
+  profileUi.friendsOverlay.hidden = false;
+  if (profileUi.friendsBtn) profileUi.friendsBtn.setAttribute('aria-expanded', 'true');
+  subscribeFriendsData();
+  renderFriendsPanel();
+  setFriendsPanelStatus('');
+}
+
+function closeFriendsPanel() {
+  if (!profileUi.friendsOverlay) return;
+  profileUi.friendsOverlay.hidden = true;
+  if (profileUi.friendsBtn) profileUi.friendsBtn.setAttribute('aria-expanded', 'false');
+  setFriendsPanelStatus('');
+  if (profileUi.profileOverlay?.hidden) {
+    closeFriendsSubscriptions();
+  }
+}
+
+async function openProfilePanel(target = {}) {
+  ensureProfileAndFriendsUi();
+  if (!profileUi.profileOverlay) return;
+  profileUi.profileOverlay.hidden = false;
+  profileUi.profileOverlay.dataset.profileUid = String(target.uid || '').trim();
+  profileUi.profileOverlay.dataset.profileName = String(target.displayName || '').trim();
+  profileUi.profileName.textContent = target.displayName || 'Loading...';
+  profileUi.profileMeta.textContent = 'Fetching profile...';
+  profileUi.profileStats.innerHTML = '<p class="settings-muted">Loading profile...</p>';
+  profileUi.profileWarnings.textContent = '';
+  profileUi.profileActionArea.innerHTML = '';
+  profileUi.profileModeration.hidden = true;
+  setProfilePanelStatus('');
+  subscribeFriendsData();
+  await renderOpenProfilePanel();
+}
+
+function closeProfilePanel() {
+  if (!profileUi.profileOverlay) return;
+  profileUi.profileOverlay.hidden = true;
+  profileUi.profileOverlay.dataset.profileUid = '';
+  profileUi.profileOverlay.dataset.profileName = '';
+  setProfilePanelStatus('');
+  if (profileUi.friendsOverlay?.hidden) {
+    closeFriendsSubscriptions();
+  }
+}
+
+async function renderOpenProfilePanel() {
+  if (!profileUi.profileOverlay || profileUi.profileOverlay.hidden) return;
+  const target = {
+    uid: profileUi.profileOverlay.dataset.profileUid || '',
+    displayName: profileUi.profileOverlay.dataset.profileName || '',
+  };
+  const profile = await resolveUserProfileRecord(target);
+  if (!profile) {
+    profileUi.profileMeta.textContent = 'Profile unavailable right now.';
+    profileUi.profileStats.innerHTML = '<p class="settings-muted">Could not load this profile.</p>';
+    return;
+  }
+  const merged = mergeCloudProfileShape(profile);
+  cacheResolvedProfile(merged);
+  const activeSeconds = Math.max(0, Number(merged?.progression?.totalActiveSeconds) || 0);
+  const warningCount = Math.max(0, Number(merged?.moderation?.warningCount) || 0);
+  const banner = merged?.profileTheme?.banner || getDefaultProfileBanner();
+  const rank = await computeXpLeaderboardRankForProfile(merged);
+  const relationship = getCurrentRelationshipStatus(merged.uid);
+  const currentAccount = getCurrentAccount();
+  const isSelf = Boolean(currentAccount?.uid && currentAccount.uid === merged.uid);
+  const ownerToolsVisible = isOwnerAccount(currentAccount) && !isSelf;
+  const isMuted = normalizeTimestampToMs(merged?.moderation?.mutedUntil) > Date.now();
+  const isBanned = Boolean(merged?.moderation?.ban?.active);
+
+  profileUi.profileOverlay.dataset.profileUid = String(merged.uid || '').trim();
+  profileUi.profileOverlay.dataset.profileName = merged.displayName || '';
+  profileUi.profileName.textContent = merged.displayName || 'Player';
+  profileUi.profileMeta.textContent = `Joined ${formatProfileDate(merged.createdAt)}${isBanned ? ' • Banned account' : ''}${isMuted ? ' • Muted' : ''}`;
+  profileUi.profileBanner.style.background = banner.value || getDefaultProfileBanner().value;
+  profileUi.profileStats.innerHTML = `
+    <div class="profile-stat-card">
+      <span>Favourite Game</span>
+      <strong>${escapeHtml(merged?.activity?.favoriteGameTitle || 'No active game data yet')}</strong>
+    </div>
+    <div class="profile-stat-card">
+      <span>Total Active Time</span>
+      <strong>${escapeHtml(formatDurationLabel(activeSeconds))}</strong>
+    </div>
+    <div class="profile-stat-card">
+      <span>XP Leaderboard Rank</span>
+      <strong>${rank ? `#${rank}` : 'Unranked'}</strong>
+    </div>
+    <div class="profile-stat-card">
+      <span>Banner</span>
+      <strong>${escapeHtml(banner.label || (banner.type === 'solid' ? 'Solid banner' : 'Gradient banner'))}</strong>
+    </div>
+  `;
+  profileUi.profileWarnings.innerHTML = `<strong>Warnings:</strong> <span>${warningCount}</span>`;
+
+  if (!currentAccount) {
+    profileUi.profileActionArea.innerHTML = '<button class="button secondary" type="button" data-open-login-from-profile="true">Log in to add friends</button>';
+  } else if (isSelf) {
+    profileUi.profileActionArea.innerHTML = '<span class="profile-pill">This is you</span>';
+  } else if (relationship === 'friends') {
+    profileUi.profileActionArea.innerHTML = '<span class="profile-pill">Already friends</span>';
+  } else if (relationship === 'outgoing') {
+    profileUi.profileActionArea.innerHTML = `<button class="button secondary" type="button" data-friend-cancel="${escapeHtml(merged.uid)}">Request Sent</button>`;
+  } else if (relationship === 'incoming') {
+    profileUi.profileActionArea.innerHTML = `
+      <button class="button primary" type="button" data-friend-accept="${escapeHtml(merged.uid)}">Accept Friend</button>
+      <button class="button secondary" type="button" data-friend-reject="${escapeHtml(merged.uid)}">Reject</button>
+    `;
+  } else {
+    profileUi.profileActionArea.innerHTML = `<button class="button primary" type="button" data-profile-add-friend="${escapeHtml(merged.uid)}">Add Friend</button>`;
+  }
+
+  profileUi.profileModeration.hidden = !ownerToolsVisible;
+  profileUi.profileModeration.dataset.targetUid = String(merged.uid || '');
+  if (ownerToolsVisible) {
+    if (profileUi.profileModerationMessage) {
+      profileUi.profileModerationMessage.value = isBanned
+        ? String(merged?.moderation?.ban?.reason || '')
+        : isMuted
+          ? String(merged?.moderation?.muteReason || '')
+          : '';
+    }
+    if (profileUi.profileMuteDuration) {
+      profileUi.profileMuteDuration.value = '60';
+    }
+    if (profileUi.profileUnmuteBtn) profileUi.profileUnmuteBtn.hidden = !isMuted;
+    if (profileUi.profileUnbanBtn) profileUi.profileUnbanBtn.hidden = !isBanned;
+    if (profileUi.profileMuteBtn) profileUi.profileMuteBtn.hidden = isBanned;
+    if (profileUi.profileBanBtn) profileUi.profileBanBtn.hidden = isBanned;
+  }
+}
+
+async function applyOwnerModerationAction(action) {
+  const account = getCurrentAccount();
+  if (!firebaseDb || !account?.uid || !isOwnerAccount(account) || !profileUi.profileModeration) return;
+  const targetUid = String(profileUi.profileModeration.dataset.targetUid || '').trim();
+  if (!targetUid) return;
+  const targetProfile = await resolveUserProfileRecord({ uid: targetUid, displayName: profileUi.profileOverlay?.dataset.profileName || '' });
+  if (!targetProfile) return;
+
+  const message = String(profileUi.profileModerationMessage?.value || '').trim();
+  const muteMinutes = Math.max(1, Math.floor(Number(profileUi.profileMuteDuration?.value) || 60));
+  const moderation = mergeCloudProfileShape(targetProfile).moderation;
+  const now = Date.now();
+
+  if (action === 'warn') {
+    moderation.warningCount = Math.max(0, Number(moderation.warningCount) || 0) + 1;
+    moderation.warnings = [...(Array.isArray(moderation.warnings) ? moderation.warnings : []), {
+      message: message || 'Owner warning issued.',
+      createdAt: now,
+      issuedByUid: account.uid,
+      issuedByName: account.displayName,
+    }].slice(-PROFILE_WARNING_HISTORY_LIMIT);
+  }
+  if (action === 'mute') {
+    moderation.mutedUntil = now + (muteMinutes * 60 * 1000);
+    moderation.muteReason = message || 'Muted by owner.';
+  }
+  if (action === 'unmute') {
+    moderation.mutedUntil = 0;
+    moderation.muteReason = '';
+  }
+  if (action === 'ban') {
+    moderation.ban = {
+      active: true,
+      reason: message || 'Banned by owner.',
+      bannedAt: now,
+      bannedByUid: account.uid,
+      bannedByName: account.displayName,
+    };
+    moderation.mutedUntil = 0;
+    moderation.muteReason = '';
+  }
+  if (action === 'unban') {
+    moderation.ban = {
+      active: false,
+      reason: '',
+      bannedAt: 0,
+      bannedByUid: '',
+      bannedByName: '',
+    };
+  }
+
+  const timestamp = window.firebase.firestore.FieldValue.serverTimestamp();
+  await firebaseDb.collection(USER_PROFILE_COLLECTION).doc(targetUid).set({
+    moderation,
+    updatedAt: timestamp,
+  }, { merge: true });
+
+  cacheProfileLocally({
+    ...targetProfile,
+    moderation,
+  });
+  cacheResolvedProfile({
+    ...targetProfile,
+    moderation,
+  });
+  setProfilePanelStatus(`Moderation action applied: ${action}.`, 'success');
+  await renderOpenProfilePanel();
 }
 
 function readSiteNoticeState() {
@@ -570,7 +1678,9 @@ function normalizeRoleName(role) {
 function buildAccountRoles({ roles = [], isVip = false, identifierType = 'unknown', identifier = '' } = {}) {
   const merged = new Set(
     Array.isArray(roles)
-      ? roles.map(normalizeRoleName).filter(Boolean)
+      ? roles
+        .map(normalizeRoleName)
+        .filter((role) => role && role !== 'owner' && role !== 'admin')
       : [],
   );
 
@@ -579,6 +1689,7 @@ function buildAccountRoles({ roles = [], isVip = false, identifierType = 'unknow
   }
 
   if (identifierType === 'email' && OWNER_VIP_IDENTIFIERS.has(normalizeAccountIdentifier(identifier))) {
+    merged.add('owner');
     merged.add('vip');
   }
 
@@ -600,7 +1711,10 @@ function hasAccountRole(account, roleName) {
 }
 
 function isCurrentAccountAdmin(account = getCurrentAccount()) {
-  return Boolean(account?.uid && OWNER_ADMIN_UIDS.has(account.uid));
+  return Boolean(
+    hasAccountRole(account, 'owner')
+    || (account?.uid && OWNER_ADMIN_UIDS.has(account.uid))
+  );
 }
 
 function isCurrentAccountVip(account = getCurrentAccount()) {
@@ -876,7 +1990,7 @@ function buildBlankLeaderboardRows(limit = 100) {
 function buildLevelsLeaderboardRows(limit = 100) {
   const progressionApi = getProgressionApi();
   const profiles = Object.values(readStoredProfiles())
-    .filter((profile) => profile && typeof profile === 'object' && String(profile.displayName || '').trim())
+    .filter((profile) => profile && typeof profile === 'object' && String(profile.displayName || '').trim() && !Boolean(profile?.moderation?.ban?.active))
     .map((profile) => {
       const xp = Math.max(0, Number(profile?.progression?.xp) || 0);
       const levelInfo = progressionApi?.getLevelInfoFromXp
@@ -1189,6 +2303,7 @@ const publishingFeatures = [
 ];
 
 const gameGrid = document.getElementById('gameGrid');
+const topbarControls = document.querySelector('.topbar-controls');
 const leaderboardTabs = document.getElementById('leaderboardTabs');
 const leaderboardCard = document.getElementById('leaderboardCard');
 const leaderboardRangeFilters = document.getElementById('leaderboardRangeFilters');
@@ -1250,6 +2365,7 @@ const systemMessage = document.getElementById('systemMessage');
 const systemCancelBtn = document.getElementById('systemCancelBtn');
 const systemConfirmBtn = document.getElementById('systemConfirmBtn');
 const settingsOverlay = document.getElementById('settingsOverlay');
+const settingsGrid = settingsOverlay?.querySelector('.settings-grid') || null;
 const settingsCloseBtn = document.getElementById('settingsCloseBtn');
 const settingsStatus = document.getElementById('settingsStatus');
 const settingsDisplayInput = document.getElementById('settingsDisplayInput');
@@ -1514,6 +2630,11 @@ function initOverscrollEasterEgg() {
 const authState = {
   profiles: readStoredProfiles(),
   currentUser: firebaseAuth?.currentUser || null,
+  profileSyncTimer: 0,
+  profileSyncUnsubscribe: null,
+  lastCloudLeaderboardSyncAt: 0,
+  cloudLeaderboardFetchInFlight: false,
+  suspendProgressionSyncUntil: 0,
 };
 
 const authUiState = {
@@ -1522,6 +2643,53 @@ const authUiState = {
   pendingRegistration: null,
   showPassword: false,
   nameCheckRequestId: 0,
+};
+
+const profileUi = {
+  injected: false,
+  friendsBtn: null,
+  friendsUnreadDot: null,
+  friendsOverlay: null,
+  friendsCloseBtn: null,
+  friendsStatus: null,
+  friendsList: null,
+  friendsIncoming: null,
+  friendsOutgoing: null,
+  friendsAddInput: null,
+  friendsAddBtn: null,
+  profileOverlay: null,
+  profileCloseBtn: null,
+  profileBanner: null,
+  profileName: null,
+  profileMeta: null,
+  profileStats: null,
+  profileWarnings: null,
+  profileStatus: null,
+  profileActionArea: null,
+  profileModeration: null,
+  profileModerationMessage: null,
+  profileMuteDuration: null,
+  profileWarnBtn: null,
+  profileMuteBtn: null,
+  profileBanBtn: null,
+  profileUnmuteBtn: null,
+  profileUnbanBtn: null,
+  settingsBannerCard: null,
+  settingsBannerGrid: null,
+};
+
+const profileCacheState = {
+  byLookup: {},
+};
+
+const socialState = {
+  loadedAt: 0,
+  friendDocs: {},
+  incomingRequests: {},
+  outgoingRequests: {},
+  friendshipsUnsub: null,
+  incomingUnsub: null,
+  outgoingUnsub: null,
 };
 
 function readStoredAdminOverrides() {
@@ -1892,6 +3060,9 @@ function getCurrentAccount() {
       email: Boolean(user.emailVerified),
       phone: Boolean(user.phoneNumber),
     },
+    moderation: storedProfile.moderation || null,
+    activity: storedProfile.activity || null,
+    profileTheme: storedProfile.profileTheme || null,
   };
   const progression = getProgressionSnapshotForAccount(baseAccount);
 
@@ -1957,6 +3128,7 @@ function syncLegacyAuthState() {
       isVip: isCurrentAccountVip(account),
       roles: account.roles || [],
       progression: account.progression || null,
+      moderation: account.moderation || null,
     }),
   );
 }
@@ -1985,6 +3157,7 @@ function exposePlayrAuth() {
           isVip,
           roles,
           progression: account.progression || null,
+          moderation: account.moderation || null,
         }
       : null,
     getCurrentUser() {
@@ -2000,6 +3173,7 @@ function exposePlayrAuth() {
         isVip: isCurrentAccountVip(liveAccount),
         roles: liveAccount.roles || [],
         progression: liveAccount.progression || null,
+        moderation: liveAccount.moderation || null,
       };
     },
     getProgressionSnapshot() {
@@ -2021,6 +3195,15 @@ function exposePlayrAuth() {
     },
     canAccessAdminControls() {
       return isCurrentAccountAdmin();
+    },
+    canInteract() {
+      return canCurrentAccountInteract(getCurrentAccount());
+    },
+    isMuted() {
+      return isCurrentAccountMuted(getCurrentAccount());
+    },
+    isBanned() {
+      return isCurrentAccountBanned(getCurrentAccount());
     },
     hasRole(roleName) {
       return hasAccountRole(getCurrentAccount(), roleName);
@@ -2371,6 +3554,7 @@ function openSettingsOverlay() {
   if (settingsShowPasswordsToggle) settingsShowPasswordsToggle.checked = false;
   setSettingsPasswordVisibility(false);
   renderSettingsProgression(account);
+  renderBannerSettings(account);
 
   const isAdmin = isCurrentAccountAdmin(account);
   const isOwner = isOwnerAccount(account);
@@ -2622,6 +3806,14 @@ async function logoutCurrentAccount() {
   }
 
   authState.currentUser = null;
+  stopCurrentUserProfileSubscription();
+  window.clearTimeout(authState.profileSyncTimer);
+  authState.profileSyncTimer = 0;
+  closeFriendsSubscriptions();
+  socialState.friendDocs = {};
+  socialState.incomingRequests = {};
+  socialState.outgoingRequests = {};
+  renderFriendsPanel();
   authUiState.pendingRegistration = null;
   authUiState.step = 'form';
   setAuthMode('signup');
@@ -2706,6 +3898,15 @@ function closeAuthOverlay() {
   if (!authOverlay) return;
   authOverlay.hidden = true;
   setAuthStatus('');
+}
+
+function showPendingBanNoticeIfNeeded() {
+  const reason = String(localStorage.getItem('playrBanNotice') || '').trim();
+  if (!reason) return;
+  localStorage.removeItem('playrBanNotice');
+  setAuthMode('login');
+  openAuthOverlay('This account is banned.');
+  setAuthStatus(reason, 'danger');
 }
 
 async function loginOrCreateAccount() {
@@ -3455,6 +4656,7 @@ function renderLeaderboard() {
   };
 
   if (uiState.activeLeaderboardRange === 'levels') {
+    void refreshCloudLeaderboardProfiles();
     const currentAccount = getCurrentAccount();
     const boardKey = '__levels__';
     const isExpanded = uiState.expandedLeaderboardByGame[boardKey] === true;
@@ -3816,6 +5018,8 @@ function setLeaderboardPanelVisible(visible) {
 function init() {
   const cleanupOverscrollEasterEgg = initOverscrollEasterEgg();
   applyPersistedAdminOverrides();
+  ensureProfileAndFriendsUi();
+  ensureBannerSettingsCard();
 
   if (firebaseAuth) {
     firebaseAuth.onAuthStateChanged((user) => {
@@ -3827,11 +5031,22 @@ function init() {
 
       if (user) {
         persistCurrentProfile();
+        subscribeToCurrentUserProfile(user);
         void syncCurrentAccountRolesToFirestore();
+        void syncCurrentAccountProfileToFirestore({ immediate: true });
+        if (isLeaderboardViewActive()) {
+          void refreshCloudLeaderboardProfiles({ force: true });
+        }
+      } else {
+        stopCurrentUserProfileSubscription();
+        closeFriendsSubscriptions();
       }
       syncLegacyAuthState();
       exposePlayrAuth();
       renderAuthUi();
+      if (!user) {
+        showPendingBanNoticeIfNeeded();
+      }
       refreshSettingsProgressionIfOpen();
       if (isLeaderboardViewActive()) {
         refreshGameViews();
@@ -3848,6 +5063,7 @@ function init() {
   refreshGameViews();
   if (isLeaderboardViewActive()) {
     updateLeaderboardAbout();
+    void refreshCloudLeaderboardProfiles();
   }
   scheduleNonCriticalHomepageWork();
   setLeaderboardPanelVisible(isLeaderboardViewActive());
@@ -4260,12 +5476,207 @@ function init() {
     });
   }
 
+  if (profileUi.friendsBtn) {
+    profileUi.friendsBtn.addEventListener('click', () => {
+      if (profileUi.friendsOverlay?.hidden) {
+        openFriendsPanel();
+      } else {
+        closeFriendsPanel();
+      }
+    });
+  }
+
+  if (profileUi.friendsCloseBtn) {
+    profileUi.friendsCloseBtn.addEventListener('click', closeFriendsPanel);
+  }
+
+  if (profileUi.profileCloseBtn) {
+    profileUi.profileCloseBtn.addEventListener('click', closeProfilePanel);
+  }
+
+  if (profileUi.friendsAddBtn) {
+    profileUi.friendsAddBtn.addEventListener('click', async () => {
+      const rawName = String(profileUi.friendsAddInput?.value || '').trim();
+      if (!rawName) {
+        setFriendsPanelStatus('Enter a display name first.', 'info');
+        return;
+      }
+      try {
+        const targetProfile = await resolveUserProfileRecord({ displayName: rawName });
+        if (!targetProfile?.uid) {
+          setFriendsPanelStatus('Could not find that player.', 'danger');
+          return;
+        }
+        await sendFriendRequestByProfile(targetProfile);
+        if (profileUi.friendsAddInput) profileUi.friendsAddInput.value = '';
+        setFriendsPanelStatus(`Friend request sent to ${targetProfile.displayName}.`, 'success');
+      } catch {
+        setFriendsPanelStatus('Could not send friend request right now.', 'danger');
+      }
+    });
+  }
+
+  if (profileUi.profileWarnBtn) {
+    profileUi.profileWarnBtn.addEventListener('click', () => {
+      void applyOwnerModerationAction('warn');
+    });
+  }
+
+  if (profileUi.profileMuteBtn) {
+    profileUi.profileMuteBtn.addEventListener('click', () => {
+      void applyOwnerModerationAction('mute');
+    });
+  }
+
+  if (profileUi.profileUnmuteBtn) {
+    profileUi.profileUnmuteBtn.addEventListener('click', () => {
+      void applyOwnerModerationAction('unmute');
+    });
+  }
+
+  if (profileUi.profileBanBtn) {
+    profileUi.profileBanBtn.addEventListener('click', () => {
+      void applyOwnerModerationAction('ban');
+    });
+  }
+
+  if (profileUi.profileUnbanBtn) {
+    profileUi.profileUnbanBtn.addEventListener('click', () => {
+      void applyOwnerModerationAction('unban');
+    });
+  }
+
+  document.addEventListener('click', (event) => {
+    const profileTrigger = event.target.closest('[data-profile-trigger="true"]');
+    if (profileTrigger) {
+      void openProfilePanel({
+        uid: profileTrigger.getAttribute('data-profile-uid') || '',
+        displayName: profileTrigger.getAttribute('data-profile-display-name') || '',
+      });
+      return;
+    }
+
+    const openProfileBtn = event.target.closest('[data-open-profile-uid], [data-open-profile-name]');
+    if (openProfileBtn) {
+      void openProfilePanel({
+        uid: openProfileBtn.getAttribute('data-open-profile-uid') || '',
+        displayName: openProfileBtn.getAttribute('data-open-profile-name') || '',
+      });
+      return;
+    }
+
+    const addFriendBtn = event.target.closest('[data-profile-add-friend]');
+    if (addFriendBtn) {
+      const targetUid = addFriendBtn.getAttribute('data-profile-add-friend') || '';
+      void resolveUserProfileRecord({
+        uid: targetUid,
+        displayName: profileUi.profileOverlay?.dataset.profileName || '',
+      }).then((targetProfile) => {
+        if (targetProfile) {
+          return sendFriendRequestByProfile(targetProfile);
+        }
+        return null;
+      }).catch(() => {
+        setProfilePanelStatus('Could not send friend request right now.', 'danger');
+      });
+      return;
+    }
+
+    const acceptBtn = event.target.closest('[data-friend-accept]');
+    if (acceptBtn) {
+      void respondToFriendRequest(acceptBtn.getAttribute('data-friend-accept') || '', 'accept')
+        .then(() => {
+          setFriendsPanelStatus('Friend request accepted.', 'success');
+          setProfilePanelStatus('Friend request accepted.', 'success');
+        })
+        .catch(() => {
+          setFriendsPanelStatus('Could not accept that request right now.', 'danger');
+        });
+      return;
+    }
+
+    const rejectBtn = event.target.closest('[data-friend-reject]');
+    if (rejectBtn) {
+      void respondToFriendRequest(rejectBtn.getAttribute('data-friend-reject') || '', 'reject')
+        .then(() => {
+          setFriendsPanelStatus('Friend request rejected.', 'info');
+          setProfilePanelStatus('Friend request rejected.', 'info');
+        })
+        .catch(() => {
+          setFriendsPanelStatus('Could not reject that request right now.', 'danger');
+        });
+      return;
+    }
+
+    const cancelBtn = event.target.closest('[data-friend-cancel]');
+    if (cancelBtn) {
+      void respondToFriendRequest(cancelBtn.getAttribute('data-friend-cancel') || '', 'cancel')
+        .then(() => {
+          setFriendsPanelStatus('Friend request cancelled.', 'info');
+          setProfilePanelStatus('Friend request cancelled.', 'info');
+        })
+        .catch(() => {
+          setFriendsPanelStatus('Could not cancel that request right now.', 'danger');
+        });
+      return;
+    }
+
+    const loginFromProfile = event.target.closest('[data-open-login-from-profile]');
+    if (loginFromProfile) {
+      setAuthMode('login');
+      openAuthOverlay('Log in to add friends.');
+      return;
+    }
+
+    const bannerPreset = event.target.closest('[data-banner-preset]');
+    if (bannerPreset) {
+      applySelectedBannerPreset(bannerPreset.getAttribute('data-banner-preset') || '');
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if ((event.key === 'Enter' || event.key === ' ') && event.target instanceof HTMLElement && event.target.matches('[data-profile-trigger="true"]')) {
+      event.preventDefault();
+      void openProfilePanel({
+        uid: event.target.getAttribute('data-profile-uid') || '',
+        displayName: event.target.getAttribute('data-profile-display-name') || '',
+      });
+    }
+    if (event.key === 'Escape') {
+      if (!profileUi.profileOverlay?.hidden) closeProfilePanel();
+      if (!profileUi.friendsOverlay?.hidden) closeFriendsPanel();
+    }
+  });
+
+  if (profileUi.profileOverlay) {
+    profileUi.profileOverlay.addEventListener('click', (event) => {
+      if (event.target === profileUi.profileOverlay) {
+        closeProfilePanel();
+      }
+    });
+  }
+
+  if (profileUi.friendsOverlay) {
+    profileUi.friendsOverlay.addEventListener('click', (event) => {
+      if (event.target === profileUi.friendsOverlay) {
+        closeFriendsPanel();
+      }
+    });
+  }
+
   window.addEventListener('playr-progression-changed', () => {
+    if (authState.currentUser && Date.now() >= authState.suspendProgressionSyncUntil) {
+      void syncCurrentAccountProfileToFirestore();
+    }
     if (!settingsOverlay?.hidden) {
       renderSettingsProgression(getCurrentAccount());
+      renderBannerSettings(getCurrentAccount());
     }
     if (uiState.activeLeaderboardRange === 'levels') {
       renderLeaderboard();
+    }
+    if (!profileUi.profileOverlay?.hidden) {
+      void renderOpenProfilePanel();
     }
   });
 

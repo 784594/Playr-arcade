@@ -1,6 +1,33 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-27-profile-friends-moderation',
+      title: 'Profiles, friends, and moderation',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-27T19:20:00-04:00',
+      summary: 'PlayR now has lazy-loaded user profiles, a dedicated friends panel, profile banners, favourite game tracking, and owner-driven account moderation tools.',
+      details: [
+        'Clicking a display name now opens a profile panel that shows join date, favourite game, total active time, XP leaderboard rank, public warning count, and the player banner.',
+        'A new header friends button now opens incoming requests, outgoing requests, and current friendships, while profile panels can send or accept friend requests directly.',
+        'The trusted owner account can now warn, mute, ban, unmute, and unban accounts from profile panels, with moderation state saved to the shared account profile document.',
+      ],
+    },
+    {
+      id: 'site-notice-2026-04-27-xp-cloud-sync',
+      title: 'XP cloud sync',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-27T17:10:00-04:00',
+      summary: 'Signed-in account progression now syncs through Firestore so XP can follow the account across devices and feed the shared XP leaderboard.',
+      details: [
+        'PlayR now saves signed-in progression snapshots to the account profile document and rehydrates them when that account signs in again.',
+        'The Levels leaderboard now refreshes from cloud-backed account profile data instead of only relying on the current browser cache.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-27-xp-hard-cap-safeguard',
       title: 'XP hard cap safeguard',
       category: 'update',
