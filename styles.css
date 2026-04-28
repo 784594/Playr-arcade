@@ -1692,7 +1692,17 @@ a {
 }
 
 .game-grid-more-btn {
-  min-width: 180px;
+  min-width: 240px;
+  padding: 0 28px;
+  color: #06101b;
+  border-color: rgba(124, 240, 197, 0.3);
+  background: linear-gradient(135deg, var(--accent), #d8ff84);
+  box-shadow: 0 14px 34px rgba(124, 240, 197, 0.26);
+}
+
+.game-grid-more-btn:hover,
+.game-grid-more-btn:focus-visible {
+  border-color: rgba(124, 240, 197, 0.45);
 }
 
 .publishing-grid {
