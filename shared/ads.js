@@ -1967,6 +1967,8 @@
   function maybeApplyReferralQualification(profile) {
     if (!profile?.progression?.referral) return false;
     if (profile.progression.referral.hasQualifiedSelf) return false;
+    const signupCaptchaVerifiedAt = Math.max(0, Number(profile?.signupCaptcha?.verifiedAt) || 0);
+    if (!signupCaptchaVerifiedAt) return false;
 
     const levelInfo = getLevelInfoFromXp(profile.progression.xp);
     const distinctDays = Array.isArray(profile.progression.distinctDaysPlayed) ? profile.progression.distinctDaysPlayed.length : 0;

@@ -11,7 +11,7 @@
       details: [
         'Draw It adds four canvas modes: 16:9 wallpaper, 20:9 wallpaper, freeform expansion, and the site profile-banner size, with finished previews plus PNG/JPEG/WEBP downloads.',
         'Profile settings now support saved custom banner art, while applying those custom banners remains a VIP-only option with a live preview and referral-progress upsell toward the 25-referral VIP path.',
-        'Owner moderation tools inside profiles now stay collapsed until Warn, Mute, or Ban is chosen, and the shared header/leaderboard page navigation was tightened so the tabs stay on one line more reliably.',
+        'Owner moderation tools inside profiles now stay collapsed until Warn, Mute, or Ban is chosen, the shared header/leaderboard page navigation was tightened so the tabs stay on one line more reliably, and first-time signup can now be gated behind a server-verified captcha to cut down fake referrals.',
       ],
     },
     {

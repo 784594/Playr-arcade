@@ -189,6 +189,7 @@ const firebaseApp = window.firebase?.apps?.length
 
 const firebaseAuth = firebaseApp && window.firebase?.auth ? window.firebase.auth() : null;
 const firebaseDb = firebaseApp && window.firebase?.firestore ? window.firebase.firestore() : null;
+const firebaseFunctions = firebaseApp && window.firebase?.functions ? window.firebase.functions() : null;
 
 if (firebaseDb) {
   try {
@@ -2770,6 +2771,9 @@ const authNameIndicator = document.getElementById('authNameIndicator');
 const authPinInput = document.getElementById('authPinInput');
 const authPinToggleBtn = document.getElementById('authPinToggleBtn');
 const authPinLabel = document.querySelector('label[for="authPinInput"]');
+const authCaptchaShell = document.getElementById('authCaptchaShell');
+const authCaptchaContainer = document.getElementById('authCaptchaContainer');
+const authCaptchaNote = document.getElementById('authCaptchaNote');
 const authContinueBtn = document.getElementById('authContinueBtn');
 const authModeToggleBtn = document.getElementById('authModeToggleBtn');
 const authStatus = document.getElementById('authStatus');
@@ -3069,6 +3073,11 @@ const authUiState = {
   pendingRegistration: null,
   showPassword: false,
   nameCheckRequestId: 0,
+  captchaToken: '',
+  captchaWidgetId: null,
+  captchaVerifiedAt: 0,
+  captchaVerificationId: '',
+  captchaRenderPending: false,
 };
 
 const profileUi = {
@@ -3710,6 +3719,144 @@ function setAuthStatus(message, tone = 'info') {
   authStatus.style.color = tone === 'danger' ? '#ff9cb1' : tone === 'success' ? '#9ff5cb' : '#d2e5ff';
 }
 
+function getCaptchaConfig() {
+  const config = window.PlayrCaptchaConfig && typeof window.PlayrCaptchaConfig === 'object'
+    ? window.PlayrCaptchaConfig
+    : {};
+  return {
+    provider: String(config.provider || 'turnstile').trim().toLowerCase(),
+    turnstileEnabled: Boolean(config.turnstileEnabled),
+    turnstileSiteKey: String(config.turnstileSiteKey || '').trim(),
+  };
+}
+
+function resetSignupCaptchaState({ resetWidget = true } = {}) {
+  authUiState.captchaToken = '';
+  authUiState.captchaVerifiedAt = 0;
+  authUiState.captchaVerificationId = '';
+  const turnstileApi = window.turnstile;
+  if (resetWidget && turnstileApi && authUiState.captchaWidgetId != null) {
+    try {
+      turnstileApi.reset(authUiState.captchaWidgetId);
+    } catch {
+      // Ignore widget reset issues and let the next render attempt recover.
+    }
+  }
+}
+
+function shouldRequireSignupCaptcha() {
+  const config = getCaptchaConfig();
+  return authUiState.mode === 'signup'
+    && config.provider === 'turnstile'
+    && config.turnstileEnabled
+    && Boolean(config.turnstileSiteKey);
+}
+
+function renderSignupCaptchaIfNeeded() {
+  if (!authCaptchaShell || !authCaptchaContainer) return;
+  const config = getCaptchaConfig();
+  const shouldShow = shouldRequireSignupCaptcha();
+  authCaptchaShell.hidden = !shouldShow;
+  if (!shouldShow) {
+    resetSignupCaptchaState({ resetWidget: true });
+    return;
+  }
+  if (!window.turnstile || typeof window.turnstile.render !== 'function') {
+    if (authCaptchaNote) {
+      authCaptchaNote.textContent = 'Captcha is still loading. Please wait a moment.';
+    }
+    authUiState.captchaRenderPending = true;
+    return;
+  }
+  authUiState.captchaRenderPending = false;
+  if (authCaptchaNote) {
+    authCaptchaNote.textContent = 'Complete the captcha before creating your first account. This helps block fake referrals.';
+  }
+  if (authUiState.captchaWidgetId == null) {
+    authCaptchaContainer.innerHTML = '';
+    authUiState.captchaWidgetId = window.turnstile.render(authCaptchaContainer, {
+      sitekey: config.turnstileSiteKey,
+      theme: 'dark',
+      size: 'flexible',
+      callback(token) {
+        authUiState.captchaToken = String(token || '').trim();
+        authUiState.captchaVerifiedAt = Date.now();
+        if (authCaptchaNote) {
+          authCaptchaNote.textContent = 'Captcha completed. You can create the account now.';
+        }
+      },
+      'expired-callback': function expiredCallback() {
+        authUiState.captchaToken = '';
+        authUiState.captchaVerifiedAt = 0;
+        if (authCaptchaNote) {
+          authCaptchaNote.textContent = 'Captcha expired. Please complete it again.';
+        }
+      },
+      'error-callback': function errorCallback() {
+        authUiState.captchaToken = '';
+        authUiState.captchaVerifiedAt = 0;
+        if (authCaptchaNote) {
+          authCaptchaNote.textContent = 'Captcha could not load cleanly. Please retry.';
+        }
+        return true;
+      },
+    });
+    return;
+  }
+  resetSignupCaptchaState({ resetWidget: false });
+  try {
+    window.turnstile.reset(authUiState.captchaWidgetId);
+  } catch {
+    authUiState.captchaWidgetId = null;
+    renderSignupCaptchaIfNeeded();
+  }
+}
+
+async function verifySignupCaptchaToken() {
+  if (!shouldRequireSignupCaptcha()) {
+    return { ok: true, result: null };
+  }
+  const token = String(authUiState.captchaToken || '').trim();
+  if (!token) {
+    return { ok: false, message: 'Complete the captcha before creating your account.' };
+  }
+  if (!firebaseFunctions) {
+    return { ok: false, message: 'Firebase Functions is not available for captcha verification on this page.' };
+  }
+  try {
+    const callable = firebaseFunctions.httpsCallable('verifySignupCaptcha');
+    const response = await callable({
+      token,
+      action: 'signup',
+      loginName: String(authIdentifierInput?.value || '').trim(),
+    });
+    const data = response?.data || {};
+    if (!data.success) {
+      resetSignupCaptchaState({ resetWidget: true });
+      return { ok: false, message: 'Captcha verification failed. Please try again.' };
+    }
+    authUiState.captchaVerificationId = String(data.verificationId || '').trim();
+    return { ok: true, result: data };
+  } catch {
+    resetSignupCaptchaState({ resetWidget: true });
+    return { ok: false, message: 'Captcha verification could not be completed. Please try again.' };
+  }
+}
+
+async function claimVerifiedSignupCaptcha(verificationId) {
+  const safeVerificationId = String(verificationId || '').trim();
+  if (!safeVerificationId || !firebaseFunctions) {
+    return { ok: false };
+  }
+  try {
+    const callable = firebaseFunctions.httpsCallable('claimSignupCaptchaVerification');
+    const response = await callable({ verificationId: safeVerificationId });
+    return { ok: Boolean(response?.data?.success) };
+  } catch {
+    return { ok: false };
+  }
+}
+
 function setAuthNameIndicator(state = 'idle') {
   if (!authNameIndicator) return;
   authNameIndicator.dataset.state = state;
@@ -3795,6 +3942,7 @@ function toggleAuthMode() {
   if (authPinInput) authPinInput.value = '';
   if (authIdentifierInput) authIdentifierInput.value = '';
   authUiState.nameCheckRequestId += 1;
+  resetSignupCaptchaState({ resetWidget: true });
   setAuthNameIndicator('idle');
   setAuthPasswordVisibility(false);
   setAuthStatus('', 'info');
@@ -4307,6 +4455,7 @@ function renderAuthUi() {
         ? 'Need a new account? Sign up'
         : 'Already have an account?';
     }
+    renderSignupCaptchaIfNeeded();
     if (authIdentifierInput) authIdentifierInput.disabled = false;
     if (authPinInput) authPinInput.disabled = false;
     setAuthPasswordVisibility(authUiState.showPassword);
@@ -4318,6 +4467,7 @@ function renderAuthUi() {
     authDescription.textContent = `You are logged in as ${account.displayName}.`;
   }
   authFormSection.hidden = true;
+  if (authCaptchaShell) authCaptchaShell.hidden = true;
   setAuthNameIndicator('idle');
 }
 
@@ -4334,6 +4484,7 @@ function openAuthOverlay(prefillMessage = '') {
 function closeAuthOverlay() {
   if (!authOverlay) return;
   authOverlay.hidden = true;
+  resetSignupCaptchaState({ resetWidget: true });
   setAuthStatus('');
 }
 
@@ -4367,6 +4518,7 @@ async function loginOrCreateAccount() {
   }
 
   const pin = String(authPinInput?.value || '').trim();
+  const captchaConfig = getCaptchaConfig();
 
   if (authUiState.mode === 'login' && !pin) {
     setAuthStatus('Enter your password to log in.', 'danger');
@@ -4426,6 +4578,11 @@ async function loginOrCreateAccount() {
       return;
     }
 
+    if (captchaConfig.turnstileEnabled && !captchaConfig.turnstileSiteKey) {
+      setAuthStatus('Signup captcha is enabled but the Turnstile site key is not configured yet.', 'danger');
+      return;
+    }
+
     if (normalized.type !== 'displayName') {
       setAuthStatus('Use a login name (letters/numbers), not an email.', 'danger');
       return;
@@ -4451,10 +4608,17 @@ async function loginOrCreateAccount() {
 
     setAuthNameIndicator('valid');
 
+    const captchaVerification = await verifySignupCaptchaToken();
+    if (!captchaVerification.ok) {
+      setAuthStatus(captchaVerification.message, 'danger');
+      return;
+    }
+
     const signupIdentifier = normalized.type === 'email'
       ? normalized.value
       : createSyntheticSignupEmail(displayName);
 
+    let captchaClaimed = false;
     const credential = await firebaseAuth.createUserWithEmailAndPassword(signupIdentifier, pin);
     if (credential?.user) {
       try {
@@ -4466,14 +4630,35 @@ async function loginOrCreateAccount() {
       await credential.user.updateProfile({ displayName });
       authState.currentUser = credential.user;
       persistCurrentProfile(displayName);
+      const captchaClaim = await claimVerifiedSignupCaptcha(captchaVerification.result?.verificationId || authUiState.captchaVerificationId);
+      if (captchaClaim.ok) {
+        captchaClaimed = true;
+        cacheProfileLocally({
+          ...(authState.profiles[credential.user.uid] || {}),
+          uid: credential.user.uid,
+          displayName,
+          signupCaptcha: {
+            provider: 'turnstile',
+            verifiedAt: Date.now(),
+            hostname: String(captchaVerification.result?.hostname || '').trim(),
+            action: 'signup',
+          },
+        });
+      }
     }
 
     authUiState.pendingRegistration = null;
     authUiState.step = 'form';
+    resetSignupCaptchaState({ resetWidget: true });
     closeAuthOverlay();
     hideClaimOverlay();
     renderAuthUi();
-    setAuthStatus('Account created. Keep your password safe because recovery is currently disabled.', 'success');
+    setAuthStatus(
+      captchaClaimed
+        ? 'Account created. Keep your password safe because recovery is currently disabled.'
+        : 'Account created, but captcha verification could not be finalized. This account will not count toward referral qualification until that server step is working.',
+      captchaClaimed ? 'success' : 'info',
+    );
   } catch (error) {
     const fallback = error?.code
       ? `Could not continue auth (${error.code}).`
@@ -5808,6 +5993,12 @@ function init() {
   window.addEventListener('resize', () => {
     if (uiState.notificationsOpen) {
       positionNotificationsDropdown();
+    }
+  });
+
+  window.addEventListener('load', () => {
+    if (!authOverlay?.hidden || authUiState.mode === 'signup') {
+      renderSignupCaptchaIfNeeded();
     }
   });
 

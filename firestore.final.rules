@@ -90,6 +90,11 @@ service cloud.firestore {
           || request.resource.data.verified is map
         )
         && (
+          !('signupCaptcha' in request.resource.data)
+          || request.resource.data.signupCaptcha == null
+          || request.resource.data.signupCaptcha is map
+        )
+        && (
           !('profileTheme' in request.resource.data)
           || request.resource.data.profileTheme == null
           || request.resource.data.profileTheme is map
@@ -115,12 +120,23 @@ service cloud.firestore {
         || request.resource.data.moderation == resource.data.moderation;
     }
 
+    function selfProfileSignupCaptchaUnchanged() {
+      return !('signupCaptcha' in request.resource.data)
+        || !('signupCaptcha' in resource.data)
+        || request.resource.data.signupCaptcha == resource.data.signupCaptcha;
+    }
+
     function selfProfileRolesAllowed() {
       return !('roles' in request.resource.data)
         || (
           request.resource.data.roles is list
           && !hasRestrictedRoles(request.resource.data.roles)
         );
+    }
+
+    function selfProfileSignupCaptchaAbsentOnCreate() {
+      return !('signupCaptcha' in request.resource.data)
+        || request.resource.data.signupCaptcha == null;
     }
 
     function validFriendRequestDoc() {
@@ -807,17 +823,23 @@ service cloud.firestore {
       allow read: if true;
       allow create: if (isOwner(uid) || isTrustedOwner())
         && validUserProfileDoc(uid)
+        && (isTrustedOwner() || selfProfileSignupCaptchaAbsentOnCreate())
         && (isTrustedOwner() || selfProfileRolesAllowed());
       allow update: if validUserProfileDoc(uid) && (
         (
           isOwner(uid)
           && resource.data.uid == request.auth.uid
           && selfProfileModerationUnchanged()
+          && selfProfileSignupCaptchaUnchanged()
           && selfProfileRolesAllowed()
         )
         || isTrustedOwner()
       );
       allow delete: if isOwner(uid) || isTrustedOwner();
+    }
+
+    match /captchaVerifications/{verificationId} {
+      allow read, write: if false;
     }
 
     match /friendRequests/{requestId} {

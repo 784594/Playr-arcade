@@ -502,6 +502,24 @@ a {
   outline: none;
 }
 
+.auth-captcha-shell {
+  display: grid;
+  gap: 10px;
+}
+
+.auth-captcha-container {
+  min-height: 66px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(8, 14, 26, 0.56);
+}
+
+.auth-captcha-note {
+  margin: 0;
+  line-height: 1.55;
+}
+
 
 .auth-status {
   min-height: 1.5em;
