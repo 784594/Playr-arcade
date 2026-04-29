@@ -21,6 +21,7 @@
   const POINTER_EDGE_EXPAND_MARGIN = 90;
   const FREEFORM_EXPAND_BY = 220;
   const MAX_RECENT_DRAWS = 10;
+  const MAX_HISTORY_ENTRIES = 80;
 
   const state = {
     mode: 'wallpaper-pc',
@@ -56,6 +57,7 @@
     firebaseAuth: null,
     firestore: null,
     toastTimer: null,
+    history: [],
   };
 
   const ui = {};
@@ -252,7 +254,51 @@
         imageEl: undefined,
       })),
       lastSavedAt: state.lastSavedAt,
+      hasUnsavedWork: state.hasUnsavedWork,
     };
+  }
+
+  function pushHistorySnapshot() {
+    state.history.push(structuredClone(snapshotState()));
+    if (state.history.length > MAX_HISTORY_ENTRIES) {
+      state.history.splice(0, state.history.length - MAX_HISTORY_ENTRIES);
+    }
+  }
+
+  async function restoreSnapshot(snapshot) {
+    if (!snapshot || typeof snapshot !== 'object') return false;
+    state.mode = MODE_CONFIG[snapshot.mode] ? snapshot.mode : 'wallpaper-pc';
+    state.canvasWidth = Math.max(300, Number(snapshot.canvasWidth) || getModeConfig(state.mode).width);
+    state.canvasHeight = Math.max(220, Number(snapshot.canvasHeight) || getModeConfig(state.mode).height);
+    state.tool = String(snapshot.tool || 'brush');
+    state.background = sanitizeBackground(snapshot.background);
+    state.objects = Array.isArray(snapshot.objects) ? snapshot.objects.map(sanitizeObject).filter(Boolean) : [];
+    state.selectedIds.clear();
+    state.currentStroke = null;
+    state.dragging = null;
+    state.lastSavedAt = Math.max(0, Number(snapshot.lastSavedAt) || 0);
+    state.hasUnsavedWork = Boolean(snapshot.hasUnsavedWork);
+    ui.backgroundModeSelect.value = state.background.mode;
+    ui.backgroundColorInput.value = state.background.color;
+    ui.backgroundAngleInput.value = String(state.background.angle);
+    await preloadImages();
+    setMode(state.mode, { preserveObjects: true, markChanged: false });
+    updateBackgroundModeUi();
+    renderBackgroundStops();
+    updateMeta();
+    updateCanvasCursor();
+    renderScene();
+    updateStatus('Undid last change.');
+    return true;
+  }
+
+  function undoLastChange() {
+    const snapshot = state.history.pop();
+    if (!snapshot) {
+      updateStatus('Nothing to undo yet.');
+      return;
+    }
+    void restoreSnapshot(snapshot);
   }
 
   function structuredClone(value) {
@@ -274,7 +320,7 @@
     state.background = sanitizeBackground(draft.background);
     state.objects = draft.objects.map(sanitizeObject).filter(Boolean);
     state.lastSavedAt = Math.max(0, Number(draft.lastSavedAt) || 0);
-    state.hasUnsavedWork = state.objects.length > 0;
+    state.hasUnsavedWork = Boolean(draft.hasUnsavedWork);
     return true;
   }
 
@@ -637,6 +683,10 @@
 
   function setMode(mode, { preserveObjects = true, markChanged = true } = {}) {
     const config = getModeConfig(mode);
+    const modeChanged = state.mode !== mode;
+    if (markChanged && modeChanged) {
+      pushHistorySnapshot();
+    }
     state.mode = mode;
     state.canvasWidth = config.width;
     state.canvasHeight = config.height;
@@ -654,7 +704,7 @@
     renderScene();
     updateMeta();
     updateStatus();
-    if (markChanged) {
+    if (markChanged && modeChanged) {
       markDirty();
     }
   }
@@ -662,7 +712,7 @@
   function updateStatus(text) {
     const fallback = {
       brush: 'Brush on the canvas to draw strokes.',
-      eraser: 'Erase parts of the canvas with soft removal strokes.',
+      eraser: 'Touch any object to erase the whole object.',
       select: 'Click an object to select it. Shift-click adds more.',
       move: 'Drag the current selection to reposition it.',
       fill: 'Use Fill to apply your current background settings instantly.',
@@ -825,6 +875,19 @@
     state.objects.push(stroke);
   }
 
+  function eraseObjectsAtPoint(point) {
+    const hitIds = hitTest(point);
+    if (!hitIds.length) return false;
+    const beforeCount = state.objects.length;
+    state.objects = state.objects.filter((item) => !hitIds.includes(item.id));
+    hitIds.forEach((id) => state.selectedIds.delete(id));
+    if (state.objects.length === beforeCount) return false;
+    markDirty();
+    updateMeta();
+    renderScene();
+    return true;
+  }
+
   function extendStroke(point) {
     if (!state.currentStroke) return;
     if (state.currentStroke.drawMode === 'pixel') {
@@ -853,6 +916,7 @@
       if (!hitIds.length) return false;
       setSelection(hitIds);
     }
+    pushHistorySnapshot();
     state.dragging = {
       kind: 'move',
       startPoint: point,
@@ -880,7 +944,10 @@
     updateMeta();
   }
 
-  function applyFill() {
+  function applyFill({ captureHistory = true } = {}) {
+    if (captureHistory) {
+      pushHistorySnapshot();
+    }
     state.background.mode = ui.backgroundModeSelect.value === 'gradient' ? 'gradient' : 'solid';
     state.background.color = normalizeHex(ui.backgroundColorInput.value, '#ffffff');
     state.background.angle = clamp(Number(ui.backgroundAngleInput.value) || 135, 0, 360);
@@ -900,15 +967,17 @@
   function applyStyleToSelection() {
     const style = createStrokeStyle();
     let updated = 0;
+    const strokes = getSelectedObjects().filter((item) => item.type === 'stroke' && !item.erase);
+    if (!strokes.length) {
+      updateStatus('Select one or more strokes first to recolour them.');
+      return;
+    }
+    pushHistorySnapshot();
     getSelectedObjects().forEach((item) => {
       if (item.type !== 'stroke' || item.erase) return;
       item.style = { ...style };
       updated += 1;
     });
-    if (!updated) {
-      updateStatus('Select one or more strokes first to recolour them.');
-      return;
-    }
     renderScene();
     markDirty();
     updateStatus(`Updated ${updated} selected stroke${updated === 1 ? '' : 's'}.`);
@@ -920,6 +989,7 @@
       updateStatus('Select at least two objects before grouping.');
       return;
     }
+    pushHistorySnapshot();
     const groupId = uid('group');
     selected.forEach((item) => {
       item.groupId = groupId;
@@ -933,6 +1003,7 @@
   function ungroupSelection() {
     const selected = getSelectedObjects();
     if (!selected.length) return;
+    pushHistorySnapshot();
     selected.forEach((item) => {
       item.groupId = '';
     });
@@ -944,6 +1015,7 @@
 
   function deleteSelection() {
     if (!state.selectedIds.size) return;
+    pushHistorySnapshot();
     state.objects = state.objects.filter((item) => !state.selectedIds.has(item.id));
     state.selectedIds.clear();
     markDirty();
@@ -953,6 +1025,7 @@
   }
 
   function addBackgroundStop() {
+    pushHistorySnapshot();
     state.background.mode = 'gradient';
     ui.backgroundModeSelect.value = 'gradient';
     const lastOffset = state.background.stops.length
@@ -974,6 +1047,7 @@
       updateStatus('Keep at least two gradient stops.');
       return;
     }
+    pushHistorySnapshot();
     state.background.stops = state.background.stops.filter((stop) => stop.id !== stopId);
     renderBackgroundStops();
     updateBackgroundModeUi();
@@ -1071,6 +1145,19 @@
     state.background.stops.sort((a, b) => a.offset - b.offset);
     renderScene();
     markDirty();
+  }
+
+  function beginBackgroundEdit() {
+    if (!state.dragging || state.dragging.kind !== 'background-edit') {
+      pushHistorySnapshot();
+      state.dragging = { kind: 'background-edit' };
+    }
+  }
+
+  function endBackgroundEdit() {
+    if (state.dragging?.kind === 'background-edit') {
+      state.dragging = null;
+    }
   }
 
   function downloadDataUrl(dataUrl, fileName) {
@@ -1186,6 +1273,7 @@
   }
 
   function clearScene() {
+    pushHistorySnapshot();
     state.objects = [];
     state.selectedIds.clear();
     state.currentStroke = null;
@@ -1214,6 +1302,7 @@
       if (!src.startsWith('data:image/')) return;
       const image = new Image();
       image.onload = () => {
+        pushHistorySnapshot();
         const maxWidth = state.canvasWidth * 0.52;
         const maxHeight = state.canvasHeight * 0.52;
         const ratio = Math.min(maxWidth / image.width, maxHeight / image.height, 1);
@@ -1246,6 +1335,10 @@
   function updateSelectedImageScale(percent) {
     const selectedImage = getSingleSelectedImage();
     if (!selectedImage) return;
+    if (!state.dragging || state.dragging.kind !== 'image-scale') {
+      pushHistorySnapshot();
+      state.dragging = { kind: 'image-scale' };
+    }
     const safeScale = clamp(Number(percent) || 100, 20, 250);
     selectedImage.scale = safeScale;
     selectedImage.width = Math.round(selectedImage.baseWidth * (safeScale / 100));
@@ -1367,13 +1460,19 @@
   function handleCanvasPointerDown(event) {
     const point = getCanvasPoint(event);
     if (state.tool === 'brush') {
+      pushHistorySnapshot();
       beginStroke(point, false);
       renderScene();
       return;
     }
     if (state.tool === 'eraser') {
-      beginStroke(point, true);
-      renderScene();
+      pushHistorySnapshot();
+      if (!eraseObjectsAtPoint(point)) {
+        state.history.pop();
+        updateStatus('Touch an object to erase it.');
+      } else {
+        updateStatus('Object erased.');
+      }
       return;
     }
     if (state.tool === 'fill') {
@@ -1407,6 +1506,10 @@
       extendStroke(point);
       return;
     }
+    if (state.tool === 'eraser' && (event.buttons & 1) === 1) {
+      eraseObjectsAtPoint(point);
+      return;
+    }
     if (state.dragging?.kind === 'move') {
       handleMove(point);
     }
@@ -1426,10 +1529,15 @@
       endMove();
       return;
     }
+    if (state.dragging?.kind === 'image-scale') {
+      state.dragging = null;
+      return;
+    }
     if (state.dragging?.kind === 'stroke-stop') {
       state.dragging = null;
       renderStrokeStops();
     }
+    endBackgroundEdit();
   }
 
   function bindEvents() {
@@ -1489,6 +1597,7 @@
     ui.deleteSelectionBtn.addEventListener('click', deleteSelection);
     ui.addBackgroundStopBtn.addEventListener('click', addBackgroundStop);
     ui.backgroundStopsList.addEventListener('input', (event) => {
+      beginBackgroundEdit();
       const colorTarget = event.target.closest('[data-stop-color]');
       if (colorTarget) {
         updateBackgroundStop(colorTarget.getAttribute('data-stop-color') || '', 'color', colorTarget.value);
@@ -1499,6 +1608,7 @@
         updateBackgroundStop(offsetTarget.getAttribute('data-stop-offset') || '', 'offset', offsetTarget.value);
       }
     });
+    ui.backgroundStopsList.addEventListener('change', endBackgroundEdit);
     ui.backgroundStopsList.addEventListener('click', (event) => {
       const button = event.target.closest('[data-remove-stop]');
       if (!button) return;
@@ -1549,6 +1659,7 @@
     });
 
     ui.backgroundModeSelect.addEventListener('change', () => {
+      pushHistorySnapshot();
       if (ui.backgroundModeSelect.value === 'gradient' && state.background.stops.length < 2) {
         state.background.stops = [
           { id: uid('bg-stop'), offset: 0, color: state.background.color },
@@ -1556,10 +1667,14 @@
         ];
       }
       updateBackgroundModeUi();
-      applyFill();
+      applyFill({ captureHistory: false });
     });
-    ui.backgroundColorInput.addEventListener('input', applyFill);
-    ui.backgroundAngleInput.addEventListener('input', applyFill);
+    ui.backgroundColorInput.addEventListener('pointerdown', beginBackgroundEdit);
+    ui.backgroundAngleInput.addEventListener('pointerdown', beginBackgroundEdit);
+    ui.backgroundColorInput.addEventListener('input', () => applyFill({ captureHistory: false }));
+    ui.backgroundAngleInput.addEventListener('input', () => applyFill({ captureHistory: false }));
+    ui.backgroundColorInput.addEventListener('change', endBackgroundEdit);
+    ui.backgroundAngleInput.addEventListener('change', endBackgroundEdit);
 
     document.querySelectorAll('a[href]').forEach((anchor) => {
       anchor.addEventListener('click', (event) => {
@@ -1596,6 +1711,19 @@
       if (!state.hasUnsavedWork) return;
       event.preventDefault();
       event.returnValue = '';
+    });
+    window.addEventListener('keydown', (event) => {
+      if ((event.ctrlKey || event.metaKey) && !event.shiftKey && String(event.key || '').toLowerCase() === 'z') {
+        const activeTag = String(document.activeElement?.tagName || '').toLowerCase();
+        if (activeTag === 'input' || activeTag === 'textarea' || document.activeElement?.isContentEditable) {
+          const inputType = String(document.activeElement?.type || '').toLowerCase();
+          if (inputType !== 'range' && inputType !== 'color' && inputType !== 'number') {
+            return;
+          }
+        }
+        event.preventDefault();
+        undoLastChange();
+      }
     });
   }
 

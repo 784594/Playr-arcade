@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-28-draw-it-object-eraser-and-undo',
+      title: 'Draw It object eraser and undo support',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-28T23:20:00-04:00',
+      summary: 'Draw It now erases full objects instead of painting white over them, and Ctrl+Z can step back the latest edit.',
+      details: [
+        'The eraser now removes an entire touched object at once, so a completed brush line disappears as one object instead of leaving white paint over the canvas.',
+        'Draw It now supports Ctrl+Z undo for recent edits, including strokes, object erases, movement, imports, grouping, and other scene changes.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-28-draw-it-save-toast-and-unsaved-guard',
       title: 'Draw It save toast and unsaved-work tweak',
       category: 'update',
