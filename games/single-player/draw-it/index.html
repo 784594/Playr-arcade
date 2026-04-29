@@ -37,163 +37,194 @@
 
     <section class="main-grid draw-layout">
       <article class="play-area draw-workspace">
-        <section class="panel draw-toolbar">
+        <section class="panel draw-card draw-size-card">
+          <div class="draw-card-head">
+            <div>
+              <p class="eyebrow">Canvas Size</p>
+              <h3>Pick a board</h3>
+            </div>
+            <button class="hint-chip" type="button" data-help-tip="Switch between wallpaper, banner, and freeform canvas presets.">?</button>
+          </div>
           <div class="mode-grid" id="modeGrid" aria-label="Canvas mode selection">
             <button class="mode-chip active" type="button" data-mode="wallpaper-pc">16:9 wallpaper</button>
             <button class="mode-chip" type="button" data-mode="wallpaper-phone">20:9 wallpaper</button>
             <button class="mode-chip" type="button" data-mode="freeform">Freeform</button>
             <button class="mode-chip" type="button" data-mode="profile-banner">Profile banner</button>
           </div>
+        </section>
 
-          <div class="toolbar-grid">
-            <section class="panel tool-card">
-              <h3>Tools</h3>
-              <div class="tool-button-grid" id="toolButtons">
-                <button class="action-btn action-btn-primary is-active" type="button" data-tool="brush">Brush</button>
-                <button class="action-btn" type="button" data-tool="eraser">Erase</button>
-                <button class="action-btn" type="button" data-tool="select">Select</button>
-                <button class="action-btn" type="button" data-tool="move">Move</button>
-                <button class="action-btn" type="button" data-tool="fill">Fill</button>
-                <button class="action-btn" type="button" data-tool="image">Import</button>
+        <section class="panel draw-card draw-controls-card">
+          <div class="draw-card-head">
+            <div>
+              <p class="eyebrow">Controls</p>
+              <h3>Stroke style</h3>
+            </div>
+            <button class="hint-chip" type="button" data-help-tip="Set how new strokes look. Gradient controls open only when gradient mode is selected.">?</button>
+          </div>
+          <div class="tool-stack compact-tool-stack">
+            <label>
+              Brush size
+              <input id="brushSizeInput" type="range" min="2" max="48" value="8" />
+            </label>
+            <label>
+              Drawing mode
+              <select id="drawingModeSelect">
+                <option value="freehand">Freehand lines</option>
+                <option value="pixel">Pixel blocks</option>
+              </select>
+            </label>
+            <label>
+              Stroke mode
+              <select id="strokeModeSelect">
+                <option value="solid">Solid colour</option>
+                <option value="gradient">Gradient</option>
+              </select>
+            </label>
+            <label id="strokeSolidColorField">
+              Stroke colour
+              <input id="brushColorInput" type="color" value="#183a8f" />
+            </label>
+            <section class="gradient-editor" id="strokeGradientEditor" hidden>
+              <div class="gradient-editor-head">
+                <span>Gradient stops</span>
+                <button id="addStrokeStopBtn" class="action-btn" type="button">Add stop</button>
               </div>
-              <p class="draw-note">Use `Select` to click items, `Move` to drag the current selection, and `Import` to place PNG or JPEG artwork.</p>
-            </section>
-
-            <section class="panel tool-card">
-              <h3>Stroke Style</h3>
-              <div class="tool-stack">
+              <div class="gradient-stop-track" id="strokeStopTrack" aria-label="Stroke gradient stops"></div>
+              <div class="gradient-stop-editor-row">
                 <label>
-                  Brush size
-                  <input id="brushSizeInput" type="range" min="2" max="48" value="8" />
+                  Selected stop colour
+                  <input id="selectedStrokeStopColorInput" type="color" value="#183a8f" />
                 </label>
                 <label>
-                  Drawing mode
-                  <select id="drawingModeSelect">
-                    <option value="freehand">Freehand lines</option>
-                    <option value="pixel">Pixel blocks</option>
-                  </select>
-                </label>
-                <label>
-                  Stroke mode
-                  <select id="strokeModeSelect">
-                    <option value="solid">Solid colour</option>
-                    <option value="gradient">Gradient</option>
-                  </select>
-                </label>
-                <div class="two-colour-row">
-                  <label>
-                    Colour A
-                    <input id="brushColorInput" type="color" value="#183a8f" />
-                  </label>
-                  <label>
-                    Colour B
-                    <input id="brushColorSecondaryInput" type="color" value="#7cf0c5" />
-                  </label>
-                </div>
-                <label>
-                  Gradient angle
+                  Angle
                   <input id="strokeAngleInput" type="range" min="0" max="360" value="35" />
                 </label>
-                <div class="tool-inline-actions">
-                  <button id="applySelectedStyleBtn" class="action-btn" type="button">Recolour selected</button>
-                </div>
               </div>
             </section>
-
-            <section class="panel tool-card">
-              <h3>Background</h3>
-              <div class="tool-stack">
-                <label>
-                  Background mode
-                  <select id="backgroundModeSelect">
-                    <option value="solid">Solid colour</option>
-                    <option value="gradient">Gradient</option>
-                  </select>
-                </label>
-                <div class="two-colour-row">
-                  <label>
-                    Base colour
-                    <input id="backgroundColorInput" type="color" value="#ffffff" />
-                  </label>
-                  <label>
-                    Gradient angle
-                    <input id="backgroundAngleInput" type="range" min="0" max="360" value="135" />
-                  </label>
-                </div>
-                <div class="gradient-stop-list" id="backgroundStopsList"></div>
-                <div class="tool-inline-actions">
-                  <button id="addBackgroundStopBtn" class="action-btn" type="button">Add stop</button>
-                </div>
-              </div>
-            </section>
+            <div class="tool-inline-actions">
+              <button id="applySelectedStyleBtn" class="action-btn" type="button">Recolour selected</button>
+            </div>
           </div>
+        </section>
 
-          <div class="selection-grid">
-            <section class="panel tool-card">
-              <h3>Selection</h3>
-              <div class="tool-inline-actions">
-                <button id="groupSelectionBtn" class="action-btn" type="button">Group</button>
-                <button id="ungroupSelectionBtn" class="action-btn" type="button">Ungroup</button>
-                <button id="deleteSelectionBtn" class="action-btn action-btn-danger" type="button">Delete</button>
-              </div>
-              <p class="draw-note" id="selectionSummary">No selection yet.</p>
-            </section>
-
-            <section class="panel tool-card">
-              <h3>Imported Images</h3>
-              <div class="tool-stack">
-                <input id="imageImportInput" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" hidden />
-                <div class="tool-inline-actions">
-                  <button id="importImageBtn" class="action-btn action-btn-primary" type="button">Choose PNG/JPEG</button>
-                </div>
-                <label>
-                  Selected image scale
-                  <input id="selectedImageScaleInput" type="range" min="20" max="250" value="100" />
-                </label>
-                <p class="draw-note">Imported images can be selected, moved, resized, grouped, and exported as part of the scene.</p>
-              </div>
-            </section>
+        <section class="panel draw-card draw-tools-card">
+          <div class="draw-card-head">
+            <div>
+              <p class="eyebrow">Tools</p>
+              <h3>What you use</h3>
+            </div>
+            <button class="hint-chip" type="button" data-help-tip="Brush and Erase draw. Select and Move control objects. Fill applies your background settings. Import places images.">?</button>
           </div>
+          <div class="tool-button-grid" id="toolButtons">
+            <button class="action-btn action-btn-primary is-active" type="button" data-tool="brush" title="Draw freehand or pixel strokes">Brush</button>
+            <button class="action-btn" type="button" data-tool="eraser" title="Erase with the current drawing mode">Erase</button>
+            <button class="action-btn" type="button" data-tool="select" title="Select a stroke or image">Select</button>
+            <button class="action-btn" type="button" data-tool="move" title="Move the current selection">Move</button>
+            <button class="action-btn" type="button" data-tool="fill" title="Apply the current background style">Fill</button>
+            <button class="action-btn" type="button" data-tool="image" title="Import PNG or JPEG artwork">Import</button>
+          </div>
+        </section>
 
+        <section class="panel draw-card draw-canvas-card">
+          <div class="draw-card-head">
+            <div>
+              <p class="eyebrow">Canvas</p>
+              <h3>Whiteboard</h3>
+            </div>
+            <button class="hint-chip" type="button" data-help-tip="The canvas grows automatically in freeform mode as you draw close to the lower or right edge.">?</button>
+          </div>
+          <div class="draw-stage-shell" id="drawStageShell">
+            <div class="draw-stage" id="drawStage">
+              <canvas id="drawCanvas" aria-label="Drawing board"></canvas>
+            </div>
+          </div>
           <p class="draw-note" id="bannerModeNote" hidden>Banner mode reminder: if a saved custom banner is applied and later found to be offensive, the account can be banned.</p>
         </section>
 
-        <div class="draw-stage-shell" id="drawStageShell">
-          <div class="draw-stage" id="drawStage">
-            <canvas id="drawCanvas" aria-label="Drawing board"></canvas>
+        <section class="panel draw-card draw-settings-card">
+          <div class="draw-card-head">
+            <div>
+              <p class="eyebrow">Settings</p>
+              <h3>Scene controls</h3>
+            </div>
+            <button class="hint-chip" type="button" data-help-tip="Use these to clear, finish, change the background, and review the current scene details.">?</button>
           </div>
-        </div>
+          <div class="actions">
+            <button id="clearBtn" class="action-btn" type="button">Clear scene</button>
+            <button id="finishBtn" class="action-btn action-btn-primary" type="button">Finish</button>
+          </div>
+          <div class="draw-meta-grid">
+            <p><span>Mode</span><strong id="modeLabel">16:9 wallpaper</strong></p>
+            <p><span>Canvas size</span><strong id="sizeLabel">1600 x 900</strong></p>
+            <p><span>Objects</span><strong id="strokeCountLabel">0</strong></p>
+            <p><span>Last saved</span><strong id="lastSavedLabel">None yet</strong></p>
+          </div>
+          <div class="tool-stack compact-tool-stack">
+            <label>
+              Background mode
+              <select id="backgroundModeSelect">
+                <option value="solid">Solid colour</option>
+                <option value="gradient">Gradient</option>
+              </select>
+            </label>
+            <div class="two-colour-row">
+              <label>
+                Base colour
+                <input id="backgroundColorInput" type="color" value="#ffffff" />
+              </label>
+              <label id="backgroundAngleField">
+                Angle
+                <input id="backgroundAngleInput" type="range" min="0" max="360" value="135" />
+              </label>
+            </div>
+            <div class="gradient-stop-list" id="backgroundStopsList" hidden></div>
+            <div class="tool-inline-actions" id="backgroundStopActions" hidden>
+              <button id="addBackgroundStopBtn" class="action-btn" type="button">Add stop</button>
+            </div>
+          </div>
+          <section class="recent-panel mini-recent-panel">
+            <h3>Recent local drawings</h3>
+            <div class="recent-list" id="recentList"></div>
+          </section>
+        </section>
+
+        <section class="panel draw-card draw-import-card">
+          <div class="draw-card-head">
+            <div>
+              <p class="eyebrow">Import Panel</p>
+              <h3>Place images</h3>
+            </div>
+            <button class="hint-chip" type="button" data-help-tip="Import PNG or JPEG files, then move and scale them as part of the scene.">?</button>
+          </div>
+          <div class="tool-stack compact-tool-stack">
+            <input id="imageImportInput" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" hidden />
+            <div class="tool-inline-actions">
+              <button id="importImageBtn" class="action-btn action-btn-primary" type="button">Choose PNG/JPEG</button>
+            </div>
+            <label>
+              Selected image scale
+              <input id="selectedImageScaleInput" type="range" min="20" max="250" value="100" />
+            </label>
+            <p class="draw-note">Imported images can be selected, moved, resized, grouped, and exported as part of the scene.</p>
+          </div>
+        </section>
+
+        <section class="panel draw-card draw-selection-card">
+          <div class="draw-card-head">
+            <div>
+              <p class="eyebrow">Selection Panel</p>
+              <h3>Selection</h3>
+            </div>
+            <button class="hint-chip" type="button" data-help-tip="Select strokes or images, then group, ungroup, recolour, move, or delete them together.">?</button>
+          </div>
+          <div class="tool-inline-actions">
+            <button id="groupSelectionBtn" class="action-btn" type="button" title="Bind selected items into one group">Group</button>
+            <button id="ungroupSelectionBtn" class="action-btn" type="button" title="Break the current group apart">Ungroup</button>
+            <button id="deleteSelectionBtn" class="action-btn action-btn-danger" type="button" title="Delete the selected items">Delete</button>
+          </div>
+          <p class="draw-note" id="selectionSummary">No selection yet.</p>
+        </section>
       </article>
-
-      <aside class="panel draw-side-panel">
-        <h2>Controls</h2>
-        <div class="actions">
-          <button id="clearBtn" class="action-btn" type="button">Clear scene</button>
-          <button id="finishBtn" class="action-btn action-btn-primary" type="button">Finish</button>
-        </div>
-
-        <div class="draw-meta-grid">
-          <p><span>Mode</span><strong id="modeLabel">16:9 wallpaper</strong></p>
-          <p><span>Canvas size</span><strong id="sizeLabel">1600 x 900</strong></p>
-          <p><span>Objects</span><strong id="strokeCountLabel">0</strong></p>
-          <p><span>Last saved</span><strong id="lastSavedLabel">None yet</strong></p>
-        </div>
-
-        <section class="panel recent-panel">
-          <h3>Play options</h3>
-          <ul class="draw-feature-list">
-            <li>Build quick wallpapers or banner mockups from scratch.</li>
-            <li>Import images, scale them, and arrange them with grouped strokes.</li>
-            <li>Use solid or gradient strokes, plus multi-stop gradient backgrounds.</li>
-            <li>Finish opens a centered export panel with a clean preview and save tools.</li>
-          </ul>
-        </section>
-
-        <section class="panel recent-panel">
-          <h3>Recent local drawings</h3>
-          <div class="recent-list" id="recentList"></div>
-        </section>
-      </aside>
     </section>
   </div>
 

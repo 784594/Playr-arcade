@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-28-draw-it-layout-and-gradient-pass',
+      title: 'Draw It layout and gradient cleanup',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-28T19:05:00-04:00',
+      summary: 'Draw It now puts the canvas first, trims down the visible controls, and uses a lighter gradient editor with draggable stops.',
+      details: [
+        'The Draw It workspace was rearranged into separate canvas-size, tools, canvas, settings, import, selection, and stroke-control panels so the whiteboard stays more central and easier to reach.',
+        'Solid strokes now show just one colour picker, while gradient strokes open a cleaner editor with draggable stops plus an add-stop action instead of always showing extra colour controls.',
+        'Hover help hints were added around the page to explain the main panels and actions without keeping long permanent instruction blocks on screen.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-28-social-panels-and-profile-tag-tuning',
       title: 'Friends tabs, profile fixes, and Draw It pixel mode',
       category: 'update',

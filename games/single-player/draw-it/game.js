@@ -31,6 +31,11 @@
     objects: [],
     selectedIds: new Set(),
     dragging: null,
+    strokeGradientStops: [
+      { id: 'stroke-stop-1', offset: 0, color: '#183a8f' },
+      { id: 'stroke-stop-2', offset: 1, color: '#7cf0c5' },
+    ],
+    activeStrokeStopId: 'stroke-stop-1',
     background: {
       mode: 'solid',
       color: '#ffffff',
@@ -69,6 +74,15 @@
   function normalizeHex(value, fallback = '#183a8f') {
     const safe = String(value || '').trim();
     return /^#[0-9a-f]{6}$/i.test(safe) ? safe : fallback;
+  }
+
+  function escapeHtml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   function slugify(value) {
@@ -175,11 +189,13 @@
   }
 
   function createStrokeStyle() {
+    const strokeStops = getStrokeGradientStops();
     return {
       mode: ui.strokeModeSelect.value === 'gradient' ? 'gradient' : 'solid',
       colorA: normalizeHex(ui.brushColorInput.value, '#183a8f'),
-      colorB: normalizeHex(ui.brushColorSecondaryInput.value, '#7cf0c5'),
+      colorB: normalizeHex(strokeStops[strokeStops.length - 1]?.color, '#7cf0c5'),
       angle: clamp(Number(ui.strokeAngleInput.value) || 35, 0, 360),
+      stops: strokeStops,
     };
   }
 
@@ -282,6 +298,10 @@
           colorA: normalizeHex(item.style?.colorA, '#183a8f'),
           colorB: normalizeHex(item.style?.colorB, '#7cf0c5'),
           angle: clamp(Number(item.style?.angle) || 35, 0, 360),
+          stops: normalizeGradientStops(item.style?.stops, [
+            { id: uid('stroke-stop'), offset: 0, color: normalizeHex(item.style?.colorA, '#183a8f') },
+            { id: uid('stroke-stop'), offset: 1, color: normalizeHex(item.style?.colorB, '#7cf0c5') },
+          ]),
         },
       };
     }
@@ -302,6 +322,27 @@
       };
     }
     return null;
+  }
+
+  function normalizeGradientStops(stops, fallbackStops = []) {
+    const source = Array.isArray(stops) && stops.length ? stops : fallbackStops;
+    const normalized = source
+      .map((stop, index) => ({
+        id: String(stop?.id || uid(`gradient-stop-${index + 1}`)),
+        offset: clamp(Number(stop?.offset) || 0, 0, 1),
+        color: normalizeHex(stop?.color, '#183a8f'),
+      }))
+      .sort((left, right) => left.offset - right.offset);
+    if (normalized.length >= 2) return normalized;
+    return [
+      { id: uid('gradient-stop'), offset: 0, color: '#183a8f' },
+      { id: uid('gradient-stop'), offset: 1, color: '#7cf0c5' },
+    ];
+  }
+
+  function getStrokeGradientStops() {
+    state.strokeGradientStops = normalizeGradientStops(state.strokeGradientStops, state.strokeGradientStops);
+    return state.strokeGradientStops;
   }
 
   function preloadImages() {
@@ -437,8 +478,12 @@
         Math.max(bounds.height, 1),
         stroke.style.angle,
       );
-      gradient.addColorStop(0, normalizeHex(stroke.style.colorA, '#183a8f'));
-      gradient.addColorStop(1, normalizeHex(stroke.style.colorB, '#7cf0c5'));
+      normalizeGradientStops(stroke.style.stops, [
+        { id: uid('fallback-stop'), offset: 0, color: normalizeHex(stroke.style.colorA, '#183a8f') },
+        { id: uid('fallback-stop'), offset: 1, color: normalizeHex(stroke.style.colorB, '#7cf0c5') },
+      ]).forEach((stop) => {
+        gradient.addColorStop(clamp(stop.offset, 0, 1), normalizeHex(stop.color, '#183a8f'));
+      });
       context.strokeStyle = gradient;
       context.fillStyle = gradient;
     } else {
@@ -529,6 +574,35 @@
       image: 'pointer',
     }[state.tool] || 'crosshair';
     ui.canvas.style.cursor = cursor;
+  }
+
+  function syncStrokeUiFromState() {
+    if (ui.brushColorInput) {
+      const firstStop = getStrokeGradientStops()[0];
+      ui.brushColorInput.value = normalizeHex(firstStop?.color, '#183a8f');
+    }
+    if (ui.selectedStrokeStopColorInput) {
+      const activeStop = getStrokeGradientStops().find((stop) => stop.id === state.activeStrokeStopId) || getStrokeGradientStops()[0];
+      if (activeStop) {
+        state.activeStrokeStopId = activeStop.id;
+        ui.selectedStrokeStopColorInput.value = normalizeHex(activeStop.color, '#183a8f');
+      }
+    }
+  }
+
+  function updateStrokeModeUi() {
+    const isGradient = ui.strokeModeSelect.value === 'gradient';
+    if (ui.strokeSolidColorField) ui.strokeSolidColorField.hidden = isGradient;
+    if (ui.strokeGradientEditor) ui.strokeGradientEditor.hidden = !isGradient;
+    syncStrokeUiFromState();
+    renderStrokeStops();
+  }
+
+  function updateBackgroundModeUi() {
+    const isGradient = ui.backgroundModeSelect.value === 'gradient';
+    if (ui.backgroundAngleField) ui.backgroundAngleField.hidden = !isGradient;
+    if (ui.backgroundStopsList) ui.backgroundStopsList.hidden = !isGradient;
+    if (ui.backgroundStopActions) ui.backgroundStopActions.hidden = !isGradient;
   }
 
   function setTool(tool) {
@@ -798,6 +872,7 @@
       ];
     }
     renderBackgroundStops();
+    updateBackgroundModeUi();
     renderScene();
     markDirty();
     updateStatus('Background updated.');
@@ -870,6 +945,7 @@
       color: '#7cf0c5',
     });
     renderBackgroundStops();
+    updateBackgroundModeUi();
     renderScene();
     markDirty();
   }
@@ -881,6 +957,7 @@
     }
     state.background.stops = state.background.stops.filter((stop) => stop.id !== stopId);
     renderBackgroundStops();
+    updateBackgroundModeUi();
     renderScene();
     markDirty();
   }
@@ -906,6 +983,62 @@
         `;
         ui.backgroundStopsList.appendChild(row);
       });
+  }
+
+  function renderStrokeStops() {
+    if (!ui.strokeStopTrack) return;
+    const stops = getStrokeGradientStops();
+    const gradientCss = stops
+      .map((stop) => `${normalizeHex(stop.color, '#183a8f')} ${Math.round(clamp(stop.offset, 0, 1) * 100)}%`)
+      .join(', ');
+    ui.strokeStopTrack.style.setProperty('--gradient-preview', `linear-gradient(90deg, ${gradientCss})`);
+    ui.strokeStopTrack.innerHTML = stops.map((stop) => `
+      <button
+        class="gradient-stop-thumb${stop.id === state.activeStrokeStopId ? ' is-active' : ''}"
+        type="button"
+        data-stroke-stop="${stop.id}"
+        data-stop-offset="${stop.offset}"
+        style="left: calc(10px + (${Math.round(clamp(stop.offset, 0, 1) * 100)}% * (100% - 20px) / 100)); --stop-colour:${escapeHtml(normalizeHex(stop.color, '#183a8f'))};"
+        title="Drag to move this stop"
+        aria-label="Gradient stop"
+      ></button>
+    `).join('');
+    syncStrokeUiFromState();
+  }
+
+  function addStrokeStop() {
+    const stops = getStrokeGradientStops();
+    const lastOffset = stops[stops.length - 1]?.offset ?? 0;
+    const previousColor = stops[stops.length - 1]?.color || '#7cf0c5';
+    const nextStop = {
+      id: uid('stroke-stop'),
+      offset: clamp(lastOffset - 0.18 > 0 ? lastOffset - 0.18 : Math.min(lastOffset + 0.12, 1), 0, 1),
+      color: previousColor,
+    };
+    state.strokeGradientStops = normalizeGradientStops([...stops, nextStop], stops);
+    state.activeStrokeStopId = nextStop.id;
+    renderStrokeStops();
+  }
+
+  function updateActiveStrokeStopColor(value) {
+    const activeStop = getStrokeGradientStops().find((stop) => stop.id === state.activeStrokeStopId);
+    if (!activeStop) return;
+    activeStop.color = normalizeHex(value, activeStop.color);
+    if (ui.brushColorInput && activeStop.offset === Math.min(...getStrokeGradientStops().map((stop) => stop.offset))) {
+      ui.brushColorInput.value = activeStop.color;
+    }
+    renderStrokeStops();
+  }
+
+  function moveStrokeStop(stopId, clientX) {
+    const stop = getStrokeGradientStops().find((entry) => entry.id === stopId);
+    if (!stop || !ui.strokeStopTrack) return;
+    const rect = ui.strokeStopTrack.getBoundingClientRect();
+    const offset = clamp((clientX - rect.left - 10) / Math.max(1, rect.width - 20), 0, 1);
+    stop.offset = offset;
+    state.strokeGradientStops.sort((left, right) => left.offset - right.offset);
+    renderStrokeStops();
+    markDirty();
   }
 
   function updateBackgroundStop(stopId, key, value) {
@@ -1244,12 +1377,23 @@
     }
   }
 
+  function handleGlobalPointerMove(event) {
+    if (state.dragging?.kind === 'stroke-stop') {
+      moveStrokeStop(state.dragging.stopId, event.clientX);
+    }
+  }
+
   function handleCanvasPointerUp() {
     if (state.currentStroke) {
       finishStroke();
     }
     if (state.dragging?.kind === 'move') {
       endMove();
+      return;
+    }
+    if (state.dragging?.kind === 'stroke-stop') {
+      state.dragging = null;
+      renderStrokeStops();
     }
   }
 
@@ -1274,10 +1418,37 @@
 
     ui.canvas.addEventListener('pointerdown', handleCanvasPointerDown);
     ui.canvas.addEventListener('pointermove', handleCanvasPointerMove);
+    window.addEventListener('pointermove', handleGlobalPointerMove);
     window.addEventListener('pointerup', handleCanvasPointerUp);
     window.addEventListener('pointercancel', handleCanvasPointerUp);
 
     ui.applySelectedStyleBtn.addEventListener('click', applyStyleToSelection);
+    ui.strokeModeSelect.addEventListener('change', updateStrokeModeUi);
+    ui.brushColorInput.addEventListener('input', () => {
+      const firstStop = getStrokeGradientStops()[0];
+      if (firstStop) {
+        firstStop.color = normalizeHex(ui.brushColorInput.value, '#183a8f');
+      }
+      syncStrokeUiFromState();
+      renderStrokeStops();
+    });
+    ui.addStrokeStopBtn.addEventListener('click', addStrokeStop);
+    ui.selectedStrokeStopColorInput.addEventListener('input', () => {
+      updateActiveStrokeStopColor(ui.selectedStrokeStopColorInput.value);
+    });
+    ui.strokeStopTrack.addEventListener('pointerdown', (event) => {
+      const thumb = event.target.closest('[data-stroke-stop]');
+      if (!thumb) return;
+      event.preventDefault();
+      state.activeStrokeStopId = thumb.getAttribute('data-stroke-stop') || '';
+      ui.strokeStopTrack.setPointerCapture(event.pointerId);
+      state.dragging = {
+        kind: 'stroke-stop',
+        pointerId: event.pointerId,
+        stopId: state.activeStrokeStopId,
+      };
+      renderStrokeStops();
+    });
     ui.groupSelectionBtn.addEventListener('click', groupSelection);
     ui.ungroupSelectionBtn.addEventListener('click', ungroupSelection);
     ui.deleteSelectionBtn.addEventListener('click', deleteSelection);
@@ -1349,6 +1520,7 @@
           { id: uid('bg-stop'), offset: 1, color: '#dce8ff' },
         ];
       }
+      updateBackgroundModeUi();
       applyFill();
     });
     ui.backgroundColorInput.addEventListener('input', applyFill);
@@ -1401,14 +1573,20 @@
     ui.brushSizeInput = $('brushSizeInput');
     ui.drawingModeSelect = $('drawingModeSelect');
     ui.strokeModeSelect = $('strokeModeSelect');
+    ui.strokeSolidColorField = $('strokeSolidColorField');
+    ui.strokeGradientEditor = $('strokeGradientEditor');
+    ui.strokeStopTrack = $('strokeStopTrack');
+    ui.addStrokeStopBtn = $('addStrokeStopBtn');
+    ui.selectedStrokeStopColorInput = $('selectedStrokeStopColorInput');
     ui.brushColorInput = $('brushColorInput');
-    ui.brushColorSecondaryInput = $('brushColorSecondaryInput');
     ui.strokeAngleInput = $('strokeAngleInput');
     ui.applySelectedStyleBtn = $('applySelectedStyleBtn');
     ui.backgroundModeSelect = $('backgroundModeSelect');
     ui.backgroundColorInput = $('backgroundColorInput');
+    ui.backgroundAngleField = $('backgroundAngleField');
     ui.backgroundAngleInput = $('backgroundAngleInput');
     ui.backgroundStopsList = $('backgroundStopsList');
+    ui.backgroundStopActions = $('backgroundStopActions');
     ui.addBackgroundStopBtn = $('addBackgroundStopBtn');
     ui.groupSelectionBtn = $('groupSelectionBtn');
     ui.ungroupSelectionBtn = $('ungroupSelectionBtn');
@@ -1448,8 +1626,11 @@
     ui.backgroundModeSelect.value = state.background.mode;
     ui.backgroundColorInput.value = state.background.color;
     ui.backgroundAngleInput.value = String(state.background.angle);
+    syncStrokeUiFromState();
     setMode(loadedDraft ? state.mode : 'wallpaper-pc', { preserveObjects: true, markChanged: false });
     renderBackgroundStops();
+    updateStrokeModeUi();
+    updateBackgroundModeUi();
     await preloadImages();
     renderRecentDrawings();
     setTool(state.tool || 'brush');
