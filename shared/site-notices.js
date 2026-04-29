@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-29-hextris-side-lock-and-overlay-polish',
+      title: 'Hextris side-lock and overlay polish',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-29T13:20:00-04:00',
+      summary: 'Hextris blocks now lock onto the hex sides instead of the corners, the score sits in the middle of the core, and the start/restart flow now uses centered themed overlays.',
+      details: [
+        'The lane geometry was shifted so incoming pieces align with the six side faces of the hex core, which fixes the corner-landing look and makes the board read more clearly in motion.',
+        'Hextris now opens with a centered start panel, shows a themed game-over restart panel with score and time, and also clears vertical same-colour stacks of three or more in addition to ring matches.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-29-hextris-launch',
       title: 'Hextris is live',
       category: 'update',

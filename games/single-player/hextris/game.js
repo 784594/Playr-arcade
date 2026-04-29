@@ -7,10 +7,15 @@ const speedEl = document.getElementById('speedValue');
 const bestEl = document.getElementById('bestValue');
 const startBtn = document.getElementById('startBtn');
 const restartBtn = document.getElementById('restartBtn');
+const startOverlay = document.getElementById('startOverlay');
+const gameOverOverlay = document.getElementById('gameOverOverlay');
+const overlayScoreEl = document.getElementById('overlayScoreValue');
+const overlayTimeEl = document.getElementById('overlayTimeValue');
 
 const STORAGE_KEY = 'playrHextrisBestV1';
 const LANE_COUNT = 6;
 const SECTOR_ANGLE = (Math.PI * 2) / LANE_COUNT;
+const LANE_CENTER_OFFSET = SECTOR_ANGLE / 2;
 const MAX_STACK = 7;
 const INNER_RADIUS = 116;
 const BLOCK_DEPTH = 38;
@@ -74,6 +79,8 @@ function updateHud() {
   timeEl.textContent = formatTime(state.elapsedMs);
   speedEl.textContent = `${getSpeedMultiplier().toFixed(2)}x`;
   bestEl.textContent = formatTime(state.bestMs);
+  if (overlayScoreEl) overlayScoreEl.textContent = String(state.score);
+  if (overlayTimeEl) overlayTimeEl.textContent = formatTime(state.elapsedMs);
 }
 
 function setStatus(message) {
@@ -96,7 +103,7 @@ function getBoardLaneForWorldLane(worldLane) {
 }
 
 function getWorldAngleForBoardLane(boardLane) {
-  return (-Math.PI / 2) + ((boardLane + (state.rotationAngle / SECTOR_ANGLE)) * SECTOR_ANGLE);
+  return (-Math.PI / 2) + LANE_CENTER_OFFSET + ((boardLane + (state.rotationAngle / SECTOR_ANGLE)) * SECTOR_ANGLE);
 }
 
 function getLaneRadius(depthIndex) {
@@ -199,6 +206,24 @@ function drawBoardGuides() {
   ctx.strokeStyle = 'rgba(124, 240, 197, 0.35)';
   ctx.stroke();
   ctx.restore();
+
+  drawCenterScore();
+}
+
+function drawCenterScore() {
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowBlur = 24;
+  ctx.shadowColor = 'rgba(99, 183, 255, 0.28)';
+  ctx.fillStyle = '#eef5ff';
+  ctx.font = '700 48px "Segoe UI", Tahoma, sans-serif';
+  ctx.fillText(String(state.score), canvas.width / 2, canvas.height / 2 - 8);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = 'rgba(221, 231, 255, 0.72)';
+  ctx.font = '600 14px "Segoe UI", Tahoma, sans-serif';
+  ctx.fillText('score', canvas.width / 2, canvas.height / 2 + 30);
+  ctx.restore();
 }
 
 function drawStacks() {
@@ -292,11 +317,21 @@ function markBestIfNeeded() {
   }
 }
 
+function setOverlayState() {
+  if (startOverlay) {
+    startOverlay.classList.toggle('is-hidden', state.running || state.gameOver);
+  }
+  if (gameOverOverlay) {
+    gameOverOverlay.classList.toggle('is-hidden', !state.gameOver);
+  }
+}
+
 function endGame() {
   state.running = false;
   state.gameOver = true;
   markBestIfNeeded();
   updateHud();
+  setOverlayState();
   setStatus(`Run over at ${formatTime(state.elapsedMs)}. Press Restart or Space to try again.`);
 }
 
@@ -329,6 +364,30 @@ function applyClears() {
             spawnBurst(laneIndex, depth, color);
           });
         }
+      }
+    }
+
+    for (let laneIndex = 0; laneIndex < LANE_COUNT; laneIndex += 1) {
+      const lane = state.lanes[laneIndex];
+      let depth = 0;
+      while (depth < lane.length) {
+        const color = lane[depth]?.color;
+        if (!color) {
+          depth += 1;
+          continue;
+        }
+        let end = depth + 1;
+        while (end < lane.length && lane[end]?.color === color) {
+          end += 1;
+        }
+        if ((end - depth) >= 3) {
+          found = true;
+          for (let clearDepth = depth; clearDepth < end; clearDepth += 1) {
+            toClear[laneIndex].add(clearDepth);
+            spawnBurst(laneIndex, clearDepth, color);
+          }
+        }
+        depth = end;
       }
     }
 
@@ -393,6 +452,7 @@ function resetGame() {
   state.particles = [];
   state.spawnAt = 0;
   updateHud();
+  setOverlayState();
   setStatus('Press Start or tap Space to begin.');
   draw();
 }
@@ -413,6 +473,7 @@ function startGame() {
   state.startedAt = performance.now();
   state.spawnAt = state.startedAt + 180;
   updateHud();
+  setOverlayState();
   setStatus('Survive as long as you can.');
 }
 

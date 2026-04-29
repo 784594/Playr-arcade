@@ -47,11 +47,90 @@
   aspect-ratio: 1 / 1;
 }
 
-.hextris-action-row {
-  display: flex;
-  gap: 10px;
-  margin-top: 14px;
-  justify-content: center;
+.hextris-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background: linear-gradient(180deg, rgba(5, 9, 20, 0.24), rgba(5, 9, 20, 0.66));
+  z-index: 2;
+}
+
+.hextris-overlay.is-hidden {
+  display: none;
+}
+
+.hextris-overlay-card {
+  width: min(100%, 420px);
+  padding: 26px 24px;
+  border-radius: 28px;
+  border: 1px solid rgba(124, 240, 197, 0.24);
+  background:
+    radial-gradient(circle at top, rgba(99, 183, 255, 0.16), transparent 48%),
+    linear-gradient(180deg, rgba(15, 24, 49, 0.97), rgba(9, 16, 33, 0.98));
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
+  text-align: center;
+}
+
+.hextris-overlay-eyebrow {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(221, 231, 255, 0.64);
+}
+
+.hextris-overlay-card h2 {
+  margin: 0 0 10px;
+  font-size: 1.8rem;
+}
+
+.hextris-overlay-card p {
+  margin: 0;
+  line-height: 1.55;
+  color: rgba(221, 231, 255, 0.82);
+}
+
+.hextris-overlay-score {
+  margin-top: 10px !important;
+  font-size: 1rem;
+}
+
+.hextris-overlay-hint {
+  margin-top: 14px !important;
+  font-size: 0.9rem;
+  color: rgba(221, 231, 255, 0.66);
+}
+
+.hextris-cta {
+  min-width: 192px;
+  min-height: 54px;
+  margin-top: 18px;
+  padding: 0 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(124, 240, 197, 0.34);
+  background: rgba(25, 38, 68, 0.92);
+  color: #eef5ff;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
+
+.hextris-cta:hover,
+.hextris-cta:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(170, 248, 132, 0.44);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.34);
+}
+
+.hextris-cta-primary {
+  color: #11223c;
+  background: linear-gradient(135deg, #7ee3cb, #d0fb69);
+  box-shadow: 0 18px 44px rgba(144, 247, 161, 0.26);
 }
 
 .hextris-sidebar {
@@ -168,7 +247,11 @@
     grid-template-columns: 1fr;
   }
 
-  .hextris-action-row {
-    flex-direction: column;
+  .hextris-overlay {
+    padding: 18px;
+  }
+
+  .hextris-overlay-card {
+    padding: 22px 18px;
   }
 }

@@ -34,10 +34,25 @@
       <article class="play-area hextris-stage-card">
         <div class="hextris-canvas-shell">
           <canvas id="hextrisCanvas" width="760" height="760" aria-label="Hextris game board"></canvas>
-        </div>
-        <div class="hextris-action-row">
-          <button class="action-btn action-btn-primary" id="startBtn" type="button">Start Run</button>
-          <button class="action-btn" id="restartBtn" type="button">Restart</button>
+          <div class="hextris-overlay" id="startOverlay">
+            <div class="hextris-overlay-card">
+              <p class="hextris-overlay-eyebrow">PlayR Survival Module</p>
+              <h2>Start Hextris</h2>
+              <p>Rotate the hex, catch incoming blocks on the sides, and clear matching arcs before the center gets buried.</p>
+              <button class="hextris-cta hextris-cta-primary" id="startBtn" type="button">Start Run</button>
+              <p class="hextris-overlay-hint">You can also press <strong>Space</strong> to begin.</p>
+            </div>
+          </div>
+          <div class="hextris-overlay is-hidden" id="gameOverOverlay">
+            <div class="hextris-overlay-card">
+              <p class="hextris-overlay-eyebrow">Run Over</p>
+              <h2>Try Again?</h2>
+              <p class="hextris-overlay-score">Score: <strong id="overlayScoreValue">0</strong></p>
+              <p class="hextris-overlay-score">Time: <strong id="overlayTimeValue">0.0s</strong></p>
+              <button class="hextris-cta hextris-cta-primary" id="restartBtn" type="button">Restart Run</button>
+              <p class="hextris-overlay-hint">Press <strong>Space</strong> to restart quickly.</p>
+            </div>
+          </div>
         </div>
       </article>
 
