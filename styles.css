@@ -2157,7 +2157,7 @@ a {
 .game-grid-more-btn {
   min-width: 240px;
   padding: 0 28px;
-  color: #08111d;
+  color: #f7fbff;
   border-color: rgba(255, 255, 255, 0.6);
   background: linear-gradient(135deg, rgba(252, 254, 255, 0.98), rgba(228, 237, 255, 0.94));
   box-shadow: 0 14px 34px rgba(164, 182, 222, 0.2);
