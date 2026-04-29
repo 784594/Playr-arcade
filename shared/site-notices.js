@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-28-draw-it-banner-save-polish',
+      title: 'Draw It banner save polish',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-28T19:22:00-04:00',
+      summary: 'Saving custom banners from Draw It now closes the finish panel on success and the modal close button matches the rest of the editor theme.',
+      details: [
+        'Successful custom-banner saves now dismiss the finish/export panel automatically and confirm with a simpler Saved to your banners message.',
+        'The finish modal close button was restyled to match the PlayR chip-button look instead of falling back to an unthemed browser-style control.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-28-draw-it-layout-and-gradient-pass',
       title: 'Draw It layout and gradient cleanup',
       category: 'update',

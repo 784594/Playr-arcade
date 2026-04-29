@@ -43,6 +43,28 @@
   align-items: flex-start;
 }
 
+.draw-finish-header .chip-button {
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(124, 240, 197, 0.22);
+  background: rgba(255, 255, 255, 0.05);
+  color: #eef4ff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
+}
+
+.draw-finish-header .chip-button:hover,
+.draw-finish-header .chip-button:focus-visible {
+  outline: none;
+  transform: translateY(-1px);
+  border-color: rgba(124, 240, 197, 0.42);
+  background: rgba(124, 240, 197, 0.12);
+  box-shadow: 0 10px 20px rgba(124, 240, 197, 0.12);
+}
+
 .draw-card-head h3,
 .draw-finish-modal h3,
 .draw-unsaved-modal h3,

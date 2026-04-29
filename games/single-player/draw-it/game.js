@@ -1324,9 +1324,8 @@
       return;
     }
     await persistBannerToCloud();
-    updateStatus(account.isVip
-      ? 'Custom banner saved to your account.'
-      : 'Custom banner saved. Applying it is still VIP-only from Settings.');
+    closeFinishOverlay();
+    updateStatus('Saved to your banners!');
   }
 
   function handleCanvasPointerDown(event) {
