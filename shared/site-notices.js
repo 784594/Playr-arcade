@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-29-dino-run-and-profile-layout-polish',
+      title: 'Dino Run and profile layout polish',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-29T00:12:00-04:00',
+      summary: 'Dino Run now ramps difficulty more fairly with cleaner pixel-art sprites and faster mid-air crouch drops, and profile tags/moderation controls fit the profile panel more reliably.',
+      details: [
+        'Dino Run now increases speed more gradually, spaces obstacles more safely, supports Shift as a crouch key, and lets mid-air crouching pull the dino down faster for tighter recoveries.',
+        'The old chunky Dino Run art was replaced with cleaner pixel-style sprite rendering, while the profile modal now keeps tag tooltips wrapped inside the panel and lays out moderation buttons in a responsive grid so they stop clipping.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-28-custom-banner-cloud-save-fix',
       title: 'Custom banner save sync fix',
       category: 'update',

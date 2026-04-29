@@ -27,6 +27,164 @@ const duckBtn = document.getElementById('duckBtn');
 const DINO_WIDTH = 44;
 const DINO_STAND_HEIGHT = 52;
 const DINO_CROUCH_HEIGHT = 34;
+const EXTRA_FALL_GRAVITY = 2050;
+
+const SPRITE_PALETTE = {
+  A: '#c8e6ff',
+  B: '#9fcdf3',
+  C: '#6da6da',
+  D: '#163556',
+  E: '#7ae09a',
+  F: '#57ba77',
+  G: '#2f7447',
+  H: '#d8ebff',
+};
+
+const DINO_STAND_SPRITES = [
+  [
+    '.....AA.....',
+    '....ABBA....',
+    '....ABBAA...',
+    '...AABBAD...',
+    '..AABBBBD...',
+    '..AABBBBDD..',
+    '..AABBBBBDD.',
+    '.AABBBBBBB..',
+    '.AABBBBBB...',
+    '.AABBBBBBAA.',
+    '.AABBBBBAA..',
+    '.AABBBB.....',
+    '.AABBBA..AA.',
+    '.AABBAA..AA.',
+    '.AA.BAA..AA.',
+    '....BAA..AA.',
+  ],
+  [
+    '.....AA.....',
+    '....ABBA....',
+    '....ABBAA...',
+    '...AABBAD...',
+    '..AABBBBD...',
+    '..AABBBBDD..',
+    '..AABBBBBDD.',
+    '.AABBBBBBB..',
+    '.AABBBBBB...',
+    '.AABBBBBBAA.',
+    '.AABBBBBAA..',
+    '.AABBBB.....',
+    '.AABBBA.AA..',
+    '.AABBAA.AA..',
+    '.AA.BAA...AA',
+    '....BAA...AA',
+  ],
+];
+
+const DINO_CROUCH_SPRITES = [
+  [
+    '................',
+    '.....AAAA.......',
+    '....AABBAA......',
+    '..AABBBBBBAAA...',
+    '.AABBBBBBBBBAA..',
+    '.AABBBBBBBBBBA..',
+    '.AABBBBBBBBBA...',
+    '.AABBBBBBBAA....',
+    '.AABBBBBAA......',
+    '.AA..BBAA.AA....',
+    '.....BAA..AA....',
+  ],
+  [
+    '................',
+    '.....AAAA.......',
+    '....AABBAA......',
+    '..AABBBBBBAAA...',
+    '.AABBBBBBBBBAA..',
+    '.AABBBBBBBBBBA..',
+    '.AABBBBBBBBBA...',
+    '.AABBBBBBBAA....',
+    '.AABBBBBAA......',
+    '.AA..BBA..AA....',
+    '.....BAA.AA.....',
+  ],
+];
+
+const CACTUS_SPRITES = {
+  small: [
+    '....EE....',
+    '....EE....',
+    '....EE....',
+    '..EEEEEE..',
+    '..EE.EE...',
+    '.EEE.EEE..',
+    '.EE...EE..',
+    '.EE...EE..',
+    '.EE.EEEE..',
+    'EEEE.EEEE.',
+    '.EE...EE..',
+    '.EE...EE..',
+    '.EE...EE..',
+    'GGG...GGG.',
+  ],
+  tall: [
+    '.....EE.....',
+    '.....EE.....',
+    '.....EE.....',
+    '.....EE.....',
+    '.....EE.....',
+    '...EEEEEE...',
+    '...EE.EE....',
+    '..EEE.EEE...',
+    '..EE...EE...',
+    '..EE...EE...',
+    '..EE.EEEE...',
+    'EEEE.EEEEEE.',
+    '..EE...EE...',
+    '..EE...EE...',
+    '..EE...EE...',
+    '..EE...EE...',
+    '..EE...EE...',
+    'GGGG...GGGG.',
+  ],
+  wide: [
+    '................',
+    '...EEE....EEE...',
+    '...EEE....EEE...',
+    '...EEE....EEE...',
+    '..EEEEE..EEEEE..',
+    '..EE.EE..EE.EE..',
+    '.EEE.EEEEEE.EEE.',
+    '.EE...EEEE...EE.',
+    '.EE...EEEE...EE.',
+    '.EE.EEEEEEEE.EE.',
+    'EEEE.EE..EE.EEEE',
+    '.EE..EE..EE..EE.',
+    '.EE..EE..EE..EE.',
+    'GGG..GG..GG..GGG',
+  ],
+};
+
+const BIRD_SPRITES = [
+  [
+    '.....H........',
+    '...HHHH.......',
+    '.HHHHHHHH.....',
+    'HHHBBBBBHH....',
+    '.HHHBBBBDHHH..',
+    '...HHHHHHH....',
+    '..HH....HH....',
+    '.HH......HH...',
+  ],
+  [
+    '........H.....',
+    '......HHHH....',
+    '....HHHHHHHH..',
+    '...HHBBBBBHHH.',
+    '..HHHDBBBBHHH.',
+    '....HHHHHHH...',
+    '....HH....HH..',
+    '...HH......HH.',
+  ],
+];
 
 const state = {
 	started: false,
@@ -115,6 +273,48 @@ function obstacleSpeed() {
 	return 355 * state.speedScale;
 }
 
+function getPixelScale(boxWidth, boxHeight, sprite) {
+	const cols = sprite[0]?.length || 1;
+	const rows = sprite.length || 1;
+	return Math.max(2, Math.floor(Math.min(boxWidth / cols, boxHeight / rows)));
+}
+
+function drawPixelSprite(sprite, palette, boxX, boxY, boxWidth, boxHeight) {
+	if (!Array.isArray(sprite) || !sprite.length) return;
+	const cols = sprite[0].length;
+	const rows = sprite.length;
+	const pixel = getPixelScale(boxWidth, boxHeight, sprite);
+	const renderWidth = cols * pixel;
+	const renderHeight = rows * pixel;
+	const startX = Math.round(boxX + ((boxWidth - renderWidth) / 2));
+	const startY = Math.round(boxY + boxHeight - renderHeight);
+
+	for (let row = 0; row < rows; row += 1) {
+		const line = sprite[row];
+		for (let col = 0; col < cols; col += 1) {
+			const glyph = line[col];
+			if (!glyph || glyph === '.') continue;
+			ctx.fillStyle = palette[glyph] || '#ffffff';
+			ctx.fillRect(startX + (col * pixel), startY + (row * pixel), pixel, pixel);
+		}
+	}
+}
+
+function chooseGroundSprite(obstacle) {
+	if (obstacle.width >= 50) return CACTUS_SPRITES.wide;
+	if (obstacle.height >= 56) return CACTUS_SPRITES.tall;
+	return CACTUS_SPRITES.small;
+}
+
+function scheduleNextObstacle(lastObstacleWidth = 28) {
+	const speed = obstacleSpeed();
+	const tier = getDifficultyTier();
+	const baseGapPx = 210 + lastObstacleWidth * 1.6 + Math.min(120, state.speedScale * 42);
+	const bonusGapPx = Math.random() * (150 + tier * 8);
+	const minSeconds = (baseGapPx + bonusGapPx) / Math.max(260, speed);
+	state.nextObstacleAfter = clamp(minSeconds, 0.7, 1.6);
+}
+
 function showStatus(message, hold = 1300) {
 	if (!gameStatus) return;
 	gameStatus.textContent = message;
@@ -152,6 +352,7 @@ function spawnObstacle() {
 			width,
 			height,
 		});
+		scheduleNextObstacle(width);
 		return;
 	}
 
@@ -179,10 +380,12 @@ function spawnObstacle() {
 		width,
 		height,
 	});
+	scheduleNextObstacle(width);
 }
 
 function setDuck(isActive) {
 	state.duckHeld = isActive;
+	state.dino.crouch = isActive;
 	if (!state.running || !state.dino.onGround) return;
 
 	const targetHeight = isActive ? DINO_CROUCH_HEIGHT : DINO_STAND_HEIGHT;
@@ -215,7 +418,7 @@ function startGame() {
 	state.distance = 0;
 	state.speedScale = 1;
 	state.obstacleTimer = 0;
-	state.nextObstacleAfter = 1 + Math.random() * 0.65;
+	state.nextObstacleAfter = 1.15;
 	state.groundOffset = 0;
 	state.obstacles = [];
 	state.duckHeld = false;
@@ -288,10 +491,13 @@ function update(deltaSeconds) {
 
 	state.elapsedSeconds += deltaSeconds;
 	const tier = getDifficultyTier();
-	state.speedScale = Math.min(3.8, 1 + state.elapsedSeconds * 0.06 + tier * 0.1);
+	state.speedScale = Math.min(2.55, 1 + state.elapsedSeconds * 0.028 + tier * 0.055);
 	state.distance += (125 + state.speedScale * 85) * deltaSeconds;
 
-	state.dino.velocityY += gravity() * deltaSeconds;
+	const activeGravity = (!state.dino.onGround && state.duckHeld)
+		? gravity() + EXTRA_FALL_GRAVITY
+		: gravity();
+	state.dino.velocityY += activeGravity * deltaSeconds;
 	state.dino.y += state.dino.velocityY * deltaSeconds;
 
 	const floorY = groundY() - state.dino.height;
@@ -310,12 +516,6 @@ function update(deltaSeconds) {
 	if (state.obstacleTimer >= state.nextObstacleAfter) {
 		spawnObstacle();
 		state.obstacleTimer = 0;
-		const spawnBase = Math.max(0.34, 1.22 - state.speedScale * 0.2 - tier * 0.04);
-		state.nextObstacleAfter = spawnBase + Math.random() * 0.45;
-
-		if (tier >= 4 && Math.random() < 0.14 + tier * 0.015) {
-			state.nextObstacleAfter *= 0.7;
-		}
 	}
 
 	const speed = obstacleSpeed();
@@ -381,40 +581,23 @@ function drawDino() {
 	const y = state.dino.y;
 	const width = state.dino.width;
 	const height = state.dino.height;
-
-	ctx.fillStyle = '#a4d8ff';
-	ctx.fillRect(x + 8, y + 2, width - 8, height - 2);
-	if (!state.dino.crouch) {
-		ctx.fillRect(x + 30, y - 10, 18, 18);
-	} else {
-		ctx.fillRect(x + 28, y + 2, 20, 12);
-	}
-	ctx.fillStyle = '#0a1528';
-	ctx.fillRect(x + 41, y + (state.dino.crouch ? 6 : -3), 3, 3);
-
-	const legShift = state.dino.onGround ? Math.sin(state.elapsedSeconds * 20) * 4 : 0;
-	ctx.fillStyle = '#89bee9';
-	ctx.fillRect(x + 12, y + height - 3, 7, Math.max(8, 12 + legShift));
-	ctx.fillRect(x + 28, y + height - 3, 7, Math.max(8, 12 - legShift));
-	ctx.fillRect(x + 3, y + 16, 10, 6);
+	const frameIndex = state.dino.onGround && state.running
+		? Math.floor(state.elapsedSeconds * 11) % 2
+		: 0;
+	const sprite = state.dino.crouch
+		? DINO_CROUCH_SPRITES[frameIndex]
+		: DINO_STAND_SPRITES[frameIndex];
+	drawPixelSprite(sprite, SPRITE_PALETTE, x, y, width, height);
 }
 
 function drawObstacles() {
 	state.obstacles.forEach((obstacle) => {
 		if (obstacle.type === 'flying') {
-			ctx.fillStyle = '#a6d1ff';
-			ctx.fillRect(obstacle.x, obstacle.y + 8, obstacle.width, obstacle.height - 8);
-			ctx.fillStyle = '#c8e0ff';
-			ctx.fillRect(obstacle.x + 5, obstacle.y, obstacle.width - 10, 8);
-			ctx.fillStyle = '#10243f';
-			ctx.fillRect(obstacle.x + obstacle.width - 10, obstacle.y + 12, 3, 3);
+			const frameIndex = Math.floor(state.elapsedSeconds * 8) % 2;
+			drawPixelSprite(BIRD_SPRITES[frameIndex], SPRITE_PALETTE, obstacle.x, obstacle.y, obstacle.width, obstacle.height);
 			return;
 		}
-
-		ctx.fillStyle = '#79d097';
-		ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-		ctx.fillRect(obstacle.x + obstacle.width * 0.18, obstacle.y - 8, obstacle.width * 0.22, 9);
-		ctx.fillRect(obstacle.x + obstacle.width * 0.62, obstacle.y + 8, obstacle.width * 0.18, 10);
+		drawPixelSprite(chooseGroundSprite(obstacle), SPRITE_PALETTE, obstacle.x, obstacle.y, obstacle.width, obstacle.height);
 	});
 }
 
@@ -432,6 +615,7 @@ function drawDistanceHud() {
 }
 
 function render() {
+	ctx.imageSmoothingEnabled = false;
 	drawSky();
 	drawGround();
 	drawObstacles();
@@ -491,7 +675,7 @@ function onKeyDown(event) {
 		return;
 	}
 
-	if (code === 'ArrowDown' || code === 'KeyS') {
+	if (code === 'ArrowDown' || code === 'KeyS' || code === 'ShiftLeft' || code === 'ShiftRight') {
 		event.preventDefault();
 		setDuck(true);
 		return;
@@ -505,7 +689,7 @@ function onKeyDown(event) {
 
 function onKeyUp(event) {
 	const code = event.code;
-	if (code === 'ArrowDown' || code === 'KeyS') {
+	if (code === 'ArrowDown' || code === 'KeyS' || code === 'ShiftLeft' || code === 'ShiftRight') {
 		event.preventDefault();
 		setDuck(false);
 	}

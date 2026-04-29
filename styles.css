@@ -1272,13 +1272,49 @@ a {
 .profile-tag-panel {
   display: grid;
   gap: 10px;
-  margin-top: 16px;
+  margin-top: 10px;
+  min-width: 0;
 }
 
 .profile-tag-stack {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  min-width: 0;
+}
+
+.profile-tag-panel .settings-muted {
+  margin: 0;
+}
+
+.profile-tag-panel .playr-badge {
+  max-width: 100%;
+}
+
+.profile-tag-panel .playr-badge[data-tooltip]::after {
+  left: 0;
+  right: auto;
+  transform: translateY(4px);
+  width: max-content;
+  max-width: min(260px, calc(100vw - 88px));
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.profile-tag-panel .playr-badge[data-tooltip]:hover::after,
+.profile-tag-panel .playr-badge[data-tooltip]:focus-visible::after {
+  transform: translateY(0);
+}
+
+#profileName .playr-identity {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+
+#profileName .playr-identity-text {
+  font: inherit;
+  line-height: 1.1;
 }
 
 .profile-stats-grid {
@@ -1315,10 +1351,14 @@ a {
 
 .profile-moderation-actions {
   margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
+  gap: 8px;
 }
 
 .profile-moderation-actions .button {
-  min-width: 120px;
+  min-width: 0;
+  width: 100%;
 }
 
 .profile-moderation-message {
@@ -1333,6 +1373,7 @@ a {
   margin-top: 14px;
   padding-top: 14px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+  min-width: 0;
 }
 
 .profile-moderation-composer h5 {
