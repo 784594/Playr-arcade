@@ -1306,6 +1306,7 @@ function ensureProfileAndFriendsUi() {
             <p class="eyebrow">Player Profile</p>
             <h3 id="profileName">Loading...</h3>
             <p class="settings-muted" id="profileMeta">Fetching profile...</p>
+            <section class="profile-tag-panel" id="profileBadgeList"></section>
           </div>
           <div class="profile-header-actions" id="profileActionArea"></div>
           <button class="chip-button" type="button" id="profileCloseBtn">Close</button>
@@ -1313,7 +1314,6 @@ function ensureProfileAndFriendsUi() {
         <p class="profile-status" id="profileStatus"></p>
         <div class="profile-stats-grid" id="profileStats"></div>
         <div class="profile-warning-chip" id="profileWarnings"></div>
-        <section class="profile-tag-panel" id="profileBadgeList"></section>
         <section class="settings-card profile-moderation" id="profileModeration" hidden>
           <h4>Owner Moderation</h4>
           <p class="settings-muted profile-moderation-summary" id="profileModerationSummary">Choose an action to issue a warning, mute, or ban.</p>
@@ -1442,6 +1442,7 @@ function ensureBannerSettingsCard() {
 function renderBannerSettings(account = getCurrentAccount()) {
   ensureBannerSettingsCard();
   if (!profileUi.settingsBannerGrid) return;
+  authState.profiles = readStoredProfiles();
   const profile = mergeCloudProfileShape(authState.profiles[account?.uid] || {});
   const activeBanner = profile.profileTheme.banner;
   const customBanners = getCustomProfileBanners(profile);
@@ -1691,7 +1692,9 @@ async function renderOpenProfilePanel() {
 
   profileUi.profileOverlay.dataset.profileUid = String(merged.uid || '').trim();
   profileUi.profileOverlay.dataset.profileName = merged.displayName || '';
-  profileUi.profileName.textContent = merged.displayName || 'Player';
+  profileUi.profileName.innerHTML = window.PlayrProgression?.formatIdentityMarkup
+    ? window.PlayrProgression.formatIdentityMarkup(merged.displayName || 'Player', { record: merged, profile: merged, showBadges: false })
+    : escapeHtml(merged.displayName || 'Player');
   const statusBits = [`Joined ${formatProfileDate(merged.createdAt)}`];
   if (isBanned) {
     statusBits.push(merged?.moderation?.ban?.permanent ? 'Permanently banned' : `Banned until ${formatModerationExpiry(merged?.moderation?.ban?.expiresAt)}`);
@@ -4215,6 +4218,7 @@ function openSettingsOverlay() {
     return;
   }
 
+  authState.profiles = readStoredProfiles();
   if (settingsDisplayInput) settingsDisplayInput.value = account.displayName || '';
   if (settingsCurrentPasswordInput) settingsCurrentPasswordInput.value = '';
   if (settingsNewPasswordInput) settingsNewPasswordInput.value = '';
@@ -6125,6 +6129,13 @@ function init() {
   if (settingsCloseBtn) {
     settingsCloseBtn.addEventListener('click', closeSettingsOverlay);
   }
+
+  window.addEventListener('playr-profiles-updated', () => {
+    authState.profiles = readStoredProfiles();
+    if (!settingsOverlay?.hidden) {
+      renderBannerSettings(getCurrentAccount());
+    }
+  });
 
   if (settingsUpdateDisplayBtn) {
     settingsUpdateDisplayBtn.addEventListener('click', () => {

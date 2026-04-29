@@ -1290,6 +1290,9 @@
       updatedAt: safeNow(),
     };
     writeJson(PROFILE_STORAGE_KEY, profiles);
+    window.dispatchEvent(new CustomEvent('playr-profiles-updated', {
+      detail: { uid: account.uid },
+    }));
     if (window.PlayrProgression?.importProfile) {
       try {
         window.PlayrProgression.importProfile(account, profiles[account.uid], { prefer: 'remote', emit: true });
