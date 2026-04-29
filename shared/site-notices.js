@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-28-draw-it-save-toast-and-unsaved-guard',
+      title: 'Draw It save toast and unsaved-work tweak',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-28T22:05:00-04:00',
+      summary: 'Saving a custom banner in Draw It now counts as saved work for the leave guard, and the confirmation message shows as a top-of-screen bubble instead of blending into the editor text.',
+      details: [
+        'Successful custom-banner saves now clear the local unsaved-work warning so players are not told their art is unsaved immediately after the banner was already stored.',
+        'The save confirmation now appears as a more noticeable top-of-screen bubble, similar to the site easter-egg message style, to make the success state easier to spot.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-28-draw-it-banner-save-and-layout-tune',
       title: 'Draw It banner-save and layout tune-up',
       category: 'update',

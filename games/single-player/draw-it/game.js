@@ -55,6 +55,7 @@
     firebaseApp: null,
     firebaseAuth: null,
     firestore: null,
+    toastTimer: null,
   };
 
   const ui = {};
@@ -219,6 +220,24 @@
       window.localStorage.removeItem(DRAW_UNSAVED_KEY);
     } catch {}
     updateMeta();
+  }
+
+  function showToast(message) {
+    if (!ui.drawToast) return;
+    const text = String(message || '').trim();
+    if (!text) return;
+    ui.drawToast.textContent = text;
+    ui.drawToast.hidden = false;
+    ui.drawToast.classList.add('visible');
+    if (state.toastTimer) {
+      window.clearTimeout(state.toastTimer);
+    }
+    state.toastTimer = window.setTimeout(() => {
+      ui.drawToast.classList.remove('visible');
+      state.toastTimer = window.setTimeout(() => {
+        ui.drawToast.hidden = true;
+      }, 220);
+    }, 2400);
   }
 
   function snapshotState() {
@@ -1331,10 +1350,12 @@
     ui.saveOverlay.hidden = false;
     try {
       await persistBannerToCloud();
+      clearDirty();
       closeFinishOverlay();
       state.lastSavedAt = safeNow();
       updateMeta();
-      updateStatus('Saved to your banners!');
+      showToast('Saved to your banners!');
+      updateStatus('Banner save complete.');
     } finally {
       ui.saveOverlay.hidden = true;
     }
@@ -1581,6 +1602,7 @@
     ui.canvas = $('drawCanvas');
     ui.context = ui.canvas.getContext('2d');
     ui.drawStatus = $('drawStatus');
+    ui.drawToast = $('drawToast');
     ui.brushSizeInput = $('brushSizeInput');
     ui.drawingModeSelect = $('drawingModeSelect');
     ui.strokeModeSelect = $('strokeModeSelect');
