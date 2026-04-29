@@ -212,7 +212,10 @@ const PROFILE_CACHE_TTL_MS = 2 * 60 * 1000;
 const SOCIAL_CACHE_TTL_MS = 45 * 1000;
 const PROFILE_WARNING_HISTORY_LIMIT = 25;
 const CUSTOM_PROFILE_BANNER_LIMIT = 5;
+const MAILBOX_STORAGE_KEY = 'playrMailboxV1';
 const PROFILE_BANNER_DRAW_SIZE = { width: 1500, height: 420 };
+const STAFF_ROLE_SEQUENCE = ['support', 'moderator', 'admin'];
+const STAFF_PROMOTION_COOLDOWN_MS = 5 * 24 * 60 * 60 * 1000;
 const MODERATION_DURATION_PRESETS = [
   { id: '30m', label: '30 min', minutes: 30 },
   { id: '1h', label: '1 hour', minutes: 60 },
@@ -781,6 +784,98 @@ function canCurrentAccountInteract(account = getCurrentAccount()) {
   return Boolean(account && !isCurrentAccountBanned(account) && !isCurrentAccountMuted(account));
 }
 
+function getProfilePrimaryRole(profile = {}) {
+  if (isOwnerAccount(profile)) return 'owner';
+  return getHighestStaffRoleFromRoles(profile?.roles || []);
+}
+
+function getActorRoleInfo(actor = getCurrentAccount()) {
+  const role = getAccountPrimaryRole(actor);
+  return {
+    role,
+    rank: getRoleRank(role),
+  };
+}
+
+function getTargetRoleInfo(profile = {}) {
+  const role = getProfilePrimaryRole(profile);
+  return {
+    role,
+    rank: getRoleRank(role),
+  };
+}
+
+function canActorAffectTarget(actor, targetProfile) {
+  const actorInfo = getActorRoleInfo(actor);
+  const targetInfo = getTargetRoleInfo(targetProfile);
+  return Boolean(actorInfo.rank > 0 && actorInfo.rank > targetInfo.rank);
+}
+
+function canActorWarnTarget(actor, targetProfile) {
+  if (!canActorAffectTarget(actor, targetProfile)) return false;
+  const actorRole = getActorRoleInfo(actor).role;
+  const targetRank = getTargetRoleInfo(targetProfile).rank;
+  if (actorRole === 'support') return targetRank === 0;
+  if (actorRole === 'moderator' || actorRole === 'admin' || actorRole === 'owner') return true;
+  return false;
+}
+
+function canActorMuteTarget(actor, targetProfile) {
+  if (!canActorAffectTarget(actor, targetProfile)) return false;
+  const actorRole = getActorRoleInfo(actor).role;
+  return actorRole === 'moderator' || actorRole === 'admin' || actorRole === 'owner';
+}
+
+function canActorBanTarget(actor, targetProfile) {
+  if (!canActorAffectTarget(actor, targetProfile)) return false;
+  const actorRole = getActorRoleInfo(actor).role;
+  return actorRole === 'admin' || actorRole === 'owner';
+}
+
+function canActorPromoteTarget(actor, targetProfile) {
+  const actorRole = getActorRoleInfo(actor).role;
+  const targetRole = getTargetRoleInfo(targetProfile).role;
+  if (actorRole === 'owner') {
+    return Boolean(getNextStaffRole(targetRole));
+  }
+  if (actorRole === 'admin') {
+    return targetRole === '' || targetRole === 'support';
+  }
+  if (actorRole === 'moderator') {
+    return targetRole === '';
+  }
+  return false;
+}
+
+function canActorDemoteTarget(actor, targetProfile) {
+  const actorRole = getActorRoleInfo(actor).role;
+  const targetRole = getTargetRoleInfo(targetProfile).role;
+  if (actorRole === 'owner') {
+    return Boolean(targetRole && targetRole !== 'owner');
+  }
+  if (actorRole === 'admin') {
+    return targetRole === 'moderator' || targetRole === 'support';
+  }
+  if (actorRole === 'moderator') {
+    return targetRole === 'support';
+  }
+  return false;
+}
+
+function getPromotionCooldownRemaining(profile = {}) {
+  return Math.max(0, normalizeTimestampToMs(profile?.staff?.promotionCooldownUntil) - Date.now());
+}
+
+function getPromotionCooldownLabel(profile = {}) {
+  const remaining = getPromotionCooldownRemaining(profile);
+  if (!remaining) return '';
+  const hours = Math.ceil(remaining / (60 * 60 * 1000));
+  if (hours >= 24) {
+    return `${Math.ceil(hours / 24)} day cooldown`;
+  }
+  return `${hours} hour cooldown`;
+}
+
 function upsertProfileCacheEntry(key, data) {
   if (!key) return;
   profileCacheState.byLookup[key] = {
@@ -841,6 +936,8 @@ function mergeCloudProfileShape(profile = {}) {
     ? profile.profileTheme.banner
     : {};
   const customBanners = Array.isArray(profile.profileTheme?.customBanners) ? profile.profileTheme.customBanners : [];
+  const mailboxEntries = Array.isArray(profile?.mailbox) ? profile.mailbox : [];
+  const highestStaffRole = getHighestStaffRoleFromRoles(profile?.roles || []);
   const favoriteGame = profile.activity?.favoriteGameTitle || '';
   const isVip = Boolean(profile?.isVip)
     || (Array.isArray(profile?.roles) && profile.roles.includes('vip'))
@@ -883,6 +980,26 @@ function mergeCloudProfileShape(profile = {}) {
         bannedByName: String(profile?.moderation?.ban?.bannedByName || '').trim(),
       },
     },
+    staff: {
+      role: highestStaffRole,
+      promotedByUid: String(profile?.staff?.promotedByUid || '').trim(),
+      promotedByName: String(profile?.staff?.promotedByName || '').trim(),
+      promotedAt: normalizeTimestampToMs(profile?.staff?.promotedAt),
+      promotionCooldownUntil: normalizeTimestampToMs(profile?.staff?.promotionCooldownUntil),
+      history: Array.isArray(profile?.staff?.history)
+        ? profile.staff.history
+          .map((entry) => entry && typeof entry === 'object' ? {
+            fromRole: normalizeRoleName(entry.fromRole),
+            toRole: normalizeRoleName(entry.toRole),
+            action: String(entry.action || 'promote').trim(),
+            byUid: String(entry.byUid || '').trim(),
+            byName: String(entry.byName || '').trim(),
+            createdAt: normalizeTimestampToMs(entry.createdAt),
+          } : null)
+          .filter(Boolean)
+          .slice(-20)
+        : [],
+    },
     activity: {
       ...(profile.activity && typeof profile.activity === 'object' ? profile.activity : {}),
       favoriteGameTitle: String(favoriteGame || '').trim(),
@@ -894,6 +1011,21 @@ function mergeCloudProfileShape(profile = {}) {
         : resolvedBanner,
       customBanners: normalizedCustomBanners,
     },
+    mailbox: mailboxEntries
+      .map((entry) => entry && typeof entry === 'object' ? {
+        id: String(entry.id || '').trim(),
+        subject: String(entry.subject || '').trim(),
+        body: String(entry.body || '').trim(),
+        type: String(entry.type || '').trim(),
+        category: String(entry.category || '').trim(),
+        createdAt: normalizeTimestampToMs(entry.createdAt),
+        actorUid: String(entry.actorUid || '').trim(),
+        actorName: String(entry.actorName || '').trim(),
+        targetUid: String(entry.targetUid || '').trim(),
+        targetName: String(entry.targetName || '').trim(),
+      } : null)
+      .filter(Boolean)
+      .slice(0, 50),
   };
 }
 
@@ -1035,7 +1167,13 @@ function renderProfileBadgeSection(profile) {
   const visibleBadges = Array.isArray(snapshot?.badges) ? snapshot.badges : [];
   const profileBadges = visibleBadges.filter((badge) => {
     const badgeId = String(badge?.id || '').trim();
-    return badgeId && badgeId !== 'owner' && !badgeId.startsWith('donation-');
+    return badgeId
+      && badgeId !== 'owner'
+      && badgeId !== 'vip'
+      && badgeId !== 'support'
+      && badgeId !== 'moderator'
+      && badgeId !== 'admin'
+      && !badgeId.startsWith('donation-');
   });
   if (!profileBadges.length) {
     profileUi.profileBadgeList.innerHTML = '<p class="settings-muted">No extra profile tags equipped.</p>';
@@ -1403,6 +1541,8 @@ function ensureProfileAndFriendsUi() {
           <h4>Owner Moderation</h4>
           <p class="settings-muted profile-moderation-summary" id="profileModerationSummary">Choose an action to issue a warning, mute, or ban.</p>
           <div class="settings-inline-actions profile-moderation-actions">
+            <button class="button secondary" type="button" id="profilePromoteBtn">Promote</button>
+            <button class="button secondary" type="button" id="profileDemoteBtn">Demote</button>
             <button class="button secondary" type="button" id="profileWarnBtn">Warn</button>
             <button class="button secondary" type="button" id="profileMuteBtn">Mute</button>
             <button class="button primary" type="button" id="profileBanBtn">Ban</button>
@@ -1488,6 +1628,8 @@ function ensureProfileAndFriendsUi() {
   profileUi.profileModerationTitle = document.getElementById('profileModerationTitle');
   profileUi.profileModerationMessage = document.getElementById('profileModerationMessage');
   profileUi.profileModerationDuration = document.getElementById('profileModerationDuration');
+  profileUi.profilePromoteBtn = document.getElementById('profilePromoteBtn');
+  profileUi.profileDemoteBtn = document.getElementById('profileDemoteBtn');
   profileUi.profileWarnBtn = document.getElementById('profileWarnBtn');
   profileUi.profileMuteBtn = document.getElementById('profileMuteBtn');
   profileUi.profileBanBtn = document.getElementById('profileBanBtn');
@@ -1500,6 +1642,7 @@ function ensureProfileAndFriendsUi() {
   profileUi.vipBannerUpsellProgressBar = document.getElementById('vipBannerUpsellProgressBar');
   profileUi.vipBannerUpsellProgressLabel = document.getElementById('vipBannerUpsellProgressLabel');
   profileUi.vipBannerUpsellCloseBtn = document.getElementById('vipBannerUpsellCloseBtn');
+  profileUi.settingsStaffDirectoryList = document.getElementById('settingsStaffDirectoryList');
 }
 
 function ensureBannerSettingsCard() {
@@ -1522,6 +1665,63 @@ function ensureBannerSettingsCard() {
   profileUi.settingsBannerCard = card;
   profileUi.settingsBannerGrid = card.querySelector('#settingsBannerGrid');
   profileUi.settingsCustomBannerList = card.querySelector('#settingsCustomBannerList');
+}
+
+function ensureStaffDirectoryCard() {
+  if (!settingsGrid || profileUi.settingsStaffDirectoryCard) return;
+  const card = document.createElement('section');
+  card.className = 'settings-card';
+  card.id = 'settingsStaffDirectoryCard';
+  card.hidden = true;
+  card.innerHTML = `
+    <h4>Staff directory</h4>
+    <p class="settings-muted">Owner-only list of support, moderator, and admin users, including who promoted them and when.</p>
+    <div class="social-list" id="settingsStaffDirectoryList"></div>
+  `;
+  settingsGrid.appendChild(card);
+  profileUi.settingsStaffDirectoryCard = card;
+  profileUi.settingsStaffDirectoryList = card.querySelector('#settingsStaffDirectoryList');
+}
+
+async function renderStaffDirectory(account = getCurrentAccount()) {
+  ensureStaffDirectoryCard();
+  if (!profileUi.settingsStaffDirectoryCard || !profileUi.settingsStaffDirectoryList) return;
+  const isOwner = isOwnerAccount(account);
+  profileUi.settingsStaffDirectoryCard.hidden = !isOwner;
+  if (!isOwner) return;
+
+  let profiles = Object.values(authState.profiles || {}).map((entry) => mergeCloudProfileShape(entry));
+  if (firebaseDb) {
+    try {
+      const snapshot = await firebaseDb.collection(USER_PROFILE_COLLECTION).get();
+      profiles = snapshot.docs.map((doc) => mergeCloudProfileShape({
+        uid: doc.id,
+        ...(doc.data() || {}),
+      }));
+      profiles.forEach((profile) => cacheProfileLocally(profile, { persist: false }));
+    } catch {}
+  }
+
+  const staffProfiles = profiles
+    .filter((profile) => getProfilePrimaryRole(profile) && !isOwnerAccount(profile))
+    .sort((left, right) => getRoleRank(getProfilePrimaryRole(right)) - getRoleRank(getProfilePrimaryRole(left))
+      || String(left.displayName || '').localeCompare(String(right.displayName || '')));
+
+  if (!staffProfiles.length) {
+    profileUi.settingsStaffDirectoryList.innerHTML = '<p class="settings-muted">No staff users yet.</p>';
+    return;
+  }
+
+  profileUi.settingsStaffDirectoryList.innerHTML = staffProfiles.map((profile) => `
+    <article class="social-row">
+      <div class="social-row-copy">
+        <strong>${formatPlayerIdentityMarkup(profile.displayName || 'Player', { record: profile, compact: true })}</strong>
+        <span class="social-meta">
+          ${escapeHtml(getProfilePrimaryRole(profile))} • promoted by ${escapeHtml(profile?.staff?.promotedByName || 'Unknown')} on ${escapeHtml(formatProfileDate(profile?.staff?.promotedAt))}
+        </span>
+      </div>
+    </article>
+  `).join('');
 }
 
 function renderBannerSettings(account = getCurrentAccount()) {
@@ -1780,7 +1980,15 @@ async function renderOpenProfilePanel() {
   const relationship = getCurrentRelationshipStatus(merged.uid);
   const currentAccount = getCurrentAccount();
   const isSelf = Boolean(currentAccount?.uid && currentAccount.uid === merged.uid);
-  const ownerToolsVisible = isOwnerAccount(currentAccount) && !isSelf;
+  const actorRole = getAccountPrimaryRole(currentAccount);
+  const targetRole = getProfilePrimaryRole(merged);
+  const staffToolsVisible = Boolean(currentAccount && !isSelf && (
+    canActorWarnTarget(currentAccount, merged)
+    || canActorMuteTarget(currentAccount, merged)
+    || canActorBanTarget(currentAccount, merged)
+    || canActorPromoteTarget(currentAccount, merged)
+    || canActorDemoteTarget(currentAccount, merged)
+  ));
   const isMuted = Boolean(merged?.moderation?.mutedPermanent) || normalizeTimestampToMs(merged?.moderation?.mutedUntil) > Date.now();
   const isBanned = Boolean(merged?.moderation?.ban?.active)
     && (Boolean(merged?.moderation?.ban?.permanent) || normalizeTimestampToMs(merged?.moderation?.ban?.expiresAt) > Date.now() || normalizeTimestampToMs(merged?.moderation?.ban?.expiresAt) === 0);
@@ -1791,6 +1999,9 @@ async function renderOpenProfilePanel() {
     ? window.PlayrProgression.formatIdentityMarkup(merged.displayName || 'Player', { record: merged, profile: merged, showBadges: false })
     : escapeHtml(merged.displayName || 'Player');
   const statusBits = [`Joined ${formatProfileDate(merged.createdAt)}`];
+  if (targetRole) {
+    statusBits.push(targetRole === 'support' ? 'Support staff' : targetRole === 'moderator' ? 'Moderator' : targetRole === 'admin' ? 'Admin' : 'Owner');
+  }
   if (isBanned) {
     statusBits.push(merged?.moderation?.ban?.permanent ? 'Permanently banned' : `Banned until ${formatModerationExpiry(merged?.moderation?.ban?.expiresAt)}`);
   }
@@ -1837,11 +2048,23 @@ async function renderOpenProfilePanel() {
     profileUi.profileActionArea.innerHTML = `<button class="button primary" type="button" data-profile-add-friend="${escapeHtml(merged.uid)}">Add Friend</button>`;
   }
 
-  profileUi.profileModeration.hidden = !ownerToolsVisible;
+  profileUi.profileModeration.hidden = !staffToolsVisible;
   profileUi.profileModeration.dataset.targetUid = String(merged.uid || '');
-  if (ownerToolsVisible) {
+  if (staffToolsVisible) {
+    const moderationHeading = profileUi.profileModeration.querySelector('h4');
+    if (moderationHeading) {
+      moderationHeading.textContent = actorRole === 'owner' ? 'Owner Moderation' : actorRole === 'admin' ? 'Admin Moderation' : actorRole === 'moderator' ? 'Moderator Moderation' : 'Support Moderation';
+    }
+    const roleSummaryBits = [buildModerationSummary(merged.moderation || {})];
+    if (merged?.staff?.promotedAt && targetRole) {
+      roleSummaryBits.push(`${targetRole} since ${formatProfileDate(merged.staff.promotedAt)}`);
+    }
+    const cooldownLabel = getPromotionCooldownLabel(merged);
+    if (cooldownLabel) {
+      roleSummaryBits.push(cooldownLabel);
+    }
     if (profileUi.profileModerationSummary) {
-      profileUi.profileModerationSummary.textContent = buildModerationSummary(merged.moderation || {});
+      profileUi.profileModerationSummary.textContent = roleSummaryBits.join(' • ');
     }
     if (profileUi.profileModerationComposer) {
       profileUi.profileModerationComposer.hidden = true;
@@ -1856,10 +2079,37 @@ async function renderOpenProfilePanel() {
     if (profileUi.profileModerationDuration) {
       profileUi.profileModerationDuration.value = '1h';
     }
-    if (profileUi.profileUnmuteBtn) profileUi.profileUnmuteBtn.hidden = !isMuted;
-    if (profileUi.profileUnbanBtn) profileUi.profileUnbanBtn.hidden = !isBanned;
-    if (profileUi.profileMuteBtn) profileUi.profileMuteBtn.hidden = isBanned;
-    if (profileUi.profileBanBtn) profileUi.profileBanBtn.hidden = isBanned;
+    if (profileUi.profilePromoteBtn) {
+      const canPromote = canActorPromoteTarget(currentAccount, merged);
+      const cooldownLabel = getPromotionCooldownLabel(merged);
+      const nextRole = getNextStaffRole(targetRole);
+      profileUi.profilePromoteBtn.hidden = !canPromote;
+      profileUi.profilePromoteBtn.textContent = nextRole
+        ? `Promote to ${nextRole.charAt(0).toUpperCase()}${nextRole.slice(1)}`
+        : 'Promote';
+      profileUi.profilePromoteBtn.disabled = Boolean(cooldownLabel);
+      profileUi.profilePromoteBtn.title = cooldownLabel || '';
+    }
+    if (profileUi.profileDemoteBtn) {
+      profileUi.profileDemoteBtn.hidden = !canActorDemoteTarget(currentAccount, merged);
+    }
+    if (profileUi.profileWarnBtn) profileUi.profileWarnBtn.hidden = !canActorWarnTarget(currentAccount, merged);
+    if (profileUi.profileMuteBtn) profileUi.profileMuteBtn.hidden = !canActorMuteTarget(currentAccount, merged) || isBanned;
+    if (profileUi.profileBanBtn) profileUi.profileBanBtn.hidden = !canActorBanTarget(currentAccount, merged) || isBanned;
+    if (profileUi.profileUnmuteBtn) profileUi.profileUnmuteBtn.hidden = !isMuted || !canActorMuteTarget(currentAccount, merged);
+    if (profileUi.profileUnbanBtn) profileUi.profileUnbanBtn.hidden = !isBanned || !canActorBanTarget(currentAccount, merged);
+    if (profileUi.profileModerationDuration) {
+      const actorPrimaryRole = getAccountPrimaryRole(currentAccount);
+      Array.from(profileUi.profileModerationDuration.options).forEach((option) => {
+        const preset = getModerationPresetById(option.value);
+        let hidden = false;
+        if (actorPrimaryRole === 'moderator' && preset.minutes != null && preset.minutes > (24 * 60)) hidden = true;
+        if (actorPrimaryRole === 'moderator' && preset.minutes == null) hidden = true;
+        if (actorPrimaryRole === 'admin' && preset.minutes != null && preset.minutes > (7 * 24 * 60)) hidden = true;
+        if (actorPrimaryRole === 'admin' && preset.minutes == null) hidden = true;
+        option.hidden = hidden;
+      });
+    }
   }
 }
 
@@ -1926,13 +2176,153 @@ function closeVipBannerUpsell() {
   profileUi.vipBannerUpsellOverlay.hidden = true;
 }
 
-async function applyOwnerModerationAction(action) {
+async function getModerationCopyRecipients(actor, action) {
+  const actorRole = getAccountPrimaryRole(actor);
+  const actorUid = String(actor?.uid || '').trim();
+  const actorName = String(actor?.displayName || 'Staff').trim() || 'Staff';
+  const recipients = [];
+  const addRecipient = (profile) => {
+    if (!profile?.uid || profile.uid === actorUid) return;
+    if (recipients.some((entry) => entry.uid === profile.uid)) return;
+    recipients.push(profile);
+  };
+  let allProfiles = Object.values(authState.profiles || {}).map((entry) => mergeCloudProfileShape(entry));
+  if (firebaseDb) {
+    try {
+      const snapshot = await firebaseDb.collection(USER_PROFILE_COLLECTION).get();
+      allProfiles = snapshot.docs.map((doc) => mergeCloudProfileShape({
+        uid: doc.id,
+        ...(doc.data() || {}),
+      }));
+    } catch {}
+  }
+  if (actorRole === 'support') {
+    allProfiles.filter((profile) => ['moderator', 'admin'].includes(getProfilePrimaryRole(profile)) || isOwnerAccount(profile)).forEach(addRecipient);
+  } else if (actorRole === 'moderator') {
+    allProfiles.filter((profile) => getProfilePrimaryRole(profile) === 'admin' || isOwnerAccount(profile)).forEach(addRecipient);
+  } else if (actorRole === 'admin') {
+    allProfiles.filter((profile) => isOwnerAccount(profile)).forEach(addRecipient);
+  }
+  return recipients.map((profile) => ({
+    ...profile,
+    actorUid,
+    actorName,
+  }));
+}
+
+async function appendModerationCopies(actor, targetProfile, action, reason = '') {
+  const recipients = await getModerationCopyRecipients(actor, action);
+  recipients.forEach((recipient) => {
+    window.PlayrProgression?.appendMailboxMessage?.(recipient, {
+      subject: `Staff ${action}`,
+      body: `${actor.displayName} used ${action} on ${targetProfile.displayName || 'a user'}${reason ? `: ${reason}` : '.'}`,
+      type: 'staff-copy',
+      category: 'Moderation',
+      actorUid: actor.uid,
+      actorName: actor.displayName,
+      targetUid: targetProfile.uid,
+      targetName: targetProfile.displayName || 'Player',
+      createdAt: Date.now(),
+    });
+  });
+}
+
+function buildNextStaffRolesForPromotion(targetProfile = {}) {
+  const targetRole = getProfilePrimaryRole(targetProfile);
+  const nextRole = getNextStaffRole(targetRole);
+  if (!nextRole) return null;
+  return buildAccountRoles({
+    roles: [...(Array.isArray(targetProfile.roles) ? targetProfile.roles : []).filter((role) => !STAFF_ROLE_SEQUENCE.includes(normalizeRoleName(role))), nextRole],
+    isVip: Boolean(targetProfile.isVip),
+    identifierType: targetProfile.identifierType,
+    identifier: targetProfile.identifier,
+  });
+}
+
+function buildNextStaffRolesForDemotion(targetProfile = {}) {
+  const targetRole = getProfilePrimaryRole(targetProfile);
+  const previousRole = getPreviousStaffRole(targetRole);
+  const baseRoles = [...(Array.isArray(targetProfile.roles) ? targetProfile.roles : []).filter((role) => !STAFF_ROLE_SEQUENCE.includes(normalizeRoleName(role)))];
+  if (previousRole) baseRoles.push(previousRole);
+  return buildAccountRoles({
+    roles: baseRoles,
+    isVip: Boolean(targetProfile.isVip),
+    identifierType: targetProfile.identifierType,
+    identifier: targetProfile.identifier,
+  });
+}
+
+async function applyStaffRoleChange(action) {
   const account = getCurrentAccount();
-  if (!firebaseDb || !account?.uid || !isOwnerAccount(account) || !profileUi.profileModeration) return;
+  if (!firebaseDb || !account?.uid || !profileUi.profileModeration) return;
   const targetUid = String(profileUi.profileModeration.dataset.targetUid || '').trim();
   if (!targetUid) return;
   const targetProfile = await resolveUserProfileRecord({ uid: targetUid, displayName: profileUi.profileOverlay?.dataset.profileName || '' });
   if (!targetProfile) return;
+  if (action === 'promote' && !canActorPromoteTarget(account, targetProfile)) return;
+  if (action === 'demote' && !canActorDemoteTarget(account, targetProfile)) return;
+  if (action === 'promote' && getPromotionCooldownRemaining(targetProfile) > 0) {
+    setProfilePanelStatus(`This user is still on a promotion cooldown for ${getPromotionCooldownLabel(targetProfile)}.`, 'info');
+    return;
+  }
+  const nextRoles = action === 'promote' ? buildNextStaffRolesForPromotion(targetProfile) : buildNextStaffRolesForDemotion(targetProfile);
+  const nextRole = getHighestStaffRoleFromRoles(nextRoles || []);
+  const previousRole = getProfilePrimaryRole(targetProfile);
+  const now = Date.now();
+  const staff = {
+    ...(targetProfile.staff && typeof targetProfile.staff === 'object' ? targetProfile.staff : {}),
+    role: nextRole,
+    promotedByUid: action === 'promote' ? account.uid : String(targetProfile.staff?.promotedByUid || '').trim(),
+    promotedByName: action === 'promote' ? account.displayName : String(targetProfile.staff?.promotedByName || '').trim(),
+    promotedAt: action === 'promote' ? now : normalizeTimestampToMs(targetProfile.staff?.promotedAt),
+    promotionCooldownUntil: action === 'promote' && nextRole ? now + STAFF_PROMOTION_COOLDOWN_MS : 0,
+    history: [
+      ...((Array.isArray(targetProfile.staff?.history) ? targetProfile.staff.history : []).slice(-19)),
+      {
+        fromRole: previousRole,
+        toRole: nextRole,
+        action,
+        byUid: account.uid,
+        byName: account.displayName,
+        createdAt: now,
+      },
+    ],
+  };
+  const timestamp = window.firebase.firestore.FieldValue.serverTimestamp();
+  await firebaseDb.collection(USER_PROFILE_COLLECTION).doc(targetUid).set({
+    roles: nextRoles,
+    staff,
+    updatedAt: timestamp,
+  }, { merge: true });
+  cacheProfileLocally({
+    ...targetProfile,
+    roles: nextRoles,
+    staff,
+  });
+  cacheResolvedProfile({
+    ...targetProfile,
+    roles: nextRoles,
+    staff,
+  });
+  setProfilePanelStatus(`${action === 'promote' ? 'Promoted' : 'Demoted'} ${targetProfile.displayName || 'user'} ${action === 'promote' ? `to ${nextRole}.` : `to ${nextRole || 'normal user'}.`}`, 'success');
+  if (!settingsOverlay?.hidden) {
+    void renderStaffDirectory(account);
+  }
+  await renderOpenProfilePanel();
+}
+
+async function applyStaffModerationAction(action) {
+  const account = getCurrentAccount();
+  if (!firebaseDb || !account?.uid || !profileUi.profileModeration) return;
+  const actorRole = getAccountPrimaryRole(account);
+  if (!actorRole) return;
+  const targetUid = String(profileUi.profileModeration.dataset.targetUid || '').trim();
+  if (!targetUid) return;
+  const targetProfile = await resolveUserProfileRecord({ uid: targetUid, displayName: profileUi.profileOverlay?.dataset.profileName || '' });
+  if (!targetProfile) return;
+  if (action === 'warn' && !canActorWarnTarget(account, targetProfile)) return;
+  if ((action === 'mute' || action === 'unmute') && !canActorMuteTarget(account, targetProfile)) return;
+  if ((action === 'ban' || action === 'unban') && !canActorBanTarget(account, targetProfile)) return;
 
   const message = String(profileUi.profileModerationMessage?.value || '').trim();
   const durationPreset = getModerationPresetById(profileUi.profileModerationDuration?.value || '');
@@ -1942,16 +2332,20 @@ async function applyOwnerModerationAction(action) {
   if (action === 'warn') {
     moderation.warningCount = Math.max(0, Number(moderation.warningCount) || 0) + 1;
     moderation.warnings = [...(Array.isArray(moderation.warnings) ? moderation.warnings : []), {
-      message: message || 'Owner warning issued.',
+      message: message || `${actorRole} warning issued.`,
       createdAt: now,
       issuedByUid: account.uid,
       issuedByName: account.displayName,
     }].slice(-PROFILE_WARNING_HISTORY_LIMIT);
   }
   if (action === 'mute') {
+    if (actorRole === 'moderator' && (durationPreset.minutes == null || durationPreset.minutes > (24 * 60))) {
+      setProfilePanelStatus('Moderators can mute for up to 24 hours.', 'danger');
+      return;
+    }
     moderation.mutedPermanent = durationPreset.minutes == null;
     moderation.mutedUntil = durationPreset.minutes == null ? 0 : now + (durationPreset.minutes * 60 * 1000);
-    moderation.muteReason = message || 'Muted by owner.';
+    moderation.muteReason = message || `Muted by ${actorRole}.`;
   }
   if (action === 'unmute') {
     moderation.mutedUntil = 0;
@@ -1959,10 +2353,14 @@ async function applyOwnerModerationAction(action) {
     moderation.muteReason = '';
   }
   if (action === 'ban') {
+    if (actorRole === 'admin' && (durationPreset.minutes == null || durationPreset.minutes > (7 * 24 * 60))) {
+      setProfilePanelStatus('Admins can ban for up to 1 week.', 'danger');
+      return;
+    }
     moderation.ban = {
       active: true,
       permanent: durationPreset.minutes == null,
-      reason: message || 'Banned by owner.',
+      reason: message || `Banned by ${actorRole}.`,
       bannedAt: now,
       expiresAt: durationPreset.minutes == null ? 0 : now + (durationPreset.minutes * 60 * 1000),
       bannedByUid: account.uid,
@@ -1998,6 +2396,7 @@ async function applyOwnerModerationAction(action) {
     ...targetProfile,
     moderation,
   });
+  await appendModerationCopies(account, targetProfile, action, message || moderation.muteReason || moderation.ban?.reason || '');
   setProfilePanelStatus(`Moderation action applied: ${action}.`, 'success');
   closeModerationComposer();
   await renderOpenProfilePanel();
@@ -2053,8 +2452,25 @@ function hasUnreadSiteNotices() {
   return getPublicSiteNotices().some((notice) => !readSet.has(String(notice.id || '')));
 }
 
+function getCurrentMailboxNotifications() {
+  return getMailboxMessagesForAccount(getCurrentAccount())
+    .map((entry) => entry && typeof entry === 'object' ? {
+      id: String(entry.id || '').trim(),
+      subject: String(entry.subject || '').trim() || 'Notification',
+      body: String(entry.body || '').trim(),
+      type: String(entry.type || '').trim() || 'staff-copy',
+      category: String(entry.category || '').trim() || 'Staff',
+      createdAt: normalizeTimestampToMs(entry.createdAt),
+      actorName: String(entry.actorName || '').trim(),
+      targetName: String(entry.targetName || '').trim(),
+    } : null)
+    .filter(Boolean)
+    .sort((left, right) => right.createdAt - left.createdAt)
+    .slice(0, 8);
+}
+
 function syncSiteNoticeBell() {
-  const hasUnread = hasUnreadSiteNotices();
+  const hasUnread = hasUnreadSiteNotices() || getCurrentMailboxNotifications().length > 0;
   if (notificationsUnreadDot) {
     notificationsUnreadDot.hidden = !hasUnread;
   }
@@ -2088,15 +2504,59 @@ function renderNotificationsDropdown() {
   if (!notificationsList || !notificationsEmpty) return;
 
   const notices = getPublicSiteNotices().slice(0, 1);
+  const mailboxEntries = getCurrentMailboxNotifications();
   notificationsList.innerHTML = '';
 
-  if (!notices.length) {
+  if (!notices.length && !mailboxEntries.length) {
     notificationsEmpty.hidden = false;
     syncSiteNoticeBell();
     return;
   }
 
   notificationsEmpty.hidden = true;
+
+  if (mailboxEntries.length) {
+    const section = document.createElement('div');
+    section.className = 'notification-section-label';
+    section.textContent = 'Staff notifications';
+    notificationsList.appendChild(section);
+
+    mailboxEntries.forEach((notice) => {
+      const article = document.createElement('article');
+      article.className = 'notification-item';
+
+      const top = document.createElement('div');
+      top.className = 'notification-item-top';
+
+      const titleWrap = document.createElement('div');
+      const title = document.createElement('h4');
+      title.textContent = notice.subject;
+      const summary = document.createElement('p');
+      summary.textContent = notice.body || 'Staff activity copied here.';
+      titleWrap.append(title, summary);
+
+      const meta = document.createElement('div');
+      meta.className = 'notification-meta';
+      const tag = document.createElement('span');
+      tag.className = 'notification-tag';
+      tag.textContent = notice.category || 'Staff';
+      const date = document.createElement('span');
+      date.className = 'notification-date';
+      date.textContent = formatSiteNoticeDate(notice.createdAt);
+      meta.append(tag, date);
+
+      top.append(titleWrap, meta);
+      article.append(top);
+      notificationsList.appendChild(article);
+    });
+  }
+
+  if (mailboxEntries.length && notices.length) {
+    const divider = document.createElement('div');
+    divider.className = 'notification-section-label';
+    divider.textContent = 'Site updates';
+    notificationsList.appendChild(divider);
+  }
 
   notices.forEach((notice) => {
     const article = document.createElement('article');
@@ -2266,12 +2726,66 @@ function normalizeRoleName(role) {
   return String(role || '').trim().toLowerCase();
 }
 
+function getRoleRank(roleName) {
+  const safeRole = normalizeRoleName(roleName);
+  if (safeRole === 'owner') return 4;
+  if (safeRole === 'admin') return 3;
+  if (safeRole === 'moderator') return 2;
+  if (safeRole === 'support') return 1;
+  return 0;
+}
+
+function getHighestStaffRoleFromRoles(roles = []) {
+  const normalized = Array.isArray(roles) ? roles.map(normalizeRoleName) : [];
+  if (normalized.includes('admin')) return 'admin';
+  if (normalized.includes('moderator')) return 'moderator';
+  if (normalized.includes('support')) return 'support';
+  return '';
+}
+
+function getAccountPrimaryRole(account = getCurrentAccount()) {
+  if (isOwnerAccount(account)) return 'owner';
+  return getHighestStaffRoleFromRoles(account?.roles || []);
+}
+
+function getNextStaffRole(role = '') {
+  const safeRole = normalizeRoleName(role);
+  if (!safeRole) return STAFF_ROLE_SEQUENCE[0];
+  const index = STAFF_ROLE_SEQUENCE.indexOf(safeRole);
+  return index >= 0 && index < STAFF_ROLE_SEQUENCE.length - 1 ? STAFF_ROLE_SEQUENCE[index + 1] : '';
+}
+
+function getPreviousStaffRole(role = '') {
+  const safeRole = normalizeRoleName(role);
+  const index = STAFF_ROLE_SEQUENCE.indexOf(safeRole);
+  return index > 0 ? STAFF_ROLE_SEQUENCE[index - 1] : '';
+}
+
+function readMailboxStore() {
+  try {
+    const raw = localStorage.getItem(MAILBOX_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function getMailboxMessagesForAccount(account = getCurrentAccount()) {
+  if (window.PlayrProgression?.getMailboxMessages) {
+    return window.PlayrProgression.getMailboxMessages(account);
+  }
+  const key = account?.uid ? `user:${account.uid}` : account?.identifier ? `identifier:${normalizeAccountIdentifier(account.identifier)}` : 'guest';
+  const mailbox = readMailboxStore();
+  return Array.isArray(mailbox[key]) ? mailbox[key] : [];
+}
+
 function buildAccountRoles({ roles = [], isVip = false, identifierType = 'unknown', identifier = '' } = {}) {
   const merged = new Set(
     Array.isArray(roles)
       ? roles
         .map(normalizeRoleName)
-        .filter((role) => role && role !== 'owner' && role !== 'admin')
+        .filter((role) => role && role !== 'owner')
       : [],
   );
 
@@ -2282,6 +2796,13 @@ function buildAccountRoles({ roles = [], isVip = false, identifierType = 'unknow
   if (identifierType === 'email' && OWNER_VIP_IDENTIFIERS.has(normalizeAccountIdentifier(identifier))) {
     merged.add('owner');
     merged.add('vip');
+  }
+
+  if (merged.has('admin')) {
+    merged.delete('moderator');
+    merged.delete('support');
+  } else if (merged.has('moderator')) {
+    merged.delete('support');
   }
 
   return Array.from(merged);
@@ -2302,10 +2823,7 @@ function hasAccountRole(account, roleName) {
 }
 
 function isCurrentAccountAdmin(account = getCurrentAccount()) {
-  return Boolean(
-    hasAccountRole(account, 'owner')
-    || (account?.uid && OWNER_ADMIN_UIDS.has(account.uid))
-  );
+  return isOwnerAccount(account);
 }
 
 function isCurrentAccountVip(account = getCurrentAccount()) {
@@ -3286,6 +3804,8 @@ const profileUi = {
   profileModerationTitle: null,
   profileModerationMessage: null,
   profileModerationDuration: null,
+  profilePromoteBtn: null,
+  profileDemoteBtn: null,
   profileWarnBtn: null,
   profileMuteBtn: null,
   profileBanBtn: null,
@@ -3296,6 +3816,8 @@ const profileUi = {
   settingsBannerCard: null,
   settingsBannerGrid: null,
   settingsCustomBannerList: null,
+  settingsStaffDirectoryCard: null,
+  settingsStaffDirectoryList: null,
   vipBannerUpsellOverlay: null,
   vipBannerUpsellPreview: null,
   vipBannerUpsellProgressBar: null,
@@ -4186,11 +4708,24 @@ function renderSettingsBadgeManager(account = getCurrentAccount()) {
   if (!settingsBadgeSummary || !settingsBadgeList) return;
   const progression = getProgressionSnapshotForAccount(account);
   const availableBadges = Array.isArray(progression.availableBadges) ? progression.availableBadges : [];
-  const extraBadges = availableBadges.filter((badge) => badge && badge.id && badge.id !== 'level');
+  const mandatoryStaffRole = getAccountPrimaryRole(account);
+  const extraBadges = availableBadges.filter((badge) => {
+    const badgeId = String(badge?.id || '').trim();
+    return badgeId
+      && badgeId !== 'level'
+      && badgeId !== 'owner'
+      && badgeId !== 'vip'
+      && badgeId !== 'support'
+      && badgeId !== 'moderator'
+      && badgeId !== 'admin'
+      && !badgeId.startsWith('donation-');
+  });
   const equippedIds = Array.isArray(progression.equippedBadgeIds) ? progression.equippedBadgeIds : [];
   const equippedSet = new Set(equippedIds);
 
-  settingsBadgeSummary.textContent = `${Math.min(equippedIds.length, 5)}/5 extra badges equipped. Level is always shown by default.`;
+  settingsBadgeSummary.textContent = mandatoryStaffRole
+    ? `${Math.min(equippedIds.length + 1, 5)}/5 visible tag slots used. Your ${mandatoryStaffRole} staff badge is permanent and uses 1 slot.`
+    : `${Math.min(equippedIds.length, 5)}/5 extra badges equipped. Level is always shown by default.`;
   settingsBadgeList.innerHTML = '';
 
   if (!extraBadges.length) {
@@ -4285,12 +4820,14 @@ function toggleEquippedSettingsBadge(badgeId) {
   }
 
   const nextEquipped = Array.isArray(progression.equippedBadgeIds) ? [...progression.equippedBadgeIds] : [];
+  const mandatoryStaffRole = getAccountPrimaryRole(account);
+  const maxEquipCount = mandatoryStaffRole ? 4 : 5;
   const existingIndex = nextEquipped.indexOf(safeBadgeId);
   if (existingIndex >= 0) {
     nextEquipped.splice(existingIndex, 1);
   } else {
-    if (nextEquipped.length >= 5) {
-      setSettingsStatus('You can equip up to 5 extra badges at a time.', 'info');
+    if (nextEquipped.length >= maxEquipCount) {
+      setSettingsStatus(mandatoryStaffRole ? `Your ${mandatoryStaffRole} staff badge uses 1 of the 5 visible slots.` : 'You can equip up to 5 extra badges at a time.', 'info');
       return;
     }
     nextEquipped.push(safeBadgeId);
@@ -4325,6 +4862,7 @@ function openSettingsOverlay() {
   setSettingsPasswordVisibility(false);
   renderSettingsProgression(account);
   renderBannerSettings(account);
+  void renderStaffDirectory(account);
 
   const isAdmin = isCurrentAccountAdmin(account);
   const isOwner = isOwnerAccount(account);
@@ -6479,6 +7017,14 @@ function init() {
       openModerationComposer('warn');
       return;
     }
+    if (event.target.closest('#profilePromoteBtn')) {
+      void applyStaffRoleChange('promote');
+      return;
+    }
+    if (event.target.closest('#profileDemoteBtn')) {
+      void applyStaffRoleChange('demote');
+      return;
+    }
     if (event.target.closest('#profileMuteBtn')) {
       openModerationComposer('mute');
       return;
@@ -6488,11 +7034,11 @@ function init() {
       return;
     }
     if (event.target.closest('#profileUnmuteBtn')) {
-      void applyOwnerModerationAction('unmute');
+      void applyStaffModerationAction('unmute');
       return;
     }
     if (event.target.closest('#profileUnbanBtn')) {
-      void applyOwnerModerationAction('unban');
+      void applyStaffModerationAction('unban');
       return;
     }
     if (event.target.closest('#profileComposeCancelBtn')) {
@@ -6502,7 +7048,7 @@ function init() {
     if (event.target.closest('#profileComposeSubmitBtn')) {
       const action = profileUi.profileModerationComposer?.dataset.action || '';
       if (action === 'warn' || action === 'mute' || action === 'ban') {
-        void applyOwnerModerationAction(action);
+        void applyStaffModerationAction(action);
       }
       return;
     }

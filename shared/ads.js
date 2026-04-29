@@ -11,6 +11,8 @@
   const OWNER_XP_RECOVERY_THRESHOLD = 1000000000;
   const MAX_XP = 999999999;
   const CUSTOM_PROFILE_BANNER_LIMIT = 5;
+  const STAFF_ROLE_SEQUENCE = ['support', 'moderator', 'admin'];
+  const STAFF_PROMOTION_COOLDOWN_MS = 5 * 24 * 60 * 60 * 1000;
   const DEFAULT_PROFILE_BANNER = 'linear-gradient(135deg, rgba(74, 128, 245, 0.92), rgba(124, 240, 197, 0.82))';
   const EXTRA_EQUIPPED_BADGE_LIMIT = 5;
   const ACTIVE_TICK_MS = 5000;
@@ -72,6 +74,29 @@
     { id: 'donation-4', minimumCad: 50, label: 'Dono IV', title: 'Donation IV', description: 'Reserved for supporters once donations go live.', color: '#ff2b2b', assetPath: '/images/donations/dono-4.svg' },
     { id: 'donation-5', minimumCad: 100, label: 'Dono V', title: 'Donation V', description: 'Reserved for supporters once donations go live.', color: '#a638ff', assetPath: '/images/donations/dono-5.svg' },
   ];
+  const STAFF_BADGE_CONFIG = {
+    support: {
+      assetPath: '/images/Staff%20icons/helper(support).png',
+      displayGradient: 'linear-gradient(180deg, #d9ecff 0%, #63b7ff 35%, #1a4ea8 68%, #dff4ff 100%)',
+      title: 'Support Badge',
+      description: 'Support Badge - Helper role.',
+    },
+    moderator: {
+      assetPath: '/images/Staff%20icons/Moderator.png',
+      displayGradient: 'linear-gradient(180deg, #e3ffe7 0%, #6be39d 35%, #11804f 68%, #e9fff2 100%)',
+      title: 'Moderator Badge',
+      description: 'Moderator Badge - Community moderator role.',
+    },
+    admin: {
+      assetPath: '/images/Staff%20icons/Admin.png',
+      displayGradient: 'linear-gradient(180deg, #f0e3ff 0%, #b07cff 35%, #5c26b5 68%, #f5ecff 100%)',
+      title: 'Admin Badge',
+      description: 'Admin Badge - Administrative staff role.',
+    },
+    owner: {
+      assetPath: '/images/Staff%20icons/Owner.png',
+    },
+  };
 
   const activityState = {
     lastInputAt: 0,
@@ -89,6 +114,23 @@
 
   function normalizeRole(role) {
     return String(role || '').trim().toLowerCase();
+  }
+
+  function getHighestStaffRoleFromRoles(roles = []) {
+    if (!Array.isArray(roles)) return '';
+    if (roles.includes('admin')) return 'admin';
+    if (roles.includes('moderator')) return 'moderator';
+    if (roles.includes('support')) return 'support';
+    return '';
+  }
+
+  function getRoleRank(role) {
+    const safeRole = normalizeRole(role);
+    if (safeRole === 'owner') return 4;
+    if (safeRole === 'admin') return 3;
+    if (safeRole === 'moderator') return 2;
+    if (safeRole === 'support') return 1;
+    return 0;
   }
 
   function normalizeName(value) {
@@ -265,6 +307,13 @@
 
     if (record?.identifierType === 'email' && TRUSTED_VIP_IDENTIFIERS.has(normalizeIdentifier(record.identifier))) {
       roles.add('vip');
+    }
+
+    if (roles.has('admin')) {
+      roles.delete('moderator');
+      roles.delete('support');
+    } else if (roles.has('moderator')) {
+      roles.delete('support');
     }
 
     return Array.from(roles);
@@ -478,6 +527,7 @@
     const activity = merged.activity && typeof merged.activity === 'object' ? merged.activity : {};
     const activityByGame = activity.byGame && typeof activity.byGame === 'object' ? activity.byGame : {};
     const moderation = merged.moderation && typeof merged.moderation === 'object' ? merged.moderation : {};
+    const staff = merged.staff && typeof merged.staff === 'object' ? merged.staff : {};
     const profileTheme = merged.profileTheme && typeof merged.profileTheme === 'object' ? merged.profileTheme : {};
     const banner = profileTheme.banner && typeof profileTheme.banner === 'object' ? profileTheme.banner : {};
     const customBanners = Array.isArray(profileTheme.customBanners) ? profileTheme.customBanners : [];
@@ -486,6 +536,7 @@
 
     merged.roles = roles;
     merged.isVip = roles.includes('vip');
+    const highestStaffRole = getHighestStaffRoleFromRoles(roles);
     merged.progressionUpdatedAt = Math.max(
       0,
       Number(merged.progressionUpdatedAt) || Number(merged.updatedAt) || 0
@@ -585,6 +636,26 @@
         bannedByUid: String(moderation.ban?.bannedByUid || '').trim(),
         bannedByName: normalizeName(moderation.ban?.bannedByName || ''),
       },
+    };
+    merged.staff = {
+      role: highestStaffRole,
+      promotedByUid: String(staff.promotedByUid || '').trim(),
+      promotedByName: normalizeName(staff.promotedByName || ''),
+      promotedAt: Math.max(0, Number(staff.promotedAt) || 0),
+      promotionCooldownUntil: Math.max(0, Number(staff.promotionCooldownUntil) || 0),
+      history: Array.isArray(staff.history)
+        ? staff.history
+          .map((entry) => entry && typeof entry === 'object' ? {
+            fromRole: normalizeRole(entry.fromRole),
+            toRole: normalizeRole(entry.toRole),
+            action: String(entry.action || '').trim() || 'promote',
+            byUid: String(entry.byUid || '').trim(),
+            byName: normalizeName(entry.byName || ''),
+            createdAt: Math.max(0, Number(entry.createdAt) || 0),
+          } : null)
+          .filter(Boolean)
+          .slice(-20)
+        : [],
     };
     const normalizedCustomBanners = customBanners
       .map((entry) => entry && typeof entry === 'object' ? {
@@ -802,6 +873,7 @@
       progression: safeProfile.progression,
       activity: safeProfile.activity,
       moderation: safeProfile.moderation,
+      staff: safeProfile.staff,
       profileTheme: safeProfile.profileTheme,
       updatedAt: Math.max(0, Number(safeProfile.updatedAt) || 0),
       createdAt: Math.max(0, Number(safeProfile.createdAt) || 0),
@@ -1706,14 +1778,14 @@
         showLabel: false,
         assetPath: donation.assetPath || createBadgeIcon({ shape: 'ring', primary: donation.color, accent: '#ffffff', text: '$' }),
         displayGradient: donation.id === 'donation-1'
-          ? 'linear-gradient(180deg, #dffff0 0%, #22ff4e 45%, #0a7f23 100%)'
+          ? 'linear-gradient(180deg, #effff5 0%, #aaf6bf 45%, #66cf8b 100%)'
           : donation.id === 'donation-2'
-            ? 'linear-gradient(180deg, #fff2c9 0%, #ffbf20 45%, #9d5c00 100%)'
+            ? 'linear-gradient(180deg, #fff8df 0%, #ffd98a 45%, #efbb5d 100%)'
             : donation.id === 'donation-3'
-              ? 'linear-gradient(180deg, #ebfaff 0%, #3dc8ff 45%, #116d9d 100%)'
+              ? 'linear-gradient(180deg, #f1fbff 0%, #9fe0ff 45%, #70bfe8 100%)'
               : donation.id === 'donation-4'
-                ? 'linear-gradient(180deg, #ffe3e3 0%, #ff2b2b 45%, #870d0d 100%)'
-                : 'linear-gradient(180deg, #f6e5ff 0%, #a638ff 45%, #5f1c93 100%)',
+                ? 'linear-gradient(180deg, #fff0f0 0%, #ffb2b2 45%, #eb7d7d 100%)'
+                : 'linear-gradient(180deg, #f9efff 0%, #d9b1ff 45%, #bc87eb 100%)',
       };
     }
 
@@ -1742,8 +1814,22 @@
         title: 'VIP Badge',
         description: 'VIP Badge - VIP Membership Tag',
         showLabel: false,
-        assetPath: createBadgeIcon({ shape: 'spark', primary: '#ffd66d', accent: '#fff9db', text: '+' }),
-        displayGradient: 'linear-gradient(180deg, #fff7cf 0%, #ffd76b 35%, #b87c1c 70%, #fff2bf 100%)',
+        assetPath: '/images/Vip.png',
+        displayGradient: 'linear-gradient(180deg, #fff6cf 0%, #ffe382 38%, #ffc53d 68%, #fff0bd 100%)',
+      };
+    }
+
+    if (badgeId === 'support' || badgeId === 'moderator' || badgeId === 'admin') {
+      const config = STAFF_BADGE_CONFIG[badgeId];
+      return {
+        id: badgeId,
+        tone: `staff-${badgeId}`,
+        label: '',
+        title: config.title,
+        description: config.description,
+        showLabel: false,
+        assetPath: config.assetPath,
+        displayGradient: config.displayGradient,
       };
     }
 
@@ -1755,7 +1841,7 @@
         title: 'Owner Badge',
         description: 'Owner Badge - Game maker!',
         showLabel: false,
-        assetPath: createBadgeIcon({ shape: 'crown', primary: '#ffc967', accent: '#fff5d7' }),
+        assetPath: STAFF_BADGE_CONFIG.owner.assetPath,
         displayGradient: 'linear-gradient(180deg, #fafcff 0%, #10141a 50%, #fafcff 100%)',
       };
     }
@@ -1766,6 +1852,7 @@
   function getAvailableBadges(record, profile) {
     const safeProfile = ensureProfileShape(profile, record);
     const levelInfo = getLevelInfoFromXp(safeProfile.progression.xp);
+    const highestStaffRole = getHighestStaffRoleFromRoles(safeProfile.roles);
     const revoked = new Set(safeProfile.progression.cosmetics.revokedBadges || []);
     const badges = [];
     const pushBadge = (badge) => {
@@ -1789,6 +1876,9 @@
     }
     if (isOwnerRecord(record || safeProfile)) {
       pushBadge(buildManualBadgeDefinition('owner'));
+    }
+    if (highestStaffRole) {
+      pushBadge(buildManualBadgeDefinition(highestStaffRole));
     }
 
     const leaderboardRank = getLocalXpLeaderboardRank(safeProfile);
@@ -1864,20 +1954,23 @@
   function getBadgePriority(badge) {
     const badgeId = String(badge?.id || '').trim();
     if (badgeId === 'owner') return 0;
-    if (badgeId === 'vip') return 1;
-    if (badgeId.startsWith('donation-')) return 2;
-    if (badgeId === 'leaderboard-1st') return 3;
-    if (badgeId === 'leaderboard-top-3') return 4;
-    if (badgeId === 'leaderboard-top-10') return 5;
-    if (badgeId === 'leaderboard-top-25') return 6;
-    if (badgeId === 'leaderboard-top-50') return 7;
-    if (badgeId === 'leaderboard-top-100') return 8;
-    if (badgeId === 'referral-25') return 9;
-    if (badgeId === 'referral-10') return 10;
-    if (badgeId === 'referral-5') return 11;
-    if (badgeId === 'referral-3') return 12;
-    if (badgeId === 'referral-1') return 13;
-    if (badgeId === 'level') return 14;
+    if (badgeId === 'admin') return 1;
+    if (badgeId === 'moderator') return 2;
+    if (badgeId === 'support') return 3;
+    if (badgeId === 'vip') return 4;
+    if (badgeId.startsWith('donation-')) return 5;
+    if (badgeId === 'leaderboard-1st') return 6;
+    if (badgeId === 'leaderboard-top-3') return 7;
+    if (badgeId === 'leaderboard-top-10') return 8;
+    if (badgeId === 'leaderboard-top-25') return 9;
+    if (badgeId === 'leaderboard-top-50') return 10;
+    if (badgeId === 'leaderboard-top-100') return 11;
+    if (badgeId === 'referral-25') return 12;
+    if (badgeId === 'referral-10') return 13;
+    if (badgeId === 'referral-5') return 14;
+    if (badgeId === 'referral-3') return 15;
+    if (badgeId === 'referral-1') return 16;
+    if (badgeId === 'level') return 17;
     return 20;
   }
 
@@ -1897,9 +1990,26 @@
         .map((badge) => [String(badge.id), badge])
     );
     const visible = [];
-    getEquippedBadgeIds(profile, availableBadges).forEach((badgeId) => {
+    const automaticBadgeIds = ['owner', 'admin', 'moderator', 'support', 'vip']
+      .filter((badgeId) => badgeMap.has(badgeId));
+    donationLoop:
+    for (const badge of availableBadges) {
+      const badgeId = String(badge?.id || '').trim();
+      if (!badgeId.startsWith('donation-')) continue;
+      automaticBadgeIds.push(badgeId);
+      break donationLoop;
+    }
+    automaticBadgeIds.forEach((badgeId) => {
       const badge = badgeMap.get(badgeId);
-      if (badge) visible.push(badge);
+      if (badge && !visible.some((entry) => entry?.id === badgeId)) {
+        visible.push(badge);
+      }
+    });
+    const highestStaffRole = getHighestStaffRoleFromRoles(Array.isArray(profile?.roles) ? profile.roles : []);
+    const extraSlots = highestStaffRole ? Math.max(0, EXTRA_EQUIPPED_BADGE_LIMIT - 1) : EXTRA_EQUIPPED_BADGE_LIMIT;
+    getEquippedBadgeIds(profile, availableBadges).slice(0, extraSlots).forEach((badgeId) => {
+      const badge = badgeMap.get(badgeId);
+      if (badge && !visible.some((entry) => entry?.id === badgeId)) visible.push(badge);
     });
     if (badgeMap.has('level')) {
       visible.push(badgeMap.get('level'));
@@ -1945,7 +2055,15 @@
       : getVisibleBadges(record || { displayName }, fallbackProfile || { displayName });
     const displayStyle = getIdentityDisplayStyle(record, fallbackProfile, badges);
     const compactClass = options.compact ? ' compact' : '';
-    const prefixBadges = badges.filter((badge) => badge?.id === 'owner' || String(badge?.id || '').startsWith('donation-'));
+    const prefixBadges = badges.filter((badge) => {
+      const badgeId = String(badge?.id || '').trim();
+      return badgeId === 'owner'
+        || badgeId === 'vip'
+        || badgeId === 'support'
+        || badgeId === 'moderator'
+        || badgeId === 'admin'
+        || badgeId.startsWith('donation-');
+    });
     const styleAttrs = displayStyle.gradient
       ? ` data-playr-gradient="true" style="--playr-name-gradient:${escapeHtml(displayStyle.gradient)}"`
       : displayStyle.color
@@ -2003,6 +2121,7 @@
       favoriteGameSeconds: safeProfile.activity.favoriteGameSeconds,
       warningCount: Math.max(0, Number(safeProfile.moderation.warningCount) || 0),
       moderation: cloneSerializable(safeProfile.moderation),
+      staff: cloneSerializable(safeProfile.staff),
       banner: cloneSerializable(safeProfile.profileTheme.banner),
       leaderboardRestricted: Boolean(safeProfile.progression.afk.leaderboardRestricted),
       xpLeaderboardRank,
@@ -2548,6 +2667,16 @@
     },
     replaceStoredCustomBanners(entries = [], record = getCurrentRecord()) {
       return setStoredCustomBanners(entries, record);
+    },
+    getMailboxMessages(record = getCurrentRecord()) {
+      const mailbox = readMailbox();
+      const key = getMailboxKeyForRecord(record);
+      return Array.isArray(mailbox[key]) ? cloneSerializable(mailbox[key]) : [];
+    },
+    appendMailboxMessage(recipient, message = {}) {
+      const key = typeof recipient === 'string' ? recipient : getMailboxKeyForRecord(recipient);
+      appendMailboxMessage(key, message);
+      return true;
     },
     exportProfile(record = getCurrentRecord()) {
       const profile = record ? getProfileForRecord(record) : null;

@@ -107,11 +107,107 @@ service cloud.firestore {
         && (
           !('progressionUpdatedAt' in request.resource.data)
           || request.resource.data.progressionUpdatedAt is number
+        )
+        && (
+          !('staff' in request.resource.data)
+          || request.resource.data.staff == null
+          || request.resource.data.staff is map
         );
     }
 
     function hasRestrictedRoles(roleList) {
-      return roleList is list && roleList.hasAny(['owner', 'admin']);
+      return roleList is list && roleList.hasAny(['owner', 'admin', 'moderator', 'support']);
+    }
+
+    function roleRank(roleList) {
+      return roleList is list
+        ? (
+            roleList.hasAny(['admin']) ? 3
+            : roleList.hasAny(['moderator']) ? 2
+            : roleList.hasAny(['support']) ? 1
+            : 0
+          )
+        : 0;
+    }
+
+    function requesterRoleRank() {
+      return isTrustedOwner()
+        ? 4
+        : (
+            signedIn()
+            && exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid))
+              ? roleRank(get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.roles)
+              : 0
+          );
+    }
+
+    function targetRoleRank() {
+      return roleRank(resource.data.roles);
+    }
+
+    function requestedTargetRoleRank() {
+      return roleRank(request.resource.data.roles);
+    }
+
+    function staffTargetAllowed() {
+      return signedIn()
+        && resource.data.uid != request.auth.uid
+        && requesterRoleRank() > targetRoleRank();
+    }
+
+    function supportWarningOnlyUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return requesterRoleRank() == 1
+        && staffTargetAllowed()
+        && targetRoleRank() == 0
+        && changed.hasOnly(['moderation', 'updatedAt'])
+        && request.resource.data.roles == resource.data.roles
+        && request.resource.data.moderation.warningCount >= resource.data.moderation.warningCount
+        && request.resource.data.moderation.mutedUntil == resource.data.moderation.mutedUntil
+        && request.resource.data.moderation.mutedPermanent == resource.data.moderation.mutedPermanent
+        && request.resource.data.moderation.muteReason == resource.data.moderation.muteReason
+        && request.resource.data.moderation.ban == resource.data.moderation.ban;
+    }
+
+    function moderatorModerationUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return requesterRoleRank() == 2
+        && staffTargetAllowed()
+        && changed.hasOnly(['moderation', 'updatedAt'])
+        && request.resource.data.roles == resource.data.roles
+        && request.resource.data.moderation.ban == resource.data.moderation.ban
+        && !request.resource.data.moderation.mutedPermanent
+        && request.resource.data.moderation.mutedUntil <= request.time.toMillis() + (24 * 60 * 60 * 1000);
+    }
+
+    function adminModerationUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return requesterRoleRank() == 3
+        && staffTargetAllowed()
+        && changed.hasOnly(['moderation', 'updatedAt'])
+        && request.resource.data.roles == resource.data.roles
+        && (
+          !request.resource.data.moderation.ban.active
+          || (
+            !request.resource.data.moderation.ban.permanent
+            && request.resource.data.moderation.ban.expiresAt <= request.time.toMillis() + (7 * 24 * 60 * 60 * 1000)
+          )
+        );
+    }
+
+    function staffRoleUpdateAllowed() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return staffTargetAllowed()
+        && changed.hasOnly(['roles', 'staff', 'updatedAt'])
+        && request.resource.data.moderation == resource.data.moderation
+        && (
+          (requesterRoleRank() == 2
+            && targetRoleRank() <= 1
+            && requestedTargetRoleRank() <= 1)
+          || (requesterRoleRank() == 3
+            && targetRoleRank() <= 2
+            && requestedTargetRoleRank() <= 2)
+        );
     }
 
     function selfProfileModerationUnchanged() {
@@ -834,6 +930,10 @@ service cloud.firestore {
           && selfProfileRolesAllowed()
         )
         || isTrustedOwner()
+        || supportWarningOnlyUpdate()
+        || moderatorModerationUpdate()
+        || adminModerationUpdate()
+        || staffRoleUpdateAllowed()
       );
       allow delete: if isOwner(uid) || isTrustedOwner();
     }

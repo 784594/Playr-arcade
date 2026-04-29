@@ -225,6 +225,14 @@ a {
   gap: 10px;
 }
 
+.notification-section-label {
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 2px 2px 0;
+}
+
 .notification-item {
   display: grid;
   gap: 10px;

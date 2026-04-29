@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-29-staff-role-ladder-and-rank-moderation',
+      title: 'Staff role ladder and rank moderation update',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-29T18:55:00-04:00',
+      summary: 'Staff roles now use dedicated support, moderator, admin, owner, and VIP identity badges, and profile moderation tools now change based on rank and target state.',
+      details: [
+        'Support, moderator, and admin accounts now use their own permanent left-of-name staff icons and heavy role-based gradients, while VIP uses the new gold icon treatment and donation colors stay lighter to avoid staff impersonation.',
+        'Profile moderation now respects rank limits, promotion cooldowns, and active mute/ban state, and staff copies can surface under a separate staff-notifications area in the notifications panel.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-29-custom-banner-shared-library-fix',
       title: 'Custom banner library fix',
       category: 'update',
