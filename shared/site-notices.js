@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-28-draw-it-workspace-cleanup',
+      title: 'Draw It workspace cleanup',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-28T20:35:00-04:00',
+      summary: 'Draw It now uses a cleaner left-workspace and right-sidebar layout so the canvas stays prominent and the selection/import tools no longer leave big empty gaps.',
+      details: [
+        'The editor now stacks canvas-size, tools, canvas, and scene settings together in the main work column while stroke controls, imports, and selection tools live in a tighter sidebar.',
+        'Selection controls were condensed into a smaller utility block with scale, group, ungroup, and delete actions instead of stretching into a tall mostly empty panel.',
+        'Recent local drawings were moved out of the always-visible main page and into a collapsible section inside the finish/export modal to keep the drawing surface less cluttered.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-28-draw-it-banner-save-polish',
       title: 'Draw It banner save polish',
       category: 'update',

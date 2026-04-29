@@ -11,13 +11,15 @@
 .draw-workspace {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.9fr);
-  grid-template-areas:
-    "size controls"
-    "tools import"
-    "canvas selection"
-    "settings selection";
   gap: 16px;
   align-items: start;
+}
+
+.draw-main-column,
+.draw-side-column {
+  display: grid;
+  gap: 16px;
+  align-content: start;
 }
 
 .draw-card,
@@ -26,14 +28,6 @@
   display: grid;
   gap: 14px;
 }
-
-.draw-size-card { grid-area: size; }
-.draw-controls-card { grid-area: controls; }
-.draw-tools-card { grid-area: tools; }
-.draw-canvas-card { grid-area: canvas; }
-.draw-settings-card { grid-area: settings; }
-.draw-import-card { grid-area: import; }
-.draw-selection-card { grid-area: selection; align-self: stretch; }
 
 .draw-card-head,
 .draw-finish-header {
@@ -149,10 +143,17 @@
   grid-auto-columns: 1fr;
 }
 
+.selection-action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .compact-tool-stack,
 .mini-recent-panel,
 .gradient-editor,
-.gradient-stop-list {
+.gradient-stop-list,
+.selection-controls-stack {
   display: grid;
   gap: 12px;
 }
@@ -420,6 +421,20 @@
   font-size: 0.92rem;
 }
 
+.selection-status-card {
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(146, 176, 255, 0.12);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.selection-scale-field {
+  display: grid;
+  gap: 8px;
+  color: rgba(229, 239, 255, 0.92);
+  font-size: 0.92rem;
+}
+
 .recent-list {
   display: grid;
   gap: 10px;
@@ -447,6 +462,29 @@
 .recent-item strong {
   display: block;
   margin-bottom: 4px;
+}
+
+.draw-recents-toggle {
+  border-radius: 18px;
+  border: 1px solid rgba(146, 176, 255, 0.12);
+  background: rgba(255, 255, 255, 0.035);
+  padding: 12px 14px 14px;
+}
+
+.draw-recents-toggle summary {
+  cursor: pointer;
+  color: #eef4ff;
+  font-weight: 800;
+  list-style: none;
+}
+
+.draw-recents-toggle summary::-webkit-details-marker {
+  display: none;
+}
+
+.draw-recents-toggle[open] {
+  display: grid;
+  gap: 12px;
 }
 
 .draw-finish-overlay,
@@ -494,14 +532,6 @@
 @media (max-width: 1120px) {
   .draw-workspace {
     grid-template-columns: 1fr;
-    grid-template-areas:
-      "size"
-      "controls"
-      "tools"
-      "canvas"
-      "import"
-      "selection"
-      "settings";
   }
 }
 
@@ -512,7 +542,8 @@
   .draw-meta-grid,
   .finish-tool-grid,
   .gradient-stop-editor-row,
-  .gradient-stop-row {
+  .gradient-stop-row,
+  .selection-action-grid {
     grid-template-columns: 1fr;
   }
 
