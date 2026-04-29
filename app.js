@@ -339,6 +339,52 @@ function persistProfiles(profiles) {
   localStorage.setItem(AUTH_STORAGE_KEYS.profiles, JSON.stringify(profiles || {}));
 }
 
+function getAuthUserCreatedAt(user = authState.currentUser) {
+  const createdAt = normalizeTimestampToMs(user?.metadata?.creationTime);
+  return createdAt || 0;
+}
+
+function mergeCustomBannerEntries(existingEntries = [], incomingEntries = []) {
+  const mergedById = new Map();
+  [...existingEntries, ...incomingEntries].forEach((entry) => {
+    if (!entry || typeof entry !== 'object') return;
+    const id = String(entry.id || '').trim();
+    const dataUrl = String(entry.dataUrl || '').trim();
+    if (!id || !dataUrl) return;
+    const normalized = {
+      id,
+      label: String(entry.label || 'Custom banner').trim() || 'Custom banner',
+      dataUrl,
+      width: Math.max(1, Number(entry.width) || 0),
+      height: Math.max(1, Number(entry.height) || 0),
+      createdAt: normalizeTimestampToMs(entry.createdAt),
+      updatedAt: normalizeTimestampToMs(entry.updatedAt),
+    };
+    const previous = mergedById.get(id);
+    if (!previous || normalized.updatedAt >= previous.updatedAt) {
+      mergedById.set(id, normalized);
+    }
+  });
+  return Array.from(mergedById.values())
+    .sort((left, right) => Math.max(0, right.updatedAt || right.createdAt) - Math.max(0, left.updatedAt || left.createdAt))
+    .slice(0, CUSTOM_PROFILE_BANNER_LIMIT);
+}
+
+function mergeProfileThemeState(existingTheme = {}, incomingTheme = {}) {
+  const existingBanner = existingTheme?.banner && typeof existingTheme.banner === 'object' ? existingTheme.banner : {};
+  const incomingBanner = incomingTheme?.banner && typeof incomingTheme.banner === 'object' ? incomingTheme.banner : {};
+  const existingBannerUpdatedAt = normalizeTimestampToMs(existingBanner.updatedAt);
+  const incomingBannerUpdatedAt = normalizeTimestampToMs(incomingBanner.updatedAt);
+  const mergedCustomBanners = mergeCustomBannerEntries(
+    Array.isArray(existingTheme?.customBanners) ? existingTheme.customBanners : [],
+    Array.isArray(incomingTheme?.customBanners) ? incomingTheme.customBanners : [],
+  );
+  return {
+    banner: incomingBannerUpdatedAt >= existingBannerUpdatedAt ? incomingBanner : existingBanner,
+    customBanners: mergedCustomBanners,
+  };
+}
+
 function getProgressionApi() {
   return window.PlayrProgression && typeof window.PlayrProgression.getProgressionSnapshot === 'function'
     ? window.PlayrProgression
@@ -385,11 +431,19 @@ function cacheProfileLocally(profile, { persist = true } = {}) {
   const normalizedProfile = mergeCloudProfileShape(profile);
   const uid = String(normalizedProfile.uid || '').trim();
   if (!uid) return null;
-  const previous = authState.profiles[uid] || {};
+  const previous = mergeCloudProfileShape(authState.profiles[uid] || {});
+  const mergedTheme = mergeProfileThemeState(previous.profileTheme, normalizedProfile.profileTheme);
+  const preservedCreatedAt = [
+    normalizeTimestampToMs(previous.createdAt),
+    normalizeTimestampToMs(normalizedProfile.createdAt),
+    uid === String(authState.currentUser?.uid || '').trim() ? getAuthUserCreatedAt(authState.currentUser) : 0,
+  ].filter(Boolean);
   authState.profiles[uid] = {
     ...previous,
     ...normalizedProfile,
     uid,
+    createdAt: preservedCreatedAt.length ? Math.min(...preservedCreatedAt) : Date.now(),
+    profileTheme: mergedTheme,
   };
   if (persist) {
     persistProfiles(authState.profiles);
@@ -426,6 +480,7 @@ function buildCurrentAccountCloudProfile(account = getCurrentAccount()) {
     roles,
     isVip: Boolean(account.isVip || exported.isVip),
     progressionUpdatedAt: Math.max(0, Number(exported.progressionUpdatedAt) || Date.now()),
+    createdAt: normalizeTimestampToMs(account.createdAt) || normalizeTimestampToMs(exported.createdAt) || Date.now(),
     updatedAt: Date.now(),
   };
 }
@@ -465,6 +520,7 @@ async function syncCurrentAccountProfileToFirestore({ immediate = false } = {}) 
       activity: profile.activity || null,
       moderation: profile.moderation || null,
       profileTheme: profile.profileTheme || null,
+      createdAt: profile.createdAt || Date.now(),
       progressionUpdatedAt: profile.progressionUpdatedAt || Date.now(),
       updatedAt: timestamp,
     }, { merge: true });
@@ -497,6 +553,7 @@ function subscribeToCurrentUserProfile(user) {
       displayName: user.displayName || authState.profiles[user.uid]?.displayName || 'Player',
       roles: authState.profiles[user.uid]?.roles || [],
       isVip: Boolean(authState.profiles[user.uid]?.isVip),
+      createdAt: normalizeTimestampToMs(authState.profiles[user.uid]?.createdAt) || getAuthUserCreatedAt(user),
       verified: {
         email: Boolean(user.emailVerified),
         phone: Boolean(user.phoneNumber),
@@ -832,6 +889,16 @@ async function resolveUserProfileRecord(target = {}) {
 
   if (uid && authState.profiles[uid]) {
     const localProfile = mergeCloudProfileShape(authState.profiles[uid]);
+    cacheResolvedProfile(localProfile);
+    return localProfile;
+  }
+
+  const currentAccount = getCurrentAccount();
+  if (currentAccount?.uid && (
+    (uid && uid === currentAccount.uid)
+    || (normalizedName && normalizeDisplayNameForLookup(currentAccount.displayName || '') === normalizedName)
+  )) {
+    const localProfile = mergeCloudProfileShape(authState.profiles[currentAccount.uid] || currentAccount);
     cacheResolvedProfile(localProfile);
     return localProfile;
   }
@@ -1461,7 +1528,7 @@ function renderBannerSettings(account = getCurrentAccount()) {
 
   if (!profileUi.settingsCustomBannerList) return;
   if (!customBanners.length) {
-    profileUi.settingsCustomBannerList.innerHTML = '<p class="settings-muted">No custom banners saved yet. Use Draw It to create one.</p>';
+    profileUi.settingsCustomBannerList.innerHTML = '<p class="settings-muted">No custom banners saved yet. Use Draw It to create one. If you just saved one, give Settings a moment to refresh or reopen it.</p>';
     return;
   }
   profileUi.settingsCustomBannerList.innerHTML = customBanners.map((banner) => {
@@ -1494,8 +1561,7 @@ function applySelectedBannerPreset(presetId) {
     setSettingsStatus('That banner preset is unavailable.', 'danger');
     return;
   }
-  const profile = mergeCloudProfileShape(authState.profiles[account.uid] || {});
-  profile.profileTheme = {
+  void persistProfileThemeUpdate(account, {
     banner: {
       type: preset.type,
       value: preset.value,
@@ -1503,15 +1569,7 @@ function applySelectedBannerPreset(presetId) {
       customBannerId: '',
       updatedAt: Date.now(),
     },
-  };
-  cacheProfileLocally(profile);
-  cacheResolvedProfile(profile);
-  if (window.PlayrProgression?.importProfile) {
-    window.PlayrProgression.importProfile(account, profile, { prefer: 'remote', emit: true });
-  }
-  renderBannerSettings(account);
-  void syncCurrentAccountProfileToFirestore({ immediate: true });
-  setSettingsStatus('Profile banner updated.', 'success');
+  }, 'Profile banner updated.');
 }
 
 async function persistProfileThemeUpdate(account, nextTheme, successMessage = 'Profile banner updated.') {
@@ -3593,6 +3651,7 @@ function getCurrentAccount() {
     identifier,
     identifierType,
     displayName,
+    createdAt: normalizeTimestampToMs(storedProfile.createdAt) || getAuthUserCreatedAt(user),
     roles,
     isVip: roles.includes('vip'),
     verified: {
@@ -3640,7 +3699,7 @@ function persistCurrentProfile(displayNameOverride = null) {
     roles,
     isVip: roles.includes('vip'),
     updatedAt: Date.now(),
-    createdAt: previous.createdAt || Date.now(),
+    createdAt: normalizeTimestampToMs(previous.createdAt) || getAuthUserCreatedAt(user) || Date.now(),
   };
 
   persistProfiles(authState.profiles);
@@ -3788,7 +3847,7 @@ async function syncCurrentAccountRolesToFirestore() {
     roles,
     isVip: vipFlag,
     updatedAt: Date.now(),
-    createdAt: profile.createdAt || Date.now(),
+    createdAt: normalizeTimestampToMs(profile.createdAt) || normalizeTimestampToMs(account.createdAt) || Date.now(),
   };
   persistProfiles(authState.profiles);
 

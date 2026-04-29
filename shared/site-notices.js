@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-29-profile-banner-state-and-join-date-fix',
+      title: 'Profile banner state and join-date fix',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-29T01:05:00-04:00',
+      summary: 'Profile banner changes now preserve newer local theme updates instead of getting overwritten by older profile snapshots, and join dates now use the account creation time more reliably.',
+      details: [
+        'Preset banner changes and saved custom banners now flow through the same merged profile-theme state, so older cache or cloud snapshots are less likely to stomp a newer banner choice.',
+        'Profile join dates now preserve the earliest known account creation time from Firebase/local profile data instead of drifting to a later local cache creation date, and Draw It now hints that an already-open Settings panel may need a quick refresh after a new save.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-29-custom-banner-shared-save-path',
       title: 'Custom banner save path repair',
       category: 'update',

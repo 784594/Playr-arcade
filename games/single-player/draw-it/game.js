@@ -1456,7 +1456,7 @@
       state.lastSavedAt = safeNow();
       updateMeta();
       showToast('Saved to your banners!');
-      updateStatus('Banner save complete.');
+      updateStatus('Banner save complete. If Settings is already open, give it a moment or reopen it.');
     } finally {
       ui.saveOverlay.hidden = true;
     }
