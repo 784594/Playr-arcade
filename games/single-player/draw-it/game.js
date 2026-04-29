@@ -1,529 +1,1392 @@
 (function () {
+  const DRAW_STORAGE_KEY = 'playrDrawItRecentV2';
+  const DRAW_UNSAVED_KEY = 'playrDrawItDraftV2';
+  const PROFILE_STORAGE_KEY = 'playrProfiles';
+  const LEGACY_USER_STORAGE_KEY = 'playrCurrentUser';
+  const CUSTOM_PROFILE_BANNER_LIMIT = 5;
   const FIREBASE_CONFIG = {
     apiKey: 'AIzaSyAIpLxF3vwcLL_aez4db2HlxkftJBkbTRE',
     authDomain: 'playr3.firebaseapp.com',
     projectId: 'playr3',
     storageBucket: 'playr3.firebasestorage.app',
-    messagingSenderId: '784118485475',
-    appId: '1:784118485475:web:5347f708718f56602fd0d6',
-    measurementId: 'G-J4DKRFRX33',
+    messagingSenderId: '8064842344',
+    appId: '1:8064842344:web:0f4f37804e3f5372d9b91a',
   };
-  const STORAGE_KEY = 'playr.draw-it.artworks.v1';
-  const PROFILE_STORAGE_KEY = 'playrProfiles';
-  const CUSTOM_BANNER_LIMIT = 5;
-  const CUSTOM_BANNER_MODE = 'profile-banner';
-  const MAX_RECENT_ARTWORKS = 10;
-  const PROFILE_BANNER_SIZE = { width: 1500, height: 420 };
-  const MODES = {
-    'wallpaper-pc': { label: '16:9 wallpaper', width: 1600, height: 900, freeform: false },
-    'wallpaper-phone': { label: '20:9 wallpaper', width: 900, height: 2000, freeform: false },
-    'freeform': { label: 'Freeform', width: 1400, height: 900, freeform: true },
-    'profile-banner': { label: 'Profile banner', width: PROFILE_BANNER_SIZE.width, height: PROFILE_BANNER_SIZE.height, freeform: false },
+  const MODE_CONFIG = {
+    'wallpaper-pc': { label: '16:9 wallpaper', width: 1600, height: 900 },
+    'wallpaper-phone': { label: '20:9 wallpaper', width: 1400, height: 630 },
+    'freeform': { label: 'Freeform', width: 1400, height: 900 },
+    'profile-banner': { label: 'Profile banner', width: 1500, height: 420 },
   };
+  const POINTER_EDGE_EXPAND_MARGIN = 90;
+  const FREEFORM_EXPAND_BY = 220;
+  const MAX_RECENT_DRAWS = 10;
 
   const state = {
     mode: 'wallpaper-pc',
-    width: MODES['wallpaper-pc'].width,
-    height: MODES['wallpaper-pc'].height,
-    background: '#ffffff',
-    brushColor: '#183a8f',
-    brushSize: 8,
-    drawing: false,
-    pointerId: null,
-    strokes: [],
+    tool: 'brush',
+    canvasWidth: MODE_CONFIG['wallpaper-pc'].width,
+    canvasHeight: MODE_CONFIG['wallpaper-pc'].height,
     currentStroke: null,
-    lastExport: null,
+    objects: [],
+    selectedIds: new Set(),
+    dragging: null,
+    background: {
+      mode: 'solid',
+      color: '#ffffff',
+      angle: 135,
+      stops: [
+        { id: 'bg-stop-1', offset: 0, color: '#ffffff' },
+        { id: 'bg-stop-2', offset: 1, color: '#dce8ff' },
+      ],
+    },
+    exportDataUrl: '',
+    exportMime: 'image/png',
+    finishOpen: false,
+    pendingHref: '',
     hasUnsavedWork: false,
-    pendingNavigationHref: '',
+    lastSavedAt: 0,
+    currentUser: null,
+    firebaseApp: null,
+    firebaseAuth: null,
+    firestore: null,
   };
 
-  const stageShell = document.getElementById('drawStageShell');
-  const canvas = document.getElementById('drawCanvas');
-  const ctx = canvas.getContext('2d', { willReadFrequently: false });
-  const drawStatus = document.getElementById('drawStatus');
-  const modeGrid = document.getElementById('modeGrid');
-  const brushSizeInput = document.getElementById('brushSizeInput');
-  const brushColorInput = document.getElementById('brushColorInput');
-  const backgroundColorInput = document.getElementById('backgroundColorInput');
-  const clearBtn = document.getElementById('clearBtn');
-  const finishBtn = document.getElementById('finishBtn');
-  const exportPanel = document.getElementById('exportPanel');
-  const exportPreview = document.getElementById('exportPreview');
-  const downloadBtn = document.getElementById('downloadBtn');
-  const saveBannerBtn = document.getElementById('saveBannerBtn');
-  const saveBannerHint = document.getElementById('saveBannerHint');
-  const downloadFormatSelect = document.getElementById('downloadFormatSelect');
-  const fileNameInput = document.getElementById('fileNameInput');
-  const recentList = document.getElementById('recentList');
-  const modeLabel = document.getElementById('modeLabel');
-  const sizeLabel = document.getElementById('sizeLabel');
-  const strokeCountLabel = document.getElementById('strokeCountLabel');
-  const lastSavedLabel = document.getElementById('lastSavedLabel');
-  const bannerModeNote = document.getElementById('bannerModeNote');
-  const unsavedOverlay = document.getElementById('unsavedOverlay');
-  const unsavedFormatSelect = document.getElementById('unsavedFormatSelect');
-  const unsavedDownloadBtn = document.getElementById('unsavedDownloadBtn');
-  const unsavedStayBtn = document.getElementById('unsavedStayBtn');
-  const unsavedLeaveBtn = document.getElementById('unsavedLeaveBtn');
+  const ui = {};
 
-  function readJsonStorage(key, fallback) {
+  function $(id) {
+    return document.getElementById(id);
+  }
+
+  function safeNow() {
+    return Date.now();
+  }
+
+  function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+  }
+
+  function normalizeHex(value, fallback = '#183a8f') {
+    const safe = String(value || '').trim();
+    return /^#[0-9a-f]{6}$/i.test(safe) ? safe : fallback;
+  }
+
+  function slugify(value) {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 32) || 'playr-draw-it';
+  }
+
+  function uid(prefix = 'draw') {
+    return `${prefix}-${Math.random().toString(36).slice(2, 10)}-${safeNow().toString(36)}`;
+  }
+
+  function readJson(key, fallback) {
     try {
-      const raw = localStorage.getItem(key);
+      const raw = window.localStorage.getItem(key);
       return raw ? JSON.parse(raw) : fallback;
     } catch {
       return fallback;
     }
   }
 
-  function writeJsonStorage(key, value) {
-    localStorage.setItem(key, JSON.stringify(value));
+  function writeJson(key, value) {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(value));
+      return true;
+    } catch {
+      return false;
+    }
   }
 
-  function setStatus(message) {
-    if (drawStatus) drawStatus.textContent = message;
+  function readProfiles() {
+    return readJson(PROFILE_STORAGE_KEY, {}) || {};
   }
 
-  function markUnsavedWork(nextValue = true) {
-    state.hasUnsavedWork = Boolean(nextValue);
+  function getLocalCurrentUser() {
+    const legacy = readJson(LEGACY_USER_STORAGE_KEY, null);
+    if (legacy && legacy.uid) {
+      return {
+        uid: String(legacy.uid),
+        displayName: String(legacy.displayName || 'Player').slice(0, 24),
+        identifier: String(legacy.identifier || legacy.uid),
+        identifierType: String(legacy.identifierType || 'uid'),
+      };
+    }
+    return null;
   }
 
-  function getModeConfig(mode = state.mode) {
-    return MODES[mode] || MODES['wallpaper-pc'];
+  function getCurrentAccount() {
+    const local = state.currentUser || getLocalCurrentUser();
+    if (!local?.uid) return null;
+    const profiles = readProfiles();
+    const stored = profiles[local.uid] || {};
+    return {
+      uid: String(local.uid),
+      displayName: String(stored.displayName || local.displayName || 'Player').slice(0, 24),
+      identifier: String(stored.identifier || local.identifier || local.uid),
+      identifierType: String(stored.identifierType || local.identifierType || 'uid'),
+      isVip: Boolean(stored.isVip || (Array.isArray(stored.roles) && stored.roles.includes('vip'))),
+      referralCount: Math.max(0, Number(stored?.progression?.referral?.qualifiedCount) || 0),
+      profileTheme: stored.profileTheme || null,
+    };
   }
 
-  function resizeCanvas(width, height) {
-    canvas.width = width;
-    canvas.height = height;
-    state.width = width;
-    state.height = height;
-    redrawCanvas();
-    updateMeta();
-  }
-
-  function redrawCanvas() {
-    ctx.fillStyle = state.background;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    state.strokes.forEach((stroke) => {
-      if (!stroke.points.length) return;
-      ctx.strokeStyle = stroke.color;
-      ctx.lineWidth = stroke.size;
-      ctx.beginPath();
-      ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-      for (let i = 1; i < stroke.points.length; i += 1) {
-        ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+  function ensureFirebase() {
+    if (!window.firebase?.initializeApp) return;
+    try {
+      state.firebaseApp = window.firebase.apps?.length
+        ? window.firebase.app()
+        : window.firebase.initializeApp(FIREBASE_CONFIG);
+      state.firebaseAuth = window.firebase.auth ? window.firebase.auth() : null;
+      state.firestore = window.firebase.firestore ? window.firebase.firestore() : null;
+      if (state.firebaseAuth) {
+        state.firebaseAuth.onAuthStateChanged((user) => {
+          if (!user) {
+            state.currentUser = getLocalCurrentUser();
+            return;
+          }
+          state.currentUser = {
+            uid: user.uid,
+            displayName: String(user.displayName || getLocalCurrentUser()?.displayName || 'Player').slice(0, 24),
+            identifier: String(user.email || user.phoneNumber || user.uid),
+            identifierType: user.email ? 'email' : (user.phoneNumber ? 'phone' : 'uid'),
+          };
+        });
       }
-      ctx.stroke();
-    });
-  }
-
-  function updateMeta() {
-    const mode = getModeConfig();
-    modeLabel.textContent = mode.label;
-    sizeLabel.textContent = `${state.width} x ${state.height}`;
-    strokeCountLabel.textContent = String(state.strokes.length);
-    bannerModeNote.hidden = state.mode !== CUSTOM_BANNER_MODE;
-    saveBannerBtn.hidden = state.mode !== CUSTOM_BANNER_MODE || !state.lastExport;
-    saveBannerHint.hidden = state.mode !== CUSTOM_BANNER_MODE || !state.lastExport;
-  }
-
-  function createSvgExportData() {
-    const pngData = canvas.toDataURL('image/png', 0.92);
-    const safeWidth = Math.max(1, canvas.width);
-    const safeHeight = Math.max(1, canvas.height);
-    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${safeWidth}" height="${safeHeight}" viewBox="0 0 ${safeWidth} ${safeHeight}">
-        <image href="${pngData}" width="${safeWidth}" height="${safeHeight}" preserveAspectRatio="none"/>
-      </svg>`,
-    )}`;
-  }
-
-  function switchMode(mode) {
-    const config = getModeConfig(mode);
-    state.mode = mode;
-    state.strokes = [];
-    state.currentStroke = null;
-    state.lastExport = null;
-    markUnsavedWork(false);
-    closeUnsavedOverlay();
-    exportPanel.hidden = true;
-    resizeCanvas(config.width, config.height);
-    modeGrid.querySelectorAll('[data-mode]').forEach((button) => {
-      button.classList.toggle('active', button.getAttribute('data-mode') === mode);
-    });
-    setStatus(`${config.label} ready. Start drawing.`);
-    updateMeta();
+    } catch {
+      state.currentUser = getLocalCurrentUser();
+    }
   }
 
   function getCanvasPoint(event) {
-    const rect = canvas.getBoundingClientRect();
+    const rect = ui.canvas.getBoundingClientRect();
+    const scaleX = state.canvasWidth / rect.width;
+    const scaleY = state.canvasHeight / rect.height;
+    const clientX = event.clientX ?? (event.touches && event.touches[0]?.clientX) ?? 0;
+    const clientY = event.clientY ?? (event.touches && event.touches[0]?.clientY) ?? 0;
     return {
-      x: ((event.clientX - rect.left) / rect.width) * canvas.width,
-      y: ((event.clientY - rect.top) / rect.height) * canvas.height,
+      x: clamp((clientX - rect.left) * scaleX, 0, state.canvasWidth),
+      y: clamp((clientY - rect.top) * scaleY, 0, state.canvasHeight),
     };
+  }
+
+  function createStrokeStyle() {
+    return {
+      mode: ui.strokeModeSelect.value === 'gradient' ? 'gradient' : 'solid',
+      colorA: normalizeHex(ui.brushColorInput.value, '#183a8f'),
+      colorB: normalizeHex(ui.brushColorSecondaryInput.value, '#7cf0c5'),
+      angle: clamp(Number(ui.strokeAngleInput.value) || 35, 0, 360),
+    };
+  }
+
+  function getModeConfig(mode = state.mode) {
+    return MODE_CONFIG[mode] || MODE_CONFIG['wallpaper-pc'];
+  }
+
+  function markDirty() {
+    state.hasUnsavedWork = true;
+    persistDraft();
+    updateMeta();
+  }
+
+  function clearDirty() {
+    state.hasUnsavedWork = false;
+    try {
+      window.localStorage.removeItem(DRAW_UNSAVED_KEY);
+    } catch {}
+    updateMeta();
+  }
+
+  function snapshotState() {
+    return {
+      mode: state.mode,
+      canvasWidth: state.canvasWidth,
+      canvasHeight: state.canvasHeight,
+      tool: state.tool,
+      background: structuredClone(state.background),
+      objects: state.objects.map((item) => ({
+        ...item,
+        imageEl: undefined,
+      })),
+      lastSavedAt: state.lastSavedAt,
+    };
+  }
+
+  function structuredClone(value) {
+    return value == null ? value : JSON.parse(JSON.stringify(value));
+  }
+
+  function persistDraft() {
+    const draft = snapshotState();
+    writeJson(DRAW_UNSAVED_KEY, draft);
+  }
+
+  function loadDraft() {
+    const draft = readJson(DRAW_UNSAVED_KEY, null);
+    if (!draft || typeof draft !== 'object' || !draft.mode || !Array.isArray(draft.objects)) return false;
+    state.mode = MODE_CONFIG[draft.mode] ? draft.mode : 'wallpaper-pc';
+    state.canvasWidth = Math.max(300, Number(draft.canvasWidth) || getModeConfig(state.mode).width);
+    state.canvasHeight = Math.max(220, Number(draft.canvasHeight) || getModeConfig(state.mode).height);
+    state.tool = String(draft.tool || 'brush');
+    state.background = sanitizeBackground(draft.background);
+    state.objects = draft.objects.map(sanitizeObject).filter(Boolean);
+    state.lastSavedAt = Math.max(0, Number(draft.lastSavedAt) || 0);
+    state.hasUnsavedWork = state.objects.length > 0;
+    return true;
+  }
+
+  function sanitizeBackground(value) {
+    const safe = value && typeof value === 'object' ? value : {};
+    const stops = Array.isArray(safe.stops) ? safe.stops : [];
+    return {
+      mode: safe.mode === 'gradient' ? 'gradient' : 'solid',
+      color: normalizeHex(safe.color, '#ffffff'),
+      angle: clamp(Number(safe.angle) || 135, 0, 360),
+      stops: stops.length
+        ? stops.map((stop, index) => ({
+            id: String(stop?.id || uid(`bg-stop-${index + 1}`)),
+            offset: clamp(Number(stop?.offset) || 0, 0, 1),
+            color: normalizeHex(stop?.color, '#ffffff'),
+          })).sort((a, b) => a.offset - b.offset)
+        : [
+            { id: uid('bg-stop'), offset: 0, color: '#ffffff' },
+            { id: uid('bg-stop'), offset: 1, color: '#dce8ff' },
+          ],
+    };
+  }
+
+  function sanitizeObject(item) {
+    if (!item || typeof item !== 'object') return null;
+    if (item.type === 'stroke') {
+      return {
+        id: String(item.id || uid('stroke')),
+        type: 'stroke',
+        points: Array.isArray(item.points) ? item.points.map((point) => ({
+          x: Number(point?.x) || 0,
+          y: Number(point?.y) || 0,
+        })).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y)) : [],
+        size: clamp(Number(item.size) || 8, 1, 80),
+        erase: Boolean(item.erase),
+        groupId: item.groupId ? String(item.groupId) : '',
+        style: {
+          mode: item.style?.mode === 'gradient' ? 'gradient' : 'solid',
+          colorA: normalizeHex(item.style?.colorA, '#183a8f'),
+          colorB: normalizeHex(item.style?.colorB, '#7cf0c5'),
+          angle: clamp(Number(item.style?.angle) || 35, 0, 360),
+        },
+      };
+    }
+    if (item.type === 'image' && String(item.src || '').startsWith('data:image/')) {
+      return {
+        id: String(item.id || uid('image')),
+        type: 'image',
+        src: String(item.src),
+        x: Number(item.x) || 0,
+        y: Number(item.y) || 0,
+        width: Math.max(10, Number(item.width) || 200),
+        height: Math.max(10, Number(item.height) || 200),
+        baseWidth: Math.max(10, Number(item.baseWidth) || Number(item.width) || 200),
+        baseHeight: Math.max(10, Number(item.baseHeight) || Number(item.height) || 200),
+        scale: clamp(Number(item.scale) || 100, 20, 250),
+        groupId: item.groupId ? String(item.groupId) : '',
+        imageEl: null,
+      };
+    }
+    return null;
+  }
+
+  function preloadImages() {
+    const promises = state.objects
+      .filter((item) => item.type === 'image' && item.src && !item.imageEl)
+      .map((item) => new Promise((resolve) => {
+        const image = new Image();
+        image.onload = () => {
+          item.imageEl = image;
+          resolve();
+        };
+        image.onerror = () => resolve();
+        image.src = item.src;
+      }));
+    return Promise.all(promises);
+  }
+
+  function renderBackground(context, width, height) {
+    if (state.background.mode === 'gradient') {
+      const gradient = createLinearGradient(
+        context,
+        0,
+        0,
+        width,
+        height,
+        state.background.angle,
+      );
+      const stops = state.background.stops.length ? state.background.stops : [
+        { offset: 0, color: state.background.color },
+        { offset: 1, color: '#dce8ff' },
+      ];
+      stops
+        .slice()
+        .sort((a, b) => a.offset - b.offset)
+        .forEach((stop) => gradient.addColorStop(clamp(stop.offset, 0, 1), normalizeHex(stop.color, '#ffffff')));
+      context.fillStyle = gradient;
+    } else {
+      context.fillStyle = normalizeHex(state.background.color, '#ffffff');
+    }
+    context.fillRect(0, 0, width, height);
+  }
+
+  function createLinearGradient(context, x, y, width, height, angleDegrees) {
+    const radians = (angleDegrees * Math.PI) / 180;
+    const centerX = x + (width / 2);
+    const centerY = y + (height / 2);
+    const radius = Math.max(width, height) / 2;
+    const dx = Math.cos(radians) * radius;
+    const dy = Math.sin(radians) * radius;
+    return context.createLinearGradient(centerX - dx, centerY - dy, centerX + dx, centerY + dy);
+  }
+
+  function getStrokeBounds(stroke) {
+    const xs = stroke.points.map((point) => point.x);
+    const ys = stroke.points.map((point) => point.y);
+    if (!xs.length || !ys.length) {
+      return { x: 0, y: 0, width: 0, height: 0 };
+    }
+    const pad = stroke.size / 2 + 6;
+    const minX = Math.min(...xs) - pad;
+    const maxX = Math.max(...xs) + pad;
+    const minY = Math.min(...ys) - pad;
+    const maxY = Math.max(...ys) + pad;
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+  }
+
+  function getObjectBounds(item) {
+    if (!item) return { x: 0, y: 0, width: 0, height: 0 };
+    if (item.type === 'image') {
+      return { x: item.x, y: item.y, width: item.width, height: item.height };
+    }
+    return getStrokeBounds(item);
+  }
+
+  function renderStroke(context, stroke) {
+    if (!Array.isArray(stroke.points) || !stroke.points.length) return;
+    context.save();
+    context.lineJoin = 'round';
+    context.lineCap = 'round';
+    context.lineWidth = stroke.size;
+    if (stroke.erase) {
+      context.globalCompositeOperation = 'destination-out';
+      context.strokeStyle = 'rgba(0,0,0,1)';
+    } else if (stroke.style.mode === 'gradient') {
+      const bounds = getStrokeBounds(stroke);
+      const gradient = createLinearGradient(
+        context,
+        bounds.x,
+        bounds.y,
+        Math.max(bounds.width, 1),
+        Math.max(bounds.height, 1),
+        stroke.style.angle,
+      );
+      gradient.addColorStop(0, normalizeHex(stroke.style.colorA, '#183a8f'));
+      gradient.addColorStop(1, normalizeHex(stroke.style.colorB, '#7cf0c5'));
+      context.strokeStyle = gradient;
+    } else {
+      context.strokeStyle = normalizeHex(stroke.style.colorA, '#183a8f');
+    }
+    context.beginPath();
+    context.moveTo(stroke.points[0].x, stroke.points[0].y);
+    for (let index = 1; index < stroke.points.length; index += 1) {
+      const point = stroke.points[index];
+      context.lineTo(point.x, point.y);
+    }
+    if (stroke.points.length === 1) {
+      context.lineTo(stroke.points[0].x + 0.01, stroke.points[0].y + 0.01);
+    }
+    context.stroke();
+    context.restore();
+  }
+
+  function renderImageObject(context, item) {
+    if (!item.imageEl) return;
+    context.drawImage(item.imageEl, item.x, item.y, item.width, item.height);
+  }
+
+  function getSelectionBounds() {
+    const items = state.objects.filter((item) => state.selectedIds.has(item.id));
+    if (!items.length) return null;
+    const bounds = items.map(getObjectBounds);
+    return {
+      x: Math.min(...bounds.map((entry) => entry.x)),
+      y: Math.min(...bounds.map((entry) => entry.y)),
+      width: Math.max(...bounds.map((entry) => entry.x + entry.width)) - Math.min(...bounds.map((entry) => entry.x)),
+      height: Math.max(...bounds.map((entry) => entry.y + entry.height)) - Math.min(...bounds.map((entry) => entry.y)),
+    };
+  }
+
+  function drawSelectionOverlay(context) {
+    const bounds = getSelectionBounds();
+    if (!bounds) return;
+    context.save();
+    context.strokeStyle = 'rgba(74, 128, 245, 0.95)';
+    context.fillStyle = 'rgba(124, 240, 197, 0.08)';
+    context.lineWidth = 2;
+    context.setLineDash([10, 8]);
+    context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+    context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+    context.restore();
+  }
+
+  function renderScene(targetContext = ui.context, { includeSelection = true } = {}) {
+    if (targetContext === ui.context) {
+      if (ui.canvas.width !== state.canvasWidth) ui.canvas.width = state.canvasWidth;
+      if (ui.canvas.height !== state.canvasHeight) ui.canvas.height = state.canvasHeight;
+      ui.canvas.style.aspectRatio = `${state.canvasWidth} / ${state.canvasHeight}`;
+    }
+    targetContext.clearRect(0, 0, state.canvasWidth, state.canvasHeight);
+    renderBackground(targetContext, state.canvasWidth, state.canvasHeight);
+    state.objects.forEach((item) => {
+      if (item.type === 'image') {
+        renderImageObject(targetContext, item);
+      } else {
+        renderStroke(targetContext, item);
+      }
+    });
+    if (includeSelection) {
+      drawSelectionOverlay(targetContext);
+    }
+  }
+
+  function updateCanvasCursor() {
+    const cursor = {
+      brush: 'crosshair',
+      eraser: 'cell',
+      select: 'pointer',
+      move: state.selectedIds.size ? 'grab' : 'pointer',
+      fill: 'copy',
+      image: 'pointer',
+    }[state.tool] || 'crosshair';
+    ui.canvas.style.cursor = cursor;
+  }
+
+  function setTool(tool) {
+    state.tool = tool;
+    Array.from(ui.toolButtons.querySelectorAll('button')).forEach((button) => {
+      const isActive = button.getAttribute('data-tool') === tool;
+      button.classList.toggle('is-active', isActive);
+      button.classList.toggle('action-btn-primary', isActive);
+    });
+    updateCanvasCursor();
+    updateStatus();
+  }
+
+  function setMode(mode, { preserveObjects = true, markChanged = true } = {}) {
+    const config = getModeConfig(mode);
+    state.mode = mode;
+    state.canvasWidth = config.width;
+    state.canvasHeight = config.height;
+    if (!preserveObjects && mode !== 'freeform') {
+      state.objects = [];
+      state.selectedIds.clear();
+    }
+    Array.from(ui.modeGrid.querySelectorAll('button')).forEach((button) => {
+      button.classList.toggle('active', button.getAttribute('data-mode') === mode);
+    });
+    ui.bannerModeNote.hidden = mode !== 'profile-banner';
+    ui.saveBannerBtn.hidden = !state.finishOpen || mode !== 'profile-banner';
+    ui.saveBannerHint.hidden = mode !== 'profile-banner';
+    renderBackgroundStops();
+    renderScene();
+    updateMeta();
+    updateStatus();
+    if (markChanged) {
+      markDirty();
+    }
+  }
+
+  function updateStatus(text) {
+    const fallback = {
+      brush: 'Brush on the canvas to draw strokes.',
+      eraser: 'Erase parts of the canvas with soft removal strokes.',
+      select: 'Click an object to select it. Shift-click adds more.',
+      move: 'Drag the current selection to reposition it.',
+      fill: 'Use Fill to apply your current background settings instantly.',
+      image: 'Import PNG or JPEG art, then move or scale it in the scene.',
+    }[state.tool];
+    ui.drawStatus.textContent = text || fallback || 'Start drawing.';
+  }
+
+  function updateMeta() {
+    ui.modeLabel.textContent = getModeConfig(state.mode).label;
+    ui.sizeLabel.textContent = `${state.canvasWidth} x ${state.canvasHeight}`;
+    ui.strokeCountLabel.textContent = String(state.objects.length);
+    ui.lastSavedLabel.textContent = state.lastSavedAt
+      ? new Date(state.lastSavedAt).toLocaleString()
+      : (state.hasUnsavedWork ? 'Unsaved changes' : 'None yet');
+    const selectedCount = state.selectedIds.size;
+    const groupedCount = state.objects.filter((item) => state.selectedIds.has(item.id) && item.groupId).length;
+    ui.selectionSummary.textContent = selectedCount
+      ? `${selectedCount} object${selectedCount === 1 ? '' : 's'} selected${groupedCount ? `, ${groupedCount} in group${groupedCount === 1 ? '' : 's'}` : ''}.`
+      : 'No selection yet.';
+    const selectedImage = getSingleSelectedImage();
+    ui.selectedImageScaleInput.disabled = !selectedImage;
+    if (selectedImage) {
+      ui.selectedImageScaleInput.value = String(selectedImage.scale || 100);
+    }
+  }
+
+  function getObjectById(id) {
+    return state.objects.find((item) => item.id === id) || null;
+  }
+
+  function getSelectedObjects() {
+    return state.objects.filter((item) => state.selectedIds.has(item.id));
+  }
+
+  function getSingleSelectedImage() {
+    const selected = getSelectedObjects().filter((item) => item.type === 'image');
+    return selected.length === 1 ? selected[0] : null;
+  }
+
+  function getGroupMembers(groupId) {
+    if (!groupId) return [];
+    return state.objects.filter((item) => item.groupId === groupId);
+  }
+
+  function setSelection(ids, { append = false } = {}) {
+    if (!append) state.selectedIds.clear();
+    ids.forEach((id) => state.selectedIds.add(id));
+    updateMeta();
+    renderScene();
+  }
+
+  function clearSelection() {
+    state.selectedIds.clear();
+    updateMeta();
+    renderScene();
+  }
+
+  function pointInRect(point, rect) {
+    return point.x >= rect.x
+      && point.x <= rect.x + rect.width
+      && point.y >= rect.y
+      && point.y <= rect.y + rect.height;
+  }
+
+  function pointToSegmentDistance(point, a, b) {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    if (!dx && !dy) {
+      return Math.hypot(point.x - a.x, point.y - a.y);
+    }
+    const t = clamp((((point.x - a.x) * dx) + ((point.y - a.y) * dy)) / ((dx * dx) + (dy * dy)), 0, 1);
+    const projectionX = a.x + (t * dx);
+    const projectionY = a.y + (t * dy);
+    return Math.hypot(point.x - projectionX, point.y - projectionY);
+  }
+
+  function hitTestStroke(stroke, point) {
+    if (!stroke.points.length) return false;
+    if (stroke.points.length === 1) {
+      return Math.hypot(point.x - stroke.points[0].x, point.y - stroke.points[0].y) <= (stroke.size / 2) + 6;
+    }
+    for (let index = 1; index < stroke.points.length; index += 1) {
+      const distance = pointToSegmentDistance(point, stroke.points[index - 1], stroke.points[index]);
+      if (distance <= (stroke.size / 2) + 6) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function hitTestObject(item, point) {
+    if (item.type === 'image') {
+      return pointInRect(point, getObjectBounds(item));
+    }
+    return hitTestStroke(item, point);
+  }
+
+  function hitTest(point) {
+    for (let index = state.objects.length - 1; index >= 0; index -= 1) {
+      const item = state.objects[index];
+      if (hitTestObject(item, point)) {
+        if (item.groupId) {
+          return getGroupMembers(item.groupId).map((entry) => entry.id);
+        }
+        return [item.id];
+      }
+    }
+    return [];
+  }
+
+  function translateObject(item, dx, dy) {
+    if (item.type === 'image') {
+      item.x += dx;
+      item.y += dy;
+      return;
+    }
+    item.points = item.points.map((point) => ({ x: point.x + dx, y: point.y + dy }));
   }
 
   function maybeExpandFreeform(point) {
-    if (!getModeConfig().freeform) return;
-    const margin = 80;
-    let nextWidth = canvas.width;
-    let nextHeight = canvas.height;
-    if (point.x > canvas.width - margin) nextWidth += 280;
-    if (point.y > canvas.height - margin) nextHeight += 220;
-    if (nextWidth === canvas.width && nextHeight === canvas.height) return;
-    const snapshot = document.createElement('canvas');
-    snapshot.width = canvas.width;
-    snapshot.height = canvas.height;
-    snapshot.getContext('2d').drawImage(canvas, 0, 0);
-    canvas.width = nextWidth;
-    canvas.height = nextHeight;
-    state.width = nextWidth;
-    state.height = nextHeight;
-    ctx.fillStyle = state.background;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(snapshot, 0, 0);
-    updateMeta();
-  }
-
-  function beginStroke(event) {
-    const point = getCanvasPoint(event);
-    state.drawing = true;
-    state.pointerId = event.pointerId;
-    state.currentStroke = {
-      color: state.brushColor,
-      size: state.brushSize,
-      points: [point],
-    };
-    state.strokes.push(state.currentStroke);
-    markUnsavedWork(true);
-    canvas.setPointerCapture(event.pointerId);
-    redrawCanvas();
-  }
-
-  function extendStroke(event) {
-    if (!state.drawing || state.pointerId !== event.pointerId || !state.currentStroke) return;
-    const point = getCanvasPoint(event);
-    maybeExpandFreeform(point);
-    state.currentStroke.points.push(point);
-    const points = state.currentStroke.points;
-    const last = points[points.length - 2];
-    ctx.strokeStyle = state.currentStroke.color;
-    ctx.lineWidth = state.currentStroke.size;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    ctx.moveTo(last.x, last.y);
-    ctx.lineTo(point.x, point.y);
-    ctx.stroke();
-  }
-
-  function endStroke(event) {
-    if (!state.drawing || state.pointerId !== event.pointerId) return;
-    state.drawing = false;
-    state.pointerId = null;
-    state.currentStroke = null;
-    updateMeta();
-  }
-
-  function clearCanvas() {
-    state.strokes = [];
-    state.currentStroke = null;
-    state.lastExport = null;
-    exportPanel.hidden = true;
-    markUnsavedWork(false);
-    redrawCanvas();
-    updateMeta();
-    setStatus('Canvas cleared.');
-  }
-
-  function createExportData(format = 'png') {
-    if (format === 'svg') {
-      return createSvgExportData();
+    if (state.mode !== 'freeform') return false;
+    let changed = false;
+    if (point.x > state.canvasWidth - POINTER_EDGE_EXPAND_MARGIN) {
+      state.canvasWidth += FREEFORM_EXPAND_BY;
+      changed = true;
     }
-    const mimeType = format === 'jpeg'
+    if (point.y > state.canvasHeight - POINTER_EDGE_EXPAND_MARGIN) {
+      state.canvasHeight += FREEFORM_EXPAND_BY;
+      changed = true;
+    }
+    if (changed) {
+      updateMeta();
+    }
+    return changed;
+  }
+
+  function beginStroke(point, erase = false) {
+    const stroke = {
+      id: uid('stroke'),
+      type: 'stroke',
+      points: [point],
+      size: clamp(Number(ui.brushSizeInput.value) || 8, 1, 80),
+      erase,
+      groupId: '',
+      style: createStrokeStyle(),
+    };
+    state.currentStroke = stroke;
+    state.objects.push(stroke);
+  }
+
+  function extendStroke(point) {
+    if (!state.currentStroke) return;
+    state.currentStroke.points.push(point);
+    maybeExpandFreeform(point);
+    renderScene();
+  }
+
+  function finishStroke() {
+    if (!state.currentStroke) return;
+    if (state.currentStroke.points.length < 1) {
+      state.objects = state.objects.filter((item) => item.id !== state.currentStroke.id);
+    }
+    state.currentStroke = null;
+    markDirty();
+    updateMeta();
+    renderScene();
+  }
+
+  function beginMove(point) {
+    if (!state.selectedIds.size) {
+      const hitIds = hitTest(point);
+      if (!hitIds.length) return false;
+      setSelection(hitIds);
+    }
+    state.dragging = {
+      kind: 'move',
+      startPoint: point,
+    };
+    updateCanvasCursor();
+    return true;
+  }
+
+  function handleMove(point) {
+    if (!state.dragging || state.dragging.kind !== 'move') return;
+    const dx = point.x - state.dragging.startPoint.x;
+    const dy = point.y - state.dragging.startPoint.y;
+    if (!dx && !dy) return;
+    getSelectedObjects().forEach((item) => translateObject(item, dx, dy));
+    state.dragging.startPoint = point;
+    maybeExpandFreeform(point);
+    markDirty();
+    renderScene();
+  }
+
+  function endMove() {
+    if (!state.dragging || state.dragging.kind !== 'move') return;
+    state.dragging = null;
+    updateCanvasCursor();
+    updateMeta();
+  }
+
+  function applyFill() {
+    state.background.mode = ui.backgroundModeSelect.value === 'gradient' ? 'gradient' : 'solid';
+    state.background.color = normalizeHex(ui.backgroundColorInput.value, '#ffffff');
+    state.background.angle = clamp(Number(ui.backgroundAngleInput.value) || 135, 0, 360);
+    if (state.background.mode === 'gradient' && state.background.stops.length < 2) {
+      state.background.stops = [
+        { id: uid('bg-stop'), offset: 0, color: state.background.color },
+        { id: uid('bg-stop'), offset: 1, color: '#dce8ff' },
+      ];
+    }
+    renderBackgroundStops();
+    renderScene();
+    markDirty();
+    updateStatus('Background updated.');
+  }
+
+  function applyStyleToSelection() {
+    const style = createStrokeStyle();
+    let updated = 0;
+    getSelectedObjects().forEach((item) => {
+      if (item.type !== 'stroke' || item.erase) return;
+      item.style = { ...style };
+      updated += 1;
+    });
+    if (!updated) {
+      updateStatus('Select one or more strokes first to recolour them.');
+      return;
+    }
+    renderScene();
+    markDirty();
+    updateStatus(`Updated ${updated} selected stroke${updated === 1 ? '' : 's'}.`);
+  }
+
+  function groupSelection() {
+    const selected = getSelectedObjects();
+    if (selected.length < 2) {
+      updateStatus('Select at least two objects before grouping.');
+      return;
+    }
+    const groupId = uid('group');
+    selected.forEach((item) => {
+      item.groupId = groupId;
+    });
+    markDirty();
+    renderScene();
+    updateMeta();
+    updateStatus('Selection grouped.');
+  }
+
+  function ungroupSelection() {
+    const selected = getSelectedObjects();
+    if (!selected.length) return;
+    selected.forEach((item) => {
+      item.groupId = '';
+    });
+    markDirty();
+    renderScene();
+    updateMeta();
+    updateStatus('Selection ungrouped.');
+  }
+
+  function deleteSelection() {
+    if (!state.selectedIds.size) return;
+    state.objects = state.objects.filter((item) => !state.selectedIds.has(item.id));
+    state.selectedIds.clear();
+    markDirty();
+    renderScene();
+    updateMeta();
+    updateStatus('Selection removed.');
+  }
+
+  function addBackgroundStop() {
+    state.background.mode = 'gradient';
+    ui.backgroundModeSelect.value = 'gradient';
+    const lastOffset = state.background.stops.length
+      ? state.background.stops[state.background.stops.length - 1].offset
+      : 0;
+    state.background.stops.push({
+      id: uid('bg-stop'),
+      offset: clamp(lastOffset + 0.12, 0, 1),
+      color: '#7cf0c5',
+    });
+    renderBackgroundStops();
+    renderScene();
+    markDirty();
+  }
+
+  function removeBackgroundStop(stopId) {
+    if (state.background.stops.length <= 2) {
+      updateStatus('Keep at least two gradient stops.');
+      return;
+    }
+    state.background.stops = state.background.stops.filter((stop) => stop.id !== stopId);
+    renderBackgroundStops();
+    renderScene();
+    markDirty();
+  }
+
+  function renderBackgroundStops() {
+    ui.backgroundStopsList.innerHTML = '';
+    state.background.stops
+      .slice()
+      .sort((a, b) => a.offset - b.offset)
+      .forEach((stop) => {
+        const row = document.createElement('div');
+        row.className = 'gradient-stop-row';
+        row.innerHTML = `
+          <label>
+            Stop colour
+            <input type="color" value="${normalizeHex(stop.color, '#ffffff')}" data-stop-color="${stop.id}" />
+          </label>
+          <label>
+            Offset
+            <input type="number" min="0" max="100" step="1" value="${Math.round(stop.offset * 100)}" data-stop-offset="${stop.id}" />
+          </label>
+          <button class="action-btn" type="button" data-remove-stop="${stop.id}">Remove</button>
+        `;
+        ui.backgroundStopsList.appendChild(row);
+      });
+  }
+
+  function updateBackgroundStop(stopId, key, value) {
+    const stop = state.background.stops.find((entry) => entry.id === stopId);
+    if (!stop) return;
+    if (key === 'color') {
+      stop.color = normalizeHex(value, stop.color);
+    } else if (key === 'offset') {
+      stop.offset = clamp(Number(value) / 100, 0, 1);
+    }
+    state.background.stops.sort((a, b) => a.offset - b.offset);
+    renderScene();
+    markDirty();
+  }
+
+  function downloadDataUrl(dataUrl, fileName) {
+    const anchor = document.createElement('a');
+    anchor.href = dataUrl;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  }
+
+  function createExportCanvas() {
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = state.canvasWidth;
+    exportCanvas.height = state.canvasHeight;
+    const context = exportCanvas.getContext('2d');
+    renderBackground(context, state.canvasWidth, state.canvasHeight);
+    state.objects.forEach((item) => {
+      if (item.type === 'image') {
+        renderImageObject(context, item);
+      } else {
+        renderStroke(context, item);
+      }
+    });
+    return exportCanvas;
+  }
+
+  function escapeXml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function getExportData(format = 'png') {
+    const safeFormat = ['png', 'jpeg', 'webp', 'svg'].includes(format) ? format : 'png';
+    const exportCanvas = createExportCanvas();
+    if (safeFormat === 'svg') {
+      const embeddedPng = exportCanvas.toDataURL('image/png');
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="${state.canvasWidth}" height="${state.canvasHeight}" viewBox="0 0 ${state.canvasWidth} ${state.canvasHeight}">
+          <image href="${escapeXml(embeddedPng)}" width="${state.canvasWidth}" height="${state.canvasHeight}" />
+        </svg>
+      `.trim();
+      return {
+        dataUrl: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
+        mime: 'image/svg+xml',
+      };
+    }
+    const mime = safeFormat === 'jpeg'
       ? 'image/jpeg'
-      : format === 'webp'
+      : safeFormat === 'webp'
         ? 'image/webp'
         : 'image/png';
-    return canvas.toDataURL(mimeType, 0.92);
-  }
-
-  function persistRecentArtwork(entry) {
-    const existing = readJsonStorage(STORAGE_KEY, []);
-    const next = [entry, ...existing].slice(0, MAX_RECENT_ARTWORKS);
-    writeJsonStorage(STORAGE_KEY, next);
-    lastSavedLabel.textContent = new Date(entry.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    renderRecentArtworks();
-  }
-
-  function finishDrawing() {
-    if (!state.strokes.length) {
-      setStatus('Draw something first.');
-      return;
-    }
-    const dataUrl = createExportData('png');
-    state.lastExport = {
-      mode: state.mode,
-      width: canvas.width,
-      height: canvas.height,
-      dataUrl,
-      createdAt: Date.now(),
+    return {
+      dataUrl: exportCanvas.toDataURL(mime, 0.96),
+      mime,
     };
-    exportPreview.src = dataUrl;
-    exportPanel.hidden = false;
-    saveBannerBtn.hidden = state.mode !== CUSTOM_BANNER_MODE;
-    saveBannerHint.hidden = state.mode !== CUSTOM_BANNER_MODE;
-    persistRecentArtwork({
-      id: `art-${Date.now()}`,
+  }
+
+  function openFinishOverlay() {
+    const exported = getExportData('png');
+    state.exportDataUrl = exported.dataUrl;
+    state.exportMime = exported.mime;
+    ui.exportPreview.src = exported.dataUrl;
+    ui.finishOverlay.hidden = false;
+    state.finishOpen = true;
+    ui.saveBannerBtn.hidden = state.mode !== 'profile-banner';
+    ui.saveBannerHint.hidden = state.mode !== 'profile-banner';
+  }
+
+  function closeFinishOverlay() {
+    ui.finishOverlay.hidden = true;
+    state.finishOpen = false;
+    ui.saveBannerBtn.hidden = true;
+    ui.saveBannerHint.hidden = true;
+  }
+
+  function saveToRecent(dataUrl) {
+    const recent = readJson(DRAW_STORAGE_KEY, []);
+    const entry = {
+      id: uid('recent'),
       mode: state.mode,
-      width: canvas.width,
-      height: canvas.height,
-      dataUrl,
-      createdAt: Date.now(),
-    });
+      label: getModeConfig(state.mode).label,
+      preview: dataUrl,
+      createdAt: safeNow(),
+      width: state.canvasWidth,
+      height: state.canvasHeight,
+    };
+    const next = [entry, ...recent].slice(0, MAX_RECENT_DRAWS);
+    writeJson(DRAW_STORAGE_KEY, next);
+    state.lastSavedAt = safeNow();
+    renderRecentDrawings();
     updateMeta();
-    setStatus('Drawing finished. Preview ready.');
   }
 
-  function downloadCurrentArtwork() {
-    if (!state.lastExport && !state.strokes.length) {
-      setStatus('Finish the drawing first.');
-      return;
-    }
-    const format = downloadFormatSelect.value || 'png';
-    const dataUrl = createExportData(format);
-    const fileName = (fileNameInput.value || 'playr-draw-it').trim().replace(/[^a-z0-9-_]+/gi, '-').replace(/^-+|-+$/g, '') || 'playr-draw-it';
-    const link = document.createElement('a');
-    link.href = dataUrl;
-    link.download = `${fileName}.${format === 'jpeg' ? 'jpg' : format}`;
-    link.click();
-    markUnsavedWork(false);
-    setStatus(`Downloaded ${link.download}.`);
-  }
-
-  function downloadUnsavedArtwork() {
-    if (!state.strokes.length) return;
-    const format = unsavedFormatSelect.value || 'png';
-    const previous = downloadFormatSelect.value;
-    downloadFormatSelect.value = format;
-    downloadCurrentArtwork();
-    downloadFormatSelect.value = previous;
-  }
-
-  function renderRecentArtworks() {
-    const recent = readJsonStorage(STORAGE_KEY, []);
+  function renderRecentDrawings() {
+    const recent = readJson(DRAW_STORAGE_KEY, []);
     if (!recent.length) {
-      recentList.innerHTML = '<p class="draw-note">Your finished drawings will appear here.</p>';
+      ui.recentList.innerHTML = '<p class="draw-note">Your finished drawings will appear here.</p>';
       return;
     }
-    recentList.innerHTML = recent.map((entry) => `
+    ui.recentList.innerHTML = recent.map((item) => `
       <article class="recent-item">
-        <img src="${entry.dataUrl}" alt="${entry.mode} drawing preview" />
+        <img src="${item.preview}" alt="${item.label} preview" />
         <div>
-          <strong>${getModeConfig(entry.mode).label}</strong>
-          <span class="draw-note">${entry.width} x ${entry.height}</span>
+          <strong>${item.label}</strong>
+          <span class="draw-note">${new Date(item.createdAt).toLocaleString()}</span>
         </div>
       </article>
     `).join('');
   }
 
-  async function getFirebaseTools() {
-    if (!window.firebase?.initializeApp || !window.firebase?.auth || !window.firebase?.firestore) return null;
-    const app = window.firebase.apps?.length ? window.firebase.app() : window.firebase.initializeApp(FIREBASE_CONFIG);
-    const auth = window.firebase.auth(app);
-    const db = window.firebase.firestore(app);
-    try {
-      db.settings({ experimentalForceLongPolling: true, useFetchStreams: false });
-    } catch {
-      // Settings may already be locked in.
-    }
-    return { auth, db };
+  function clearScene() {
+    state.objects = [];
+    state.selectedIds.clear();
+    state.currentStroke = null;
+    renderScene();
+    markDirty();
+    updateMeta();
+    updateStatus('Scene cleared.');
   }
 
-  function readLegacyAccount() {
-    try {
-      return JSON.parse(localStorage.getItem('playrCurrentUser') || 'null');
-    } catch {
-      return null;
-    }
+  function restoreDefaultBackground() {
+    state.background = sanitizeBackground({
+      mode: 'solid',
+      color: '#ffffff',
+      angle: 135,
+      stops: [
+        { offset: 0, color: '#ffffff' },
+        { offset: 1, color: '#dce8ff' },
+      ],
+    });
   }
 
-  function readProfiles() {
-    return readJsonStorage(PROFILE_STORAGE_KEY, {});
+  function createImportedImage(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const src = String(reader.result || '');
+      if (!src.startsWith('data:image/')) return;
+      const image = new Image();
+      image.onload = () => {
+        const maxWidth = state.canvasWidth * 0.52;
+        const maxHeight = state.canvasHeight * 0.52;
+        const ratio = Math.min(maxWidth / image.width, maxHeight / image.height, 1);
+        const width = Math.round(image.width * ratio);
+        const height = Math.round(image.height * ratio);
+        const item = {
+          id: uid('image'),
+          type: 'image',
+          src,
+          x: Math.round((state.canvasWidth - width) / 2),
+          y: Math.round((state.canvasHeight - height) / 2),
+          width,
+          height,
+          baseWidth: width,
+          baseHeight: height,
+          scale: 100,
+          groupId: '',
+          imageEl: image,
+        };
+        state.objects.push(item);
+        setSelection([item.id]);
+        markDirty();
+        updateStatus('Image imported. Switch to Move or Select to place it.');
+      };
+      image.src = src;
+    };
+    reader.readAsDataURL(file);
   }
 
-  function writeProfiles(profiles) {
-    writeJsonStorage(PROFILE_STORAGE_KEY, profiles);
+  function updateSelectedImageScale(percent) {
+    const selectedImage = getSingleSelectedImage();
+    if (!selectedImage) return;
+    const safeScale = clamp(Number(percent) || 100, 20, 250);
+    selectedImage.scale = safeScale;
+    selectedImage.width = Math.round(selectedImage.baseWidth * (safeScale / 100));
+    selectedImage.height = Math.round(selectedImage.baseHeight * (safeScale / 100));
+    renderScene();
+    markDirty();
   }
 
-  function saveBannerLocally(bannerEntry) {
-    const legacyUser = readLegacyAccount();
-    const uid = String(legacyUser?.uid || '').trim();
-    if (!uid) {
-      return { ok: false, reason: 'Log in on PlayR first to save banner art to your account.' };
+  function persistBannerLocally(entry) {
+    const account = getCurrentAccount();
+    if (!account?.uid) {
+      return { ok: false, reason: 'Log in to save a custom banner.' };
     }
     const profiles = readProfiles();
-    const profile = profiles[uid] && typeof profiles[uid] === 'object' ? profiles[uid] : { uid, displayName: legacyUser.displayName || 'Player' };
+    const profile = profiles[account.uid] && typeof profiles[account.uid] === 'object'
+      ? profiles[account.uid]
+      : {
+          uid: account.uid,
+          displayName: account.displayName,
+          identifier: account.identifier,
+          identifierType: account.identifierType,
+          createdAt: safeNow(),
+          updatedAt: safeNow(),
+          profileTheme: {},
+        };
     const profileTheme = profile.profileTheme && typeof profile.profileTheme === 'object' ? profile.profileTheme : {};
-    const customBanners = Array.isArray(profileTheme.customBanners) ? profileTheme.customBanners.slice(0, CUSTOM_BANNER_LIMIT) : [];
-    if (customBanners.length >= CUSTOM_BANNER_LIMIT) {
-      return { ok: false, reason: `You already have ${CUSTOM_BANNER_LIMIT} custom banners saved. Delete one in Settings first.` };
+    const customBanners = Array.isArray(profileTheme.customBanners) ? profileTheme.customBanners.slice(0, CUSTOM_PROFILE_BANNER_LIMIT) : [];
+    if (customBanners.length >= CUSTOM_PROFILE_BANNER_LIMIT) {
+      return { ok: false, reason: `You can save up to ${CUSTOM_PROFILE_BANNER_LIMIT} custom banners. Delete one in settings first.` };
     }
-    customBanners.push(bannerEntry);
-    profiles[uid] = {
+    customBanners.push(entry);
+    profiles[account.uid] = {
       ...profile,
+      uid: account.uid,
+      displayName: account.displayName,
+      identifier: account.identifier,
+      identifierType: account.identifierType,
       profileTheme: {
         ...profileTheme,
         customBanners,
       },
-      updatedAt: Date.now(),
+      updatedAt: safeNow(),
     };
-    writeProfiles(profiles);
-    return { ok: true, uid, displayName: profiles[uid].displayName || 'Player' };
+    writeJson(PROFILE_STORAGE_KEY, profiles);
+    return { ok: true, profile: profiles[account.uid] };
   }
 
-  async function syncBannerToCloud(uid, bannerEntry) {
-    const tools = await getFirebaseTools();
-    if (!tools) return { ok: false, reason: 'Cloud sync is unavailable in this browser.' };
-    const currentUser = tools.auth.currentUser || await new Promise((resolve) => {
-      const unsubscribe = tools.auth.onAuthStateChanged((user) => {
-        unsubscribe();
-        resolve(user);
-      });
-      setTimeout(() => resolve(null), 1800);
-    });
-    if (!currentUser || currentUser.uid !== uid) {
-      return { ok: false, reason: 'Banner saved locally. Open the home page while logged in to finish cloud sync.' };
-    }
-    const profileRef = tools.db.collection('userProfiles').doc(uid);
-    const snapshot = await profileRef.get();
-    const data = snapshot.exists ? (snapshot.data() || {}) : {};
-    const profileTheme = data.profileTheme && typeof data.profileTheme === 'object' ? data.profileTheme : {};
-    const current = Array.isArray(profileTheme.customBanners) ? profileTheme.customBanners.slice(0, CUSTOM_BANNER_LIMIT) : [];
-    if (current.length >= CUSTOM_BANNER_LIMIT && !current.some((entry) => entry && entry.id === bannerEntry.id)) {
-      return { ok: false, reason: `Banner saved locally, but cloud storage already has ${CUSTOM_BANNER_LIMIT} custom banners.` };
-    }
-    const next = [...current.filter((entry) => entry && entry.id !== bannerEntry.id), bannerEntry].slice(0, CUSTOM_BANNER_LIMIT);
-    await profileRef.set({
-      profileTheme: {
-        ...profileTheme,
-        customBanners: next,
-      },
-      updatedAt: window.firebase.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
-    return { ok: true };
-  }
-
-  async function saveCurrentAsCustomBanner() {
-    if (!state.lastExport || state.mode !== CUSTOM_BANNER_MODE) {
-      setStatus('Switch to profile banner mode and finish a drawing first.');
-      return;
-    }
-    const bannerEntry = {
-      id: `custom-banner-${Date.now()}`,
-      label: `Draw It banner ${new Date().toLocaleDateString('en-US')}`,
-      dataUrl: state.lastExport.dataUrl,
-      width: state.lastExport.width,
-      height: state.lastExport.height,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+  async function persistBannerToCloud() {
+    const account = getCurrentAccount();
+    if (!account?.uid || !state.firestore) return;
+    const profiles = readProfiles();
+    const profile = profiles[account.uid];
+    if (!profile) return;
+    const payload = {
+      uid: account.uid,
+      displayName: account.displayName,
+      normalizedDisplayName: account.displayName.toLowerCase(),
+      isAdmin: false,
+      identifier: account.identifier,
+      identifierType: account.identifierType,
+      profileTheme: profile.profileTheme || { customBanners: [] },
+      updatedAt: safeNow(),
     };
-    const localResult = saveBannerLocally(bannerEntry);
-    if (!localResult.ok) {
-      setStatus(localResult.reason);
-      return;
-    }
-    markUnsavedWork(false);
-    setStatus('Custom banner saved to your account. Applying it later is a VIP-only option in Settings.');
     try {
-      const cloudResult = await syncBannerToCloud(localResult.uid, bannerEntry);
-      if (!cloudResult.ok) {
-        setStatus(cloudResult.reason);
+      await state.firestore.collection('userProfiles').doc(account.uid).set(payload, { merge: true });
+    } catch {
+      // Local save still counts; cloud save can catch up later from settings/homepage.
+    }
+  }
+
+  async function saveCurrentAsBanner() {
+    if (state.mode !== 'profile-banner') {
+      updateStatus('Switch to Profile banner mode before saving banner art.');
+      return;
+    }
+    const account = getCurrentAccount();
+    if (!account?.uid) {
+      updateStatus('Log in to save a custom banner.');
+      return;
+    }
+    const exportData = getExportData('png');
+    const stamp = safeNow();
+    const entry = {
+      id: `custom-banner-${stamp}`,
+      label: `Custom banner ${new Date(stamp).toLocaleDateString()}`,
+      dataUrl: exportData.dataUrl,
+      width: state.canvasWidth,
+      height: state.canvasHeight,
+      createdAt: stamp,
+      updatedAt: stamp,
+    };
+    const result = persistBannerLocally(entry);
+    if (!result.ok) {
+      updateStatus(result.reason || 'That banner could not be saved.');
+      return;
+    }
+    await persistBannerToCloud();
+    updateStatus(account.isVip
+      ? 'Custom banner saved to your account.'
+      : 'Custom banner saved. Applying it is still VIP-only from Settings.');
+  }
+
+  function handleCanvasPointerDown(event) {
+    const point = getCanvasPoint(event);
+    if (state.tool === 'brush') {
+      beginStroke(point, false);
+      renderScene();
+      return;
+    }
+    if (state.tool === 'eraser') {
+      beginStroke(point, true);
+      renderScene();
+      return;
+    }
+    if (state.tool === 'fill') {
+      applyFill();
+      return;
+    }
+    if (state.tool === 'image') {
+      ui.imageImportInput.click();
+      return;
+    }
+    const hitIds = hitTest(point);
+    if (state.tool === 'select') {
+      if (!hitIds.length) {
+        clearSelection();
         return;
       }
-      setStatus('Custom banner saved to your account and synced to cloud.');
-    } catch {
-      setStatus('Custom banner saved locally. Open the home page while logged in to finish cloud sync.');
+      setSelection(hitIds, { append: event.shiftKey });
+      return;
+    }
+    if (state.tool === 'move') {
+      if (hitIds.length && !hitIds.every((id) => state.selectedIds.has(id))) {
+        setSelection(hitIds, { append: false });
+      }
+      beginMove(point);
     }
   }
 
-  function openUnsavedOverlay(href = '') {
-    if (!unsavedOverlay) return false;
-    state.pendingNavigationHref = String(href || '').trim();
-    unsavedOverlay.hidden = false;
-    return true;
-  }
-
-  function closeUnsavedOverlay() {
-    if (!unsavedOverlay) return;
-    state.pendingNavigationHref = '';
-    unsavedOverlay.hidden = true;
-  }
-
-  function leaveAfterUnsavedPrompt() {
-    const href = state.pendingNavigationHref;
-    closeUnsavedOverlay();
-    if (href) {
-      window.location.href = href;
+  function handleCanvasPointerMove(event) {
+    const point = getCanvasPoint(event);
+    if (state.currentStroke) {
+      extendStroke(point);
+      return;
+    }
+    if (state.dragging?.kind === 'move') {
+      handleMove(point);
     }
   }
 
-  modeGrid?.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-mode]');
-    if (!button) return;
-    switchMode(button.getAttribute('data-mode') || 'wallpaper-pc');
-  });
+  function handleCanvasPointerUp() {
+    if (state.currentStroke) {
+      finishStroke();
+    }
+    if (state.dragging?.kind === 'move') {
+      endMove();
+    }
+  }
 
-  brushSizeInput?.addEventListener('input', () => {
-    state.brushSize = Math.max(1, Number(brushSizeInput.value) || 8);
-  });
+  function bindEvents() {
+    ui.modeGrid.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-mode]');
+      if (!button) return;
+      setMode(button.getAttribute('data-mode') || 'wallpaper-pc');
+    });
 
-  brushColorInput?.addEventListener('input', () => {
-    state.brushColor = brushColorInput.value || '#183a8f';
-  });
+    ui.toolButtons.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-tool]');
+      if (!button) return;
+      const tool = button.getAttribute('data-tool') || 'brush';
+      if (tool === 'image') {
+        setTool(tool);
+        ui.imageImportInput.click();
+        return;
+      }
+      setTool(tool);
+    });
 
-  backgroundColorInput?.addEventListener('input', () => {
-    state.background = backgroundColorInput.value || '#ffffff';
-    redrawCanvas();
-  });
+    ui.canvas.addEventListener('pointerdown', handleCanvasPointerDown);
+    ui.canvas.addEventListener('pointermove', handleCanvasPointerMove);
+    window.addEventListener('pointerup', handleCanvasPointerUp);
+    window.addEventListener('pointercancel', handleCanvasPointerUp);
 
-  clearBtn?.addEventListener('click', clearCanvas);
-  finishBtn?.addEventListener('click', finishDrawing);
-  downloadBtn?.addEventListener('click', downloadCurrentArtwork);
-  saveBannerBtn?.addEventListener('click', () => {
-    void saveCurrentAsCustomBanner();
-  });
+    ui.applySelectedStyleBtn.addEventListener('click', applyStyleToSelection);
+    ui.groupSelectionBtn.addEventListener('click', groupSelection);
+    ui.ungroupSelectionBtn.addEventListener('click', ungroupSelection);
+    ui.deleteSelectionBtn.addEventListener('click', deleteSelection);
+    ui.addBackgroundStopBtn.addEventListener('click', addBackgroundStop);
+    ui.backgroundStopsList.addEventListener('input', (event) => {
+      const colorTarget = event.target.closest('[data-stop-color]');
+      if (colorTarget) {
+        updateBackgroundStop(colorTarget.getAttribute('data-stop-color') || '', 'color', colorTarget.value);
+        return;
+      }
+      const offsetTarget = event.target.closest('[data-stop-offset]');
+      if (offsetTarget) {
+        updateBackgroundStop(offsetTarget.getAttribute('data-stop-offset') || '', 'offset', offsetTarget.value);
+      }
+    });
+    ui.backgroundStopsList.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-remove-stop]');
+      if (!button) return;
+      removeBackgroundStop(button.getAttribute('data-remove-stop') || '');
+    });
 
-  unsavedDownloadBtn?.addEventListener('click', downloadUnsavedArtwork);
-  unsavedStayBtn?.addEventListener('click', closeUnsavedOverlay);
-  unsavedLeaveBtn?.addEventListener('click', leaveAfterUnsavedPrompt);
+    ui.importImageBtn.addEventListener('click', () => {
+      ui.imageImportInput.click();
+    });
+    ui.imageImportInput.addEventListener('change', () => {
+      const file = ui.imageImportInput.files?.[0];
+      ui.imageImportInput.value = '';
+      if (!file) return;
+      if (!/^image\/(png|jpeg)$/i.test(file.type)) {
+        updateStatus('Only PNG and JPEG imports are supported right now.');
+        return;
+      }
+      createImportedImage(file);
+      setTool('move');
+    });
 
-  canvas.addEventListener('pointerdown', beginStroke);
-  canvas.addEventListener('pointermove', extendStroke);
-  canvas.addEventListener('pointerup', endStroke);
-  canvas.addEventListener('pointercancel', endStroke);
-  canvas.addEventListener('pointerleave', endStroke);
+    ui.selectedImageScaleInput.addEventListener('input', () => {
+      updateSelectedImageScale(ui.selectedImageScaleInput.value);
+    });
 
-  document.addEventListener('click', (event) => {
-    const link = event.target.closest('a[href]');
-    if (!link) return;
-    const href = link.getAttribute('href') || '';
-    if (!state.hasUnsavedWork || !href || href.startsWith('#')) return;
-    const resolved = new URL(href, window.location.href);
-    if (resolved.href === window.location.href) return;
-    event.preventDefault();
-    openUnsavedOverlay(resolved.href);
-  });
+    ui.clearBtn.addEventListener('click', clearScene);
+    ui.finishBtn.addEventListener('click', () => {
+      openFinishOverlay();
+      const exported = getExportData('png');
+      saveToRecent(exported.dataUrl);
+    });
+    ui.finishCloseBtn.addEventListener('click', closeFinishOverlay);
+    ui.finishOverlay.addEventListener('click', (event) => {
+      if (event.target === ui.finishOverlay) {
+        closeFinishOverlay();
+      }
+    });
 
-  window.addEventListener('beforeunload', (event) => {
-    if (!state.hasUnsavedWork) return;
-    event.preventDefault();
-    event.returnValue = '';
-  });
+    ui.downloadBtn.addEventListener('click', () => {
+      const format = ui.downloadFormatSelect.value || 'png';
+      const fileName = `${slugify(ui.fileNameInput.value)}.${format === 'jpeg' ? 'jpg' : format}`;
+      const exported = getExportData(format);
+      downloadDataUrl(exported.dataUrl, fileName);
+    });
 
-  switchMode(state.mode);
-  redrawCanvas();
-  renderRecentArtworks();
-  stageShell.scrollTop = 0;
+    ui.saveBannerBtn.addEventListener('click', () => {
+      saveCurrentAsBanner();
+    });
+
+    ui.backgroundModeSelect.addEventListener('change', () => {
+      if (ui.backgroundModeSelect.value === 'gradient' && state.background.stops.length < 2) {
+        state.background.stops = [
+          { id: uid('bg-stop'), offset: 0, color: state.background.color },
+          { id: uid('bg-stop'), offset: 1, color: '#dce8ff' },
+        ];
+      }
+      applyFill();
+    });
+    ui.backgroundColorInput.addEventListener('input', applyFill);
+    ui.backgroundAngleInput.addEventListener('input', applyFill);
+
+    document.querySelectorAll('a[href]').forEach((anchor) => {
+      anchor.addEventListener('click', (event) => {
+        if (!state.hasUnsavedWork) return;
+        const href = anchor.getAttribute('href') || '';
+        if (!href || href.startsWith('#')) return;
+        event.preventDefault();
+        state.pendingHref = anchor.href;
+        ui.unsavedOverlay.hidden = false;
+      });
+    });
+
+    ui.unsavedStayBtn.addEventListener('click', () => {
+      state.pendingHref = '';
+      ui.unsavedOverlay.hidden = true;
+    });
+    ui.unsavedLeaveBtn.addEventListener('click', () => {
+      const href = state.pendingHref;
+      state.pendingHref = '';
+      ui.unsavedOverlay.hidden = true;
+      clearDirty();
+      if (href) {
+        window.location.href = href;
+      }
+    });
+    ui.unsavedDownloadBtn.addEventListener('click', () => {
+      const format = ui.unsavedFormatSelect.value || 'png';
+      const exported = getExportData(format);
+      const fileName = `${slugify(ui.fileNameInput.value || 'playr-draw-it-unsaved')}.${format === 'jpeg' ? 'jpg' : format}`;
+      downloadDataUrl(exported.dataUrl, fileName);
+    });
+
+    window.addEventListener('beforeunload', (event) => {
+      if (!state.hasUnsavedWork) return;
+      event.preventDefault();
+      event.returnValue = '';
+    });
+  }
+
+  function cacheElements() {
+    ui.modeGrid = $('modeGrid');
+    ui.toolButtons = $('toolButtons');
+    ui.canvas = $('drawCanvas');
+    ui.context = ui.canvas.getContext('2d');
+    ui.drawStatus = $('drawStatus');
+    ui.brushSizeInput = $('brushSizeInput');
+    ui.strokeModeSelect = $('strokeModeSelect');
+    ui.brushColorInput = $('brushColorInput');
+    ui.brushColorSecondaryInput = $('brushColorSecondaryInput');
+    ui.strokeAngleInput = $('strokeAngleInput');
+    ui.applySelectedStyleBtn = $('applySelectedStyleBtn');
+    ui.backgroundModeSelect = $('backgroundModeSelect');
+    ui.backgroundColorInput = $('backgroundColorInput');
+    ui.backgroundAngleInput = $('backgroundAngleInput');
+    ui.backgroundStopsList = $('backgroundStopsList');
+    ui.addBackgroundStopBtn = $('addBackgroundStopBtn');
+    ui.groupSelectionBtn = $('groupSelectionBtn');
+    ui.ungroupSelectionBtn = $('ungroupSelectionBtn');
+    ui.deleteSelectionBtn = $('deleteSelectionBtn');
+    ui.selectionSummary = $('selectionSummary');
+    ui.imageImportInput = $('imageImportInput');
+    ui.importImageBtn = $('importImageBtn');
+    ui.selectedImageScaleInput = $('selectedImageScaleInput');
+    ui.bannerModeNote = $('bannerModeNote');
+    ui.clearBtn = $('clearBtn');
+    ui.finishBtn = $('finishBtn');
+    ui.modeLabel = $('modeLabel');
+    ui.sizeLabel = $('sizeLabel');
+    ui.strokeCountLabel = $('strokeCountLabel');
+    ui.lastSavedLabel = $('lastSavedLabel');
+    ui.recentList = $('recentList');
+    ui.finishOverlay = $('finishOverlay');
+    ui.finishCloseBtn = $('finishCloseBtn');
+    ui.exportPreview = $('exportPreview');
+    ui.downloadFormatSelect = $('downloadFormatSelect');
+    ui.fileNameInput = $('fileNameInput');
+    ui.downloadBtn = $('downloadBtn');
+    ui.saveBannerBtn = $('saveBannerBtn');
+    ui.saveBannerHint = $('saveBannerHint');
+    ui.unsavedOverlay = $('unsavedOverlay');
+    ui.unsavedFormatSelect = $('unsavedFormatSelect');
+    ui.unsavedDownloadBtn = $('unsavedDownloadBtn');
+    ui.unsavedStayBtn = $('unsavedStayBtn');
+    ui.unsavedLeaveBtn = $('unsavedLeaveBtn');
+  }
+
+  async function init() {
+    cacheElements();
+    ensureFirebase();
+    restoreDefaultBackground();
+    const loadedDraft = loadDraft();
+    ui.backgroundModeSelect.value = state.background.mode;
+    ui.backgroundColorInput.value = state.background.color;
+    ui.backgroundAngleInput.value = String(state.background.angle);
+    setMode(loadedDraft ? state.mode : 'wallpaper-pc', { preserveObjects: true, markChanged: false });
+    renderBackgroundStops();
+    await preloadImages();
+    renderRecentDrawings();
+    setTool(state.tool || 'brush');
+    updateMeta();
+    updateCanvasCursor();
+    bindEvents();
+    renderScene();
+    updateStatus(loadedDraft ? 'Restored your latest local draft.' : 'Pick a canvas mode and start building.');
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, { once: true });
+  } else {
+    init();
+  }
 })();

@@ -1,20 +1,37 @@
 .draw-it-page {
-  --draw-bg: linear-gradient(180deg, rgba(5, 14, 34, 0.96), rgba(8, 18, 46, 0.98));
+  --draw-accent: #7cf0c5;
+  --draw-accent-2: #4a80f5;
 }
 
 .draw-layout {
-  grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.85fr);
+  grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.82fr);
   align-items: start;
 }
 
-.draw-toolbar {
+.draw-workspace {
+  display: grid;
+  gap: 16px;
+}
+
+.draw-toolbar,
+.tool-card,
+.draw-side-panel,
+.recent-panel,
+.draw-unsaved-modal,
+.draw-finish-modal {
   display: grid;
   gap: 14px;
-  margin-bottom: 16px;
 }
 
 .mode-grid,
-.tool-grid {
+.toolbar-grid,
+.selection-grid,
+.tool-grid,
+.tool-button-grid,
+.draw-meta-grid,
+.two-colour-row,
+.tool-inline-actions,
+.actions {
   display: grid;
   gap: 10px;
 }
@@ -23,32 +40,69 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.tool-grid {
+.toolbar-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.tool-grid label {
+.selection-grid {
+  grid-template-columns: 1.1fr 1fr;
+}
+
+.tool-button-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.tool-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.finish-tool-grid {
+  grid-template-columns: 1fr 1fr;
+}
+
+.draw-toolbar h3,
+.draw-side-panel h2,
+.recent-panel h3,
+.draw-finish-modal h3,
+.draw-unsaved-modal h3 {
+  margin: 0;
+}
+
+.tool-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.tool-stack label,
+.tool-grid label,
+.gradient-stop-row label {
   display: grid;
   gap: 8px;
-  color: rgba(231, 240, 255, 0.88);
+  color: rgba(229, 239, 255, 0.92);
   font-size: 0.92rem;
 }
 
+.mode-chip,
+.action-btn,
+.auth-like-input,
+.tool-stack select,
+.tool-stack input,
 .tool-grid input,
-.tool-grid select {
-  width: 100%;
+.tool-grid select,
+.gradient-stop-row input,
+.gradient-stop-row select {
+  font: inherit;
 }
 
 .mode-chip {
-  min-height: 44px;
+  min-height: 46px;
   border-radius: 16px;
-  border: 1px solid rgba(146, 176, 255, 0.16);
+  border: 1px solid rgba(124, 240, 197, 0.18);
   background: rgba(255, 255, 255, 0.05);
   color: #eef4ff;
-  font: inherit;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
-  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
 }
 
 .mode-chip:hover,
@@ -56,14 +110,120 @@
 .mode-chip.active {
   outline: none;
   transform: translateY(-1px);
-  border-color: rgba(122, 240, 197, 0.45);
-  background: rgba(122, 240, 197, 0.12);
+  border-color: rgba(124, 240, 197, 0.42);
+  background: linear-gradient(135deg, rgba(74, 128, 245, 0.18), rgba(124, 240, 197, 0.16));
+  box-shadow: 0 10px 22px rgba(74, 128, 245, 0.14);
+}
+
+.action-btn {
+  min-height: 42px;
+  padding: 0 15px;
+  border-radius: 14px;
+  border: 1px solid rgba(122, 167, 255, 0.24);
+  background: rgba(255, 255, 255, 0.05);
+  color: #f2f6ff;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
+}
+
+.action-btn:hover,
+.action-btn:focus-visible,
+.action-btn.is-active {
+  outline: none;
+  transform: translateY(-1px);
+  border-color: rgba(124, 240, 197, 0.44);
+  background: rgba(124, 240, 197, 0.12);
+  box-shadow: 0 10px 20px rgba(124, 240, 197, 0.12);
+}
+
+.action-btn-primary {
+  color: #07101f;
+  border-color: rgba(124, 240, 197, 0.4);
+  background: linear-gradient(135deg, rgba(124, 240, 197, 0.96), rgba(214, 255, 125, 0.94));
+  box-shadow: 0 16px 34px rgba(124, 240, 197, 0.22);
+}
+
+.action-btn-primary:hover,
+.action-btn-primary:focus-visible,
+.action-btn-primary.is-active {
+  border-color: rgba(214, 255, 125, 0.56);
+  background: linear-gradient(135deg, rgba(133, 244, 204, 0.98), rgba(224, 255, 145, 0.96));
+}
+
+.action-btn-danger {
+  border-color: rgba(255, 119, 144, 0.32);
+  background: rgba(255, 119, 144, 0.1);
+  color: #ffdbe4;
+}
+
+.action-btn-danger:hover,
+.action-btn-danger:focus-visible {
+  border-color: rgba(255, 119, 144, 0.48);
+  background: rgba(255, 119, 144, 0.16);
+}
+
+.auth-like-input,
+.tool-stack select,
+.tool-stack input[type="text"],
+.tool-grid input[type="text"],
+.tool-grid select,
+.gradient-stop-row input[type="number"] {
+  min-height: 42px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(8, 14, 26, 0.76);
+  color: #eef4ff;
+  padding: 0 12px;
+}
+
+.tool-stack input[type="color"],
+.tool-grid input[type="color"],
+.gradient-stop-row input[type="color"] {
+  width: 100%;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(8, 14, 26, 0.76);
+  padding: 4px;
+}
+
+.tool-stack input[type="range"],
+.tool-grid input[type="range"] {
+  width: 100%;
+  accent-color: var(--draw-accent);
+}
+
+.two-colour-row {
+  grid-template-columns: 1fr 1fr;
+}
+
+.tool-inline-actions,
+.actions {
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+}
+
+.gradient-stop-list {
+  display: grid;
+  gap: 10px;
+}
+
+.gradient-stop-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.gradient-stop-row button {
+  min-height: 42px;
 }
 
 .draw-stage-shell {
   overflow: auto;
   max-height: 72vh;
-  border-radius: 22px;
+  border-radius: 24px;
   border: 1px solid rgba(146, 176, 255, 0.16);
   background: rgba(8, 16, 36, 0.82);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
@@ -80,23 +240,14 @@
   width: 100%;
   height: auto;
   background: #ffffff;
-  border-radius: 18px;
+  border-radius: 20px;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
   touch-action: none;
   cursor: crosshair;
 }
 
-.draw-side-panel,
-.export-panel,
-.recent-panel {
-  display: grid;
-  gap: 14px;
-}
-
 .draw-meta-grid {
-  display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
 }
 
 .draw-meta-grid p {
@@ -108,7 +259,8 @@
 }
 
 .draw-meta-grid span,
-.draw-note {
+.draw-note,
+.draw-feature-list {
   color: rgba(191, 207, 236, 0.86);
 }
 
@@ -126,11 +278,10 @@
   font-size: 0.92rem;
 }
 
-#exportPreview {
-  width: 100%;
-  border-radius: 16px;
-  border: 1px solid rgba(146, 176, 255, 0.12);
-  background: rgba(255, 255, 255, 0.04);
+.draw-feature-list {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.7;
 }
 
 .recent-list {
@@ -162,6 +313,7 @@
   margin-bottom: 4px;
 }
 
+.draw-finish-overlay,
 .draw-unsaved-overlay {
   position: fixed;
   inset: 0;
@@ -169,38 +321,74 @@
   display: grid;
   place-items: center;
   padding: 20px;
-  background: rgba(4, 9, 18, 0.76);
-  backdrop-filter: blur(5px);
+  background: rgba(4, 9, 18, 0.78);
+  backdrop-filter: blur(6px);
 }
 
+.draw-finish-overlay[hidden],
 .draw-unsaved-overlay[hidden] {
   display: none !important;
 }
 
-.draw-unsaved-modal {
-  width: min(520px, 100%);
-  display: grid;
-  gap: 14px;
+.draw-finish-modal {
+  width: min(980px, 100%);
 }
 
-.draw-unsaved-modal h3 {
-  margin: 0;
+.draw-finish-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.draw-finish-preview-shell {
+  padding: 14px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+#exportPreview {
+  display: block;
+  width: 100%;
+  max-height: 62vh;
+  object-fit: contain;
+  border-radius: 16px;
+  border: 1px solid rgba(146, 176, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.draw-unsaved-modal {
+  width: min(520px, 100%);
+}
+
+@media (max-width: 1120px) {
+  .toolbar-grid,
+  .selection-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 980px) {
   .draw-layout {
     grid-template-columns: 1fr;
   }
-
-  .tool-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 640px) {
   .mode-grid,
-  .draw-meta-grid {
+  .draw-meta-grid,
+  .tool-grid,
+  .tool-button-grid,
+  .two-colour-row,
+  .gradient-stop-row,
+  .finish-tool-grid {
     grid-template-columns: 1fr;
+  }
+
+  .tool-inline-actions,
+  .actions {
+    grid-auto-flow: row;
   }
 
   .draw-stage {

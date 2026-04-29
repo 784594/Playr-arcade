@@ -1422,9 +1422,10 @@ a {
 .topnav .chip-button,
 .topbar-controls > .chip-button,
 .topbar-controls > .button {
-  font-size: 0.92rem;
-  padding-left: 13px;
-  padding-right: 13px;
+  font-size: 0.84rem;
+  padding-left: 11px;
+  padding-right: 11px;
+  white-space: nowrap;
 }
 
 .topnav a:not(.chip-button),

@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-28-draw-it-studio-upgrade',
+      title: 'Draw It studio upgrade',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-28T16:50:00-04:00',
+      summary: 'Draw It now behaves more like a full lightweight art studio with grouped editing, image imports, themed controls, and a centered export flow.',
+      details: [
+        'The Draw It editor now uses the shared PlayR button styling, moves the final preview into a centered finish panel, and supports solid or gradient strokes plus multi-stop gradient backgrounds.',
+        'Players can now import PNG or JPEG images, scale and move them, select multiple objects, group or ungroup them, delete them together, and recolour selected strokes in one step.',
+        'The editor also adds erasing, freeform canvas growth near the edges, recent local drawing snapshots, and profile-banner saves that still flow into the existing custom-banner account path.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-28-draw-it-banners-and-profile-polish',
       title: 'Draw It, banner saves, and profile polish',
       category: 'update',

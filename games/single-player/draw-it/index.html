@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Draw wallpapers, freeform sketches, and profile-banner art inside PlayR." />
+  <meta name="description" content="Draw wallpapers, banners, freeform sketches, and imported-image layouts inside PlayR." />
   <title>Draw It | PlayR</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -31,35 +31,125 @@
     <header class="header hero">
       <p class="eyebrow">PlayR Canvas Lab</p>
       <h1>Draw It</h1>
-      <p class="hero-copy">Sketch wallpapers, freeform art, or profile-banner concepts. Finish a drawing to preview it, download it, and optionally save banner-mode art to your account.</p>
-      <p class="status-line" id="drawStatus">Pick a canvas mode and start drawing.</p>
+      <p class="hero-copy">Make wallpapers, banner concepts, imported-image layouts, and flexible scene compositions. Draw It now supports selection, grouping, gradients, erasing, image imports, and shared finishing tools.</p>
+      <p class="status-line" id="drawStatus">Pick a canvas mode and start building.</p>
     </header>
 
     <section class="main-grid draw-layout">
-      <article class="play-area">
-        <div class="draw-toolbar panel">
+      <article class="play-area draw-workspace">
+        <section class="panel draw-toolbar">
           <div class="mode-grid" id="modeGrid" aria-label="Canvas mode selection">
             <button class="mode-chip active" type="button" data-mode="wallpaper-pc">16:9 wallpaper</button>
             <button class="mode-chip" type="button" data-mode="wallpaper-phone">20:9 wallpaper</button>
             <button class="mode-chip" type="button" data-mode="freeform">Freeform</button>
             <button class="mode-chip" type="button" data-mode="profile-banner">Profile banner</button>
           </div>
-          <div class="tool-grid">
-            <label>
-              Brush
-              <input id="brushSizeInput" type="range" min="2" max="36" value="8" />
-            </label>
-            <label>
-              Colour
-              <input id="brushColorInput" type="color" value="#183a8f" />
-            </label>
-            <label>
-              Background
-              <input id="backgroundColorInput" type="color" value="#ffffff" />
-            </label>
+
+          <div class="toolbar-grid">
+            <section class="panel tool-card">
+              <h3>Tools</h3>
+              <div class="tool-button-grid" id="toolButtons">
+                <button class="action-btn action-btn-primary is-active" type="button" data-tool="brush">Brush</button>
+                <button class="action-btn" type="button" data-tool="eraser">Erase</button>
+                <button class="action-btn" type="button" data-tool="select">Select</button>
+                <button class="action-btn" type="button" data-tool="move">Move</button>
+                <button class="action-btn" type="button" data-tool="fill">Fill</button>
+                <button class="action-btn" type="button" data-tool="image">Import</button>
+              </div>
+              <p class="draw-note">Use `Select` to click items, `Move` to drag the current selection, and `Import` to place PNG or JPEG artwork.</p>
+            </section>
+
+            <section class="panel tool-card">
+              <h3>Stroke Style</h3>
+              <div class="tool-stack">
+                <label>
+                  Brush size
+                  <input id="brushSizeInput" type="range" min="2" max="48" value="8" />
+                </label>
+                <label>
+                  Stroke mode
+                  <select id="strokeModeSelect">
+                    <option value="solid">Solid colour</option>
+                    <option value="gradient">Gradient</option>
+                  </select>
+                </label>
+                <div class="two-colour-row">
+                  <label>
+                    Colour A
+                    <input id="brushColorInput" type="color" value="#183a8f" />
+                  </label>
+                  <label>
+                    Colour B
+                    <input id="brushColorSecondaryInput" type="color" value="#7cf0c5" />
+                  </label>
+                </div>
+                <label>
+                  Gradient angle
+                  <input id="strokeAngleInput" type="range" min="0" max="360" value="35" />
+                </label>
+                <div class="tool-inline-actions">
+                  <button id="applySelectedStyleBtn" class="action-btn" type="button">Recolour selected</button>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel tool-card">
+              <h3>Background</h3>
+              <div class="tool-stack">
+                <label>
+                  Background mode
+                  <select id="backgroundModeSelect">
+                    <option value="solid">Solid colour</option>
+                    <option value="gradient">Gradient</option>
+                  </select>
+                </label>
+                <div class="two-colour-row">
+                  <label>
+                    Base colour
+                    <input id="backgroundColorInput" type="color" value="#ffffff" />
+                  </label>
+                  <label>
+                    Gradient angle
+                    <input id="backgroundAngleInput" type="range" min="0" max="360" value="135" />
+                  </label>
+                </div>
+                <div class="gradient-stop-list" id="backgroundStopsList"></div>
+                <div class="tool-inline-actions">
+                  <button id="addBackgroundStopBtn" class="action-btn" type="button">Add stop</button>
+                </div>
+              </div>
+            </section>
           </div>
+
+          <div class="selection-grid">
+            <section class="panel tool-card">
+              <h3>Selection</h3>
+              <div class="tool-inline-actions">
+                <button id="groupSelectionBtn" class="action-btn" type="button">Group</button>
+                <button id="ungroupSelectionBtn" class="action-btn" type="button">Ungroup</button>
+                <button id="deleteSelectionBtn" class="action-btn action-btn-danger" type="button">Delete</button>
+              </div>
+              <p class="draw-note" id="selectionSummary">No selection yet.</p>
+            </section>
+
+            <section class="panel tool-card">
+              <h3>Imported Images</h3>
+              <div class="tool-stack">
+                <input id="imageImportInput" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" hidden />
+                <div class="tool-inline-actions">
+                  <button id="importImageBtn" class="action-btn action-btn-primary" type="button">Choose PNG/JPEG</button>
+                </div>
+                <label>
+                  Selected image scale
+                  <input id="selectedImageScaleInput" type="range" min="20" max="250" value="100" />
+                </label>
+                <p class="draw-note">Imported images can be selected, moved, resized, grouped, and exported as part of the scene.</p>
+              </div>
+            </section>
+          </div>
+
           <p class="draw-note" id="bannerModeNote" hidden>Banner mode reminder: if a saved custom banner is applied and later found to be offensive, the account can be banned.</p>
-        </div>
+        </section>
 
         <div class="draw-stage-shell" id="drawStageShell">
           <div class="draw-stage" id="drawStage">
@@ -71,41 +161,25 @@
       <aside class="panel draw-side-panel">
         <h2>Controls</h2>
         <div class="actions">
-          <button id="clearBtn" class="action-btn" type="button">Clear</button>
-          <button id="finishBtn" class="action-btn action-btn-primary" type="button">Finished</button>
+          <button id="clearBtn" class="action-btn" type="button">Clear scene</button>
+          <button id="finishBtn" class="action-btn action-btn-primary" type="button">Finish</button>
         </div>
 
         <div class="draw-meta-grid">
           <p><span>Mode</span><strong id="modeLabel">16:9 wallpaper</strong></p>
           <p><span>Canvas size</span><strong id="sizeLabel">1600 x 900</strong></p>
-          <p><span>Strokes</span><strong id="strokeCountLabel">0</strong></p>
+          <p><span>Objects</span><strong id="strokeCountLabel">0</strong></p>
           <p><span>Last saved</span><strong id="lastSavedLabel">None yet</strong></p>
         </div>
 
-        <section class="panel export-panel" id="exportPanel" hidden>
-          <h3>Final drawing</h3>
-          <img id="exportPreview" alt="Finished drawing preview" />
-          <div class="tool-grid">
-            <label>
-              Download format
-              <select id="downloadFormatSelect">
-                <option value="png">PNG</option>
-                <option value="jpeg">JPEG</option>
-                <option value="webp">WEBP</option>
-                <option value="svg">SVG</option>
-              </select>
-            </label>
-            <label>
-              File name
-              <input id="fileNameInput" type="text" value="playr-draw-it" maxlength="40" />
-            </label>
-          </div>
-          <div class="actions">
-            <button id="downloadBtn" class="action-btn action-btn-primary" type="button">Download</button>
-            <button id="saveBannerBtn" class="action-btn" type="button" hidden>Save as custom banner</button>
-          </div>
-          <p class="draw-note" id="saveBannerHint" hidden>Saved banner art stays on your account. Applying it is a VIP-only option from Settings.</p>
-          <p class="draw-note">Animated banners can slot in later for VIP, and that future path can unlock GIF export for animated pieces only.</p>
+        <section class="panel recent-panel">
+          <h3>Play options</h3>
+          <ul class="draw-feature-list">
+            <li>Build quick wallpapers or banner mockups from scratch.</li>
+            <li>Import images, scale them, and arrange them with grouped strokes.</li>
+            <li>Use solid or gradient strokes, plus multi-stop gradient backgrounds.</li>
+            <li>Finish opens a centered export panel with a clean preview and save tools.</li>
+          </ul>
         </section>
 
         <section class="panel recent-panel">
@@ -116,11 +190,47 @@
     </section>
   </div>
 
+  <div class="draw-finish-overlay" id="finishOverlay" hidden>
+    <section class="panel draw-finish-modal" role="dialog" aria-modal="true" aria-labelledby="finishTitle">
+      <div class="draw-finish-header">
+        <div>
+          <p class="eyebrow">Final Drawing</p>
+          <h3 id="finishTitle">Preview and export</h3>
+        </div>
+        <button id="finishCloseBtn" class="chip-button" type="button">Close</button>
+      </div>
+      <div class="draw-finish-preview-shell">
+        <img id="exportPreview" alt="Finished drawing preview" />
+      </div>
+      <div class="tool-grid finish-tool-grid">
+        <label>
+          Download format
+          <select id="downloadFormatSelect">
+            <option value="png">PNG</option>
+            <option value="jpeg">JPEG</option>
+            <option value="webp">WEBP</option>
+            <option value="svg">SVG</option>
+          </select>
+        </label>
+        <label>
+          File name
+          <input id="fileNameInput" class="auth-like-input" type="text" value="playr-draw-it" maxlength="40" />
+        </label>
+      </div>
+      <div class="actions">
+        <button id="downloadBtn" class="action-btn action-btn-primary" type="button">Download</button>
+        <button id="saveBannerBtn" class="action-btn" type="button" hidden>Save as custom banner</button>
+      </div>
+      <p class="draw-note" id="saveBannerHint" hidden>Saved banner art stays on your account. Applying it is a VIP-only option from Settings.</p>
+      <p class="draw-note">Animated banners can layer in later for VIP with simple motion presets and GIF export only for animated pieces.</p>
+    </section>
+  </div>
+
   <div class="draw-unsaved-overlay" id="unsavedOverlay" hidden>
     <section class="panel draw-unsaved-modal" role="dialog" aria-modal="true" aria-labelledby="unsavedTitle">
       <h3 id="unsavedTitle">Hey! Your work isnt saved!</h3>
       <p class="draw-note">Download your current art before leaving if you want to keep it.</p>
-      <div class="tool-grid">
+      <div class="tool-grid finish-tool-grid">
         <label>
           Download format
           <select id="unsavedFormatSelect">
@@ -134,7 +244,7 @@
       <div class="actions">
         <button id="unsavedDownloadBtn" class="action-btn action-btn-primary" type="button">Download first</button>
         <button id="unsavedStayBtn" class="action-btn" type="button">Keep drawing</button>
-        <button id="unsavedLeaveBtn" class="action-btn" type="button">Leave anyway</button>
+        <button id="unsavedLeaveBtn" class="action-btn action-btn-danger" type="button">Leave anyway</button>
       </div>
     </section>
   </div>
