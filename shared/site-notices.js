@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-28-social-panels-and-profile-tag-tuning',
+      title: 'Friends tabs, profile fixes, and Draw It pixel mode',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-28T18:25:00-04:00',
+      summary: 'The friends and profile panels were tightened up, Draw It gained a pixel drawing mode, and only owner or donation tags now stay beside display names.',
+      details: [
+        'The friends panel now opens on a Current Friends tab by default and separates current friends, incoming requests, and outgoing requests into dedicated tabs with faster accept, decline, cancel, and unfriend actions.',
+        'Profiles now reserve beside-name tags for only owner and donation badges, while other equipped tags move into the profile panel itself, and the profile modal was adjusted to make opening profiles easier and keep owner moderation controls usable without clipping.',
+        'Draw It now supports a pixel drawing mode alongside freehand strokes so players can build sharper blocky art styles as well as curved sketch lines.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-28-draw-it-studio-upgrade',
       title: 'Draw It studio upgrade',
       category: 'update',

@@ -918,6 +918,53 @@ function updateFriendsBell() {
   profileUi.friendsUnreadDot.hidden = unreadCount === 0;
 }
 
+function setFriendsTab(tabId = 'friends') {
+  const safeTab = ['friends', 'incoming', 'outgoing'].includes(String(tabId || '').trim())
+    ? String(tabId || '').trim()
+    : 'friends';
+  socialState.activeTab = safeTab;
+  if (profileUi.friendsTabs) {
+    profileUi.friendsTabs.querySelectorAll('[data-friends-tab]').forEach((button) => {
+      const isActive = button.getAttribute('data-friends-tab') === safeTab;
+      button.classList.toggle('active', isActive);
+      button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+  }
+  if (profileUi.friendsOverlay) {
+    profileUi.friendsOverlay.querySelectorAll('[data-friends-panel]').forEach((panel) => {
+      panel.hidden = panel.getAttribute('data-friends-panel') !== safeTab;
+    });
+  }
+}
+
+function buildSocialIconButton({ action = '', targetUid = '', label = '', glyph = '', tone = 'secondary' } = {}) {
+  return `<button class="social-icon-btn social-icon-btn-${escapeHtml(tone)}" type="button" data-social-action="${escapeHtml(action)}" data-social-target="${escapeHtml(targetUid)}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">${escapeHtml(glyph)}</button>`;
+}
+
+function renderProfileBadgeSection(profile) {
+  if (!profileUi.profileBadgeList) return;
+  const progressionApi = window.PlayrProgression;
+  const snapshot = progressionApi && typeof progressionApi.getProgressionSnapshot === 'function'
+    ? progressionApi.getProgressionSnapshot(profile, profile)
+    : null;
+  const visibleBadges = Array.isArray(snapshot?.badges) ? snapshot.badges : [];
+  const profileBadges = visibleBadges.filter((badge) => {
+    const badgeId = String(badge?.id || '').trim();
+    return badgeId && badgeId !== 'owner' && !badgeId.startsWith('donation-');
+  });
+  if (!profileBadges.length) {
+    profileUi.profileBadgeList.innerHTML = '<p class="settings-muted">No extra profile tags equipped.</p>';
+    return;
+  }
+  const badgeMarkup = profileBadges
+    .map((badge) => window.PlayrProgression?.formatBadgeMarkup ? window.PlayrProgression.formatBadgeMarkup(badge) : `<span class="profile-pill">${escapeHtml(badge.label || badge.id || 'Tag')}</span>`)
+    .join('');
+  profileUi.profileBadgeList.innerHTML = `
+    <p class="eyebrow">Profile Tags</p>
+    <div class="profile-tag-stack">${badgeMarkup}</div>
+  `;
+}
+
 function renderFriendsPanel() {
   if (!profileUi.friendsList || !profileUi.friendsIncoming || !profileUi.friendsOutgoing) return;
 
@@ -931,10 +978,15 @@ function renderFriendsPanel() {
   profileUi.friendsList.innerHTML = friendEntries.length
     ? friendEntries.map((entry) => `
         <article class="social-row">
-          <button class="social-name-button" type="button" data-open-profile-uid="${escapeHtml(entry.uid)}" data-open-profile-name="${escapeHtml(entry.displayName || 'Player')}">
-            ${formatPlayerIdentityMarkup(entry.displayName || 'Player', { record: findProfileByDisplayName(entry.displayName || '') || authState.profiles[entry.uid] || { uid: entry.uid, displayName: entry.displayName || 'Player' }, compact: true })}
-          </button>
-          <span class="social-meta">Friends since ${formatProfileDate(entry.createdAt)}</span>
+          <div class="social-row-copy">
+            <button class="social-name-button" type="button" data-open-profile-uid="${escapeHtml(entry.uid)}" data-open-profile-name="${escapeHtml(entry.displayName || 'Player')}">
+              ${formatPlayerIdentityMarkup(entry.displayName || 'Player', { record: findProfileByDisplayName(entry.displayName || '') || authState.profiles[entry.uid] || { uid: entry.uid, displayName: entry.displayName || 'Player' }, compact: true })}
+            </button>
+            <span class="social-meta">Friends since ${formatProfileDate(entry.createdAt)}</span>
+          </div>
+          <div class="social-actions">
+            ${buildSocialIconButton({ action: 'unfriend', targetUid: entry.uid, label: `Unfriend ${entry.displayName || 'player'}`, glyph: '⊗', tone: 'danger' })}
+          </div>
         </article>
       `).join('')
     : '<p class="settings-muted">No friends added yet.</p>';
@@ -942,12 +994,14 @@ function renderFriendsPanel() {
   profileUi.friendsIncoming.innerHTML = incomingEntries.length
     ? incomingEntries.map((entry) => `
         <article class="social-row">
-          <button class="social-name-button" type="button" data-open-profile-uid="${escapeHtml(entry.uid)}" data-open-profile-name="${escapeHtml(entry.displayName || 'Player')}">
-            ${escapeHtml(entry.displayName || 'Player')}
-          </button>
+          <div class="social-row-copy">
+            <button class="social-name-button" type="button" data-open-profile-uid="${escapeHtml(entry.uid)}" data-open-profile-name="${escapeHtml(entry.displayName || 'Player')}">
+              ${formatPlayerIdentityMarkup(entry.displayName || 'Player', { record: authState.profiles[entry.uid] || { uid: entry.uid, displayName: entry.displayName || 'Player' }, compact: true })}
+            </button>
+          </div>
           <div class="social-actions">
-            <button class="button primary" type="button" data-friend-accept="${escapeHtml(entry.uid)}">Accept</button>
-            <button class="button secondary" type="button" data-friend-reject="${escapeHtml(entry.uid)}">Reject</button>
+            ${buildSocialIconButton({ action: 'accept-request', targetUid: entry.uid, label: `Accept ${entry.displayName || 'request'}`, glyph: '✓', tone: 'primary' })}
+            ${buildSocialIconButton({ action: 'reject-request', targetUid: entry.uid, label: `Decline ${entry.displayName || 'request'}`, glyph: '✕', tone: 'danger' })}
           </div>
         </article>
       `).join('')
@@ -956,17 +1010,20 @@ function renderFriendsPanel() {
   profileUi.friendsOutgoing.innerHTML = outgoingEntries.length
     ? outgoingEntries.map((entry) => `
         <article class="social-row">
-          <button class="social-name-button" type="button" data-open-profile-uid="${escapeHtml(entry.uid)}" data-open-profile-name="${escapeHtml(entry.displayName || 'Player')}">
-            ${escapeHtml(entry.displayName || 'Player')}
-          </button>
-          <div class="social-actions">
+          <div class="social-row-copy">
+            <button class="social-name-button" type="button" data-open-profile-uid="${escapeHtml(entry.uid)}" data-open-profile-name="${escapeHtml(entry.displayName || 'Player')}">
+              ${formatPlayerIdentityMarkup(entry.displayName || 'Player', { record: authState.profiles[entry.uid] || { uid: entry.uid, displayName: entry.displayName || 'Player' }, compact: true })}
+            </button>
             <span class="social-meta">Pending</span>
-            <button class="button secondary" type="button" data-friend-cancel="${escapeHtml(entry.uid)}">Cancel</button>
+          </div>
+          <div class="social-actions">
+            ${buildSocialIconButton({ action: 'cancel-request', targetUid: entry.uid, label: `Cancel request to ${entry.displayName || 'player'}`, glyph: '⊗', tone: 'danger' })}
           </div>
         </article>
       `).join('')
     : '<p class="settings-muted">No outgoing requests.</p>';
 
+  setFriendsTab(socialState.activeTab || 'friends');
   updateFriendsBell();
 }
 
@@ -1152,6 +1209,14 @@ async function respondToFriendRequest(otherUid, action) {
   }, { merge: true });
 }
 
+async function removeFriendshipWith(otherUid) {
+  const account = getCurrentAccount();
+  const safeOtherUid = String(otherUid || '').trim();
+  if (!firebaseDb || !account?.uid || !safeOtherUid) return;
+  const friendshipId = normalizeFriendshipId(account.uid, safeOtherUid);
+  await firebaseDb.collection(FRIENDSHIPS_COLLECTION).doc(friendshipId).delete();
+}
+
 function setProfilePanelStatus(message, tone = 'info') {
   if (!profileUi.profileStatus) return;
   profileUi.profileStatus.textContent = message || '';
@@ -1204,16 +1269,21 @@ function ensureProfileAndFriendsUi() {
           <button class="button primary" type="button" id="friendsAddBtn">Add</button>
         </div>
         <p class="friends-status" id="friendsStatus"></p>
+        <div class="friends-tabs" id="friendsTabs" role="tablist" aria-label="Friends sections">
+          <button class="chip-button active" type="button" data-friends-tab="friends" aria-selected="true">Current Friends</button>
+          <button class="chip-button" type="button" data-friends-tab="incoming" aria-selected="false">Incoming Requests</button>
+          <button class="chip-button" type="button" data-friends-tab="outgoing" aria-selected="false">Outgoing Requests</button>
+        </div>
         <div class="friends-sections">
-          <section class="settings-card">
+          <section class="settings-card friends-panel-section" data-friends-panel="friends">
             <h4>Current Friends</h4>
             <div id="friendsList" class="social-list"></div>
           </section>
-          <section class="settings-card">
+          <section class="settings-card friends-panel-section" data-friends-panel="incoming" hidden>
             <h4>Incoming Requests</h4>
             <div id="friendsIncoming" class="social-list"></div>
           </section>
-          <section class="settings-card">
+          <section class="settings-card friends-panel-section" data-friends-panel="outgoing" hidden>
             <h4>Outgoing Requests</h4>
             <div id="friendsOutgoing" class="social-list"></div>
           </section>
@@ -1243,10 +1313,11 @@ function ensureProfileAndFriendsUi() {
         <p class="profile-status" id="profileStatus"></p>
         <div class="profile-stats-grid" id="profileStats"></div>
         <div class="profile-warning-chip" id="profileWarnings"></div>
+        <section class="profile-tag-panel" id="profileBadgeList"></section>
         <section class="settings-card profile-moderation" id="profileModeration" hidden>
           <h4>Owner Moderation</h4>
           <p class="settings-muted profile-moderation-summary" id="profileModerationSummary">Choose an action to issue a warning, mute, or ban.</p>
-          <div class="settings-inline-actions">
+          <div class="settings-inline-actions profile-moderation-actions">
             <button class="button secondary" type="button" id="profileWarnBtn">Warn</button>
             <button class="button secondary" type="button" id="profileMuteBtn">Mute</button>
             <button class="button primary" type="button" id="profileBanBtn">Ban</button>
@@ -1310,6 +1381,7 @@ function ensureProfileAndFriendsUi() {
   profileUi.friendsOverlay = document.getElementById('friendsOverlay');
   profileUi.friendsCloseBtn = document.getElementById('friendsCloseBtn');
   profileUi.friendsStatus = document.getElementById('friendsStatus');
+  profileUi.friendsTabs = document.getElementById('friendsTabs');
   profileUi.friendsList = document.getElementById('friendsList');
   profileUi.friendsIncoming = document.getElementById('friendsIncoming');
   profileUi.friendsOutgoing = document.getElementById('friendsOutgoing');
@@ -1324,6 +1396,7 @@ function ensureProfileAndFriendsUi() {
   profileUi.profileWarnings = document.getElementById('profileWarnings');
   profileUi.profileStatus = document.getElementById('profileStatus');
   profileUi.profileActionArea = document.getElementById('profileActionArea');
+  profileUi.profileBadgeList = document.getElementById('profileBadgeList');
   profileUi.profileModeration = document.getElementById('profileModeration');
   profileUi.profileModerationComposer = document.getElementById('profileModerationComposer');
   profileUi.profileModerationSummary = document.getElementById('profileModerationSummary');
@@ -1541,6 +1614,7 @@ function openFriendsPanel() {
   }
   profileUi.friendsOverlay.hidden = false;
   if (profileUi.friendsBtn) profileUi.friendsBtn.setAttribute('aria-expanded', 'true');
+  setFriendsTab('friends');
   subscribeFriendsData();
   renderFriendsPanel();
   setFriendsPanelStatus('');
@@ -1566,6 +1640,9 @@ async function openProfilePanel(target = {}) {
   profileUi.profileMeta.textContent = 'Fetching profile...';
   profileUi.profileStats.innerHTML = '<p class="settings-muted">Loading profile...</p>';
   profileUi.profileWarnings.textContent = '';
+  if (profileUi.profileBadgeList) {
+    profileUi.profileBadgeList.innerHTML = '';
+  }
   profileUi.profileActionArea.innerHTML = '';
   profileUi.profileModeration.hidden = true;
   setProfilePanelStatus('');
@@ -1595,6 +1672,7 @@ async function renderOpenProfilePanel() {
   if (!profile) {
     profileUi.profileMeta.textContent = 'Profile unavailable right now.';
     profileUi.profileStats.innerHTML = '<p class="settings-muted">Could not load this profile.</p>';
+    if (profileUi.profileBadgeList) profileUi.profileBadgeList.innerHTML = '';
     return;
   }
   const merged = mergeCloudProfileShape(profile);
@@ -1642,6 +1720,7 @@ async function renderOpenProfilePanel() {
     </div>
   `;
   profileUi.profileWarnings.innerHTML = `<strong>Warnings:</strong> <span>${warningCount}</span>`;
+  renderProfileBadgeSection(merged);
 
   if (!currentAccount) {
     profileUi.profileActionArea.innerHTML = '<button class="button secondary" type="button" data-open-login-from-profile="true">Log in to add friends</button>';
@@ -3087,6 +3166,7 @@ const profileUi = {
   friendsOverlay: null,
   friendsCloseBtn: null,
   friendsStatus: null,
+  friendsTabs: null,
   friendsList: null,
   friendsIncoming: null,
   friendsOutgoing: null,
@@ -3101,6 +3181,7 @@ const profileUi = {
   profileWarnings: null,
   profileStatus: null,
   profileActionArea: null,
+  profileBadgeList: null,
   profileModeration: null,
   profileModerationComposer: null,
   profileModerationSummary: null,
@@ -3130,6 +3211,7 @@ const profileCacheState = {
 
 const socialState = {
   loadedAt: 0,
+  activeTab: 'friends',
   friendDocs: {},
   incomingRequests: {},
   outgoingRequests: {},
@@ -6144,51 +6226,16 @@ function init() {
     });
   }
 
-  if (profileUi.profileWarnBtn) {
-    profileUi.profileWarnBtn.addEventListener('click', () => {
-      openModerationComposer('warn');
-    });
-  }
-
-  if (profileUi.profileMuteBtn) {
-    profileUi.profileMuteBtn.addEventListener('click', () => {
-      openModerationComposer('mute');
-    });
-  }
-
-  if (profileUi.profileUnmuteBtn) {
-    profileUi.profileUnmuteBtn.addEventListener('click', () => {
-      void applyOwnerModerationAction('unmute');
-    });
-  }
-
-  if (profileUi.profileBanBtn) {
-    profileUi.profileBanBtn.addEventListener('click', () => {
-      openModerationComposer('ban');
-    });
-  }
-
-  if (profileUi.profileComposeCancelBtn) {
-    profileUi.profileComposeCancelBtn.addEventListener('click', closeModerationComposer);
-  }
-
-  if (profileUi.profileComposeSubmitBtn) {
-    profileUi.profileComposeSubmitBtn.addEventListener('click', () => {
-      const action = profileUi.profileModerationComposer?.dataset.action || '';
-      if (action === 'warn' || action === 'mute' || action === 'ban') {
-        void applyOwnerModerationAction(action);
-      }
+  if (profileUi.friendsTabs) {
+    profileUi.friendsTabs.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-friends-tab]');
+      if (!button) return;
+      setFriendsTab(button.getAttribute('data-friends-tab') || 'friends');
     });
   }
 
   if (profileUi.vipBannerUpsellCloseBtn) {
     profileUi.vipBannerUpsellCloseBtn.addEventListener('click', closeVipBannerUpsell);
-  }
-
-  if (profileUi.profileUnbanBtn) {
-    profileUi.profileUnbanBtn.addEventListener('click', () => {
-      void applyOwnerModerationAction('unban');
-    });
   }
 
   document.addEventListener('click', (event) => {
@@ -6263,6 +6310,90 @@ function init() {
         .catch(() => {
           setFriendsPanelStatus('Could not cancel that request right now.', 'danger');
         });
+      return;
+    }
+
+    const socialActionBtn = event.target.closest('[data-social-action]');
+    if (socialActionBtn) {
+      const action = socialActionBtn.getAttribute('data-social-action') || '';
+      const targetUid = socialActionBtn.getAttribute('data-social-target') || '';
+      if (action === 'accept-request') {
+        void respondToFriendRequest(targetUid, 'accept')
+          .then(() => {
+            setFriendsPanelStatus('Friend request accepted.', 'success');
+            setProfilePanelStatus('Friend request accepted.', 'success');
+          })
+          .catch(() => {
+            setFriendsPanelStatus('Could not accept that request right now.', 'danger');
+          });
+        return;
+      }
+      if (action === 'reject-request') {
+        void respondToFriendRequest(targetUid, 'reject')
+          .then(() => {
+            setFriendsPanelStatus('Friend request declined.', 'info');
+            setProfilePanelStatus('Friend request declined.', 'info');
+          })
+          .catch(() => {
+            setFriendsPanelStatus('Could not decline that request right now.', 'danger');
+          });
+        return;
+      }
+      if (action === 'cancel-request') {
+        if (!window.confirm('Cancel this outgoing friend request?')) return;
+        void respondToFriendRequest(targetUid, 'cancel')
+          .then(() => {
+            setFriendsPanelStatus('Friend request cancelled.', 'info');
+            setProfilePanelStatus('Friend request cancelled.', 'info');
+          })
+          .catch(() => {
+            setFriendsPanelStatus('Could not cancel that request right now.', 'danger');
+          });
+        return;
+      }
+      if (action === 'unfriend') {
+        if (!window.confirm('Remove this friend from your friends list?')) return;
+        void removeFriendshipWith(targetUid)
+          .then(() => {
+            setFriendsPanelStatus('Friend removed.', 'info');
+            setProfilePanelStatus('Friend removed.', 'info');
+          })
+          .catch(() => {
+            setFriendsPanelStatus('Could not remove that friend right now.', 'danger');
+          });
+        return;
+      }
+    }
+
+    if (event.target.closest('#profileWarnBtn')) {
+      openModerationComposer('warn');
+      return;
+    }
+    if (event.target.closest('#profileMuteBtn')) {
+      openModerationComposer('mute');
+      return;
+    }
+    if (event.target.closest('#profileBanBtn')) {
+      openModerationComposer('ban');
+      return;
+    }
+    if (event.target.closest('#profileUnmuteBtn')) {
+      void applyOwnerModerationAction('unmute');
+      return;
+    }
+    if (event.target.closest('#profileUnbanBtn')) {
+      void applyOwnerModerationAction('unban');
+      return;
+    }
+    if (event.target.closest('#profileComposeCancelBtn')) {
+      closeModerationComposer();
+      return;
+    }
+    if (event.target.closest('#profileComposeSubmitBtn')) {
+      const action = profileUi.profileModerationComposer?.dataset.action || '';
+      if (action === 'warn' || action === 'mute' || action === 'ban') {
+        void applyOwnerModerationAction(action);
+      }
       return;
     }
 

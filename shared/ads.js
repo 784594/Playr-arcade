@@ -1863,17 +1863,15 @@
     const displayStyle = getIdentityDisplayStyle(record, fallbackProfile, badges);
     const compactClass = options.compact ? ' compact' : '';
     const prefixBadges = badges.filter((badge) => badge?.id === 'owner' || String(badge?.id || '').startsWith('donation-'));
-    const suffixBadges = badges.filter((badge) => !prefixBadges.includes(badge));
     const styleAttrs = displayStyle.gradient
       ? ` data-playr-gradient="true" style="--playr-name-gradient:${escapeHtml(displayStyle.gradient)}"`
       : displayStyle.color
         ? ` data-playr-color="true" style="--playr-name-color:${escapeHtml(displayStyle.color)}"`
         : '';
     return `
-      <span class="playr-identity${compactClass}">
+      <span class="playr-identity${compactClass}" data-profile-trigger="true" data-profile-display-name="${escapeHtml(displayName)}" data-profile-uid="${escapeHtml(String(record?.uid || fallbackProfile?.uid || '').trim())}">
         ${prefixBadges.length ? `<span class="playr-badge-stack">${prefixBadges.map((badge) => formatBadgeMarkup(badge)).join('')}</span>` : ''}
         <span class="playr-identity-text" data-profile-trigger="true" data-profile-display-name="${escapeHtml(displayName)}" data-profile-uid="${escapeHtml(String(record?.uid || fallbackProfile?.uid || '').trim())}" role="button" tabindex="0"${styleAttrs}>${escapeHtml(displayName)}</span>
-        ${suffixBadges.length ? `<span class="playr-badge-stack">${suffixBadges.map((badge) => formatBadgeMarkup(badge)).join('')}</span>` : ''}
       </span>
     `;
   }

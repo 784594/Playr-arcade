@@ -183,6 +183,10 @@
     };
   }
 
+  function getDrawingMode() {
+    return ui.drawingModeSelect?.value === 'pixel' ? 'pixel' : 'freehand';
+  }
+
   function getModeConfig(mode = state.mode) {
     return MODE_CONFIG[mode] || MODE_CONFIG['wallpaper-pc'];
   }
@@ -271,6 +275,7 @@
         })).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y)) : [],
         size: clamp(Number(item.size) || 8, 1, 80),
         erase: Boolean(item.erase),
+        drawMode: item.drawMode === 'pixel' ? 'pixel' : 'freehand',
         groupId: item.groupId ? String(item.groupId) : '',
         style: {
           mode: item.style?.mode === 'gradient' ? 'gradient' : 'solid',
@@ -363,6 +368,51 @@
     return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
   }
 
+  function snapPixelPoint(point, brushSize) {
+    const step = Math.max(2, Math.round(Number(brushSize) || 8));
+    return {
+      x: Math.floor(point.x / step) * step,
+      y: Math.floor(point.y / step) * step,
+    };
+  }
+
+  function appendPixelPoints(stroke, nextPoint) {
+    const step = Math.max(2, Math.round(stroke.size));
+    const snapped = snapPixelPoint(nextPoint, step);
+    const lastPoint = stroke.points[stroke.points.length - 1];
+    if (!lastPoint) {
+      stroke.points.push(snapped);
+      return;
+    }
+    const startX = Math.round(lastPoint.x / step);
+    const startY = Math.round(lastPoint.y / step);
+    const endX = Math.round(snapped.x / step);
+    const endY = Math.round(snapped.y / step);
+    const dx = Math.abs(endX - startX);
+    const dy = Math.abs(endY - startY);
+    const sx = startX < endX ? 1 : -1;
+    const sy = startY < endY ? 1 : -1;
+    let error = dx - dy;
+    let x = startX;
+    let y = startY;
+    while (x !== endX || y !== endY) {
+      const doubledError = error * 2;
+      if (doubledError > -dy) {
+        error -= dy;
+        x += sx;
+      }
+      if (doubledError < dx) {
+        error += dx;
+        y += sy;
+      }
+      const candidate = { x: x * step, y: y * step };
+      const previous = stroke.points[stroke.points.length - 1];
+      if (!previous || previous.x !== candidate.x || previous.y !== candidate.y) {
+        stroke.points.push(candidate);
+      }
+    }
+  }
+
   function getObjectBounds(item) {
     if (!item) return { x: 0, y: 0, width: 0, height: 0 };
     if (item.type === 'image') {
@@ -374,13 +424,10 @@
   function renderStroke(context, stroke) {
     if (!Array.isArray(stroke.points) || !stroke.points.length) return;
     context.save();
-    context.lineJoin = 'round';
-    context.lineCap = 'round';
-    context.lineWidth = stroke.size;
     if (stroke.erase) {
       context.globalCompositeOperation = 'destination-out';
-      context.strokeStyle = 'rgba(0,0,0,1)';
-    } else if (stroke.style.mode === 'gradient') {
+    }
+    if (stroke.style.mode === 'gradient') {
       const bounds = getStrokeBounds(stroke);
       const gradient = createLinearGradient(
         context,
@@ -393,19 +440,32 @@
       gradient.addColorStop(0, normalizeHex(stroke.style.colorA, '#183a8f'));
       gradient.addColorStop(1, normalizeHex(stroke.style.colorB, '#7cf0c5'));
       context.strokeStyle = gradient;
+      context.fillStyle = gradient;
     } else {
-      context.strokeStyle = normalizeHex(stroke.style.colorA, '#183a8f');
+      const solidColor = normalizeHex(stroke.style.colorA, '#183a8f');
+      context.strokeStyle = solidColor;
+      context.fillStyle = solidColor;
     }
-    context.beginPath();
-    context.moveTo(stroke.points[0].x, stroke.points[0].y);
-    for (let index = 1; index < stroke.points.length; index += 1) {
-      const point = stroke.points[index];
-      context.lineTo(point.x, point.y);
+    if (stroke.drawMode === 'pixel') {
+      const pixelSize = Math.max(2, Math.round(stroke.size));
+      stroke.points.forEach((point) => {
+        context.fillRect(point.x, point.y, pixelSize, pixelSize);
+      });
+    } else {
+      context.lineJoin = 'round';
+      context.lineCap = 'round';
+      context.lineWidth = stroke.size;
+      context.beginPath();
+      context.moveTo(stroke.points[0].x, stroke.points[0].y);
+      for (let index = 1; index < stroke.points.length; index += 1) {
+        const point = stroke.points[index];
+        context.lineTo(point.x, point.y);
+      }
+      if (stroke.points.length === 1) {
+        context.lineTo(stroke.points[0].x + 0.01, stroke.points[0].y + 0.01);
+      }
+      context.stroke();
     }
-    if (stroke.points.length === 1) {
-      context.lineTo(stroke.points[0].x + 0.01, stroke.points[0].y + 0.01);
-    }
-    context.stroke();
     context.restore();
   }
 
@@ -589,6 +649,15 @@
 
   function hitTestStroke(stroke, point) {
     if (!stroke.points.length) return false;
+    if (stroke.drawMode === 'pixel') {
+      const pixelSize = Math.max(2, Math.round(stroke.size));
+      return stroke.points.some((pixelPoint) => pointInRect(point, {
+        x: pixelPoint.x,
+        y: pixelPoint.y,
+        width: pixelSize,
+        height: pixelSize,
+      }));
+    }
     if (stroke.points.length === 1) {
       return Math.hypot(point.x - stroke.points[0].x, point.y - stroke.points[0].y) <= (stroke.size / 2) + 6;
     }
@@ -648,12 +717,14 @@
   }
 
   function beginStroke(point, erase = false) {
+    const drawMode = getDrawingMode();
     const stroke = {
       id: uid('stroke'),
       type: 'stroke',
-      points: [point],
+      points: [drawMode === 'pixel' ? snapPixelPoint(point, Number(ui.brushSizeInput.value) || 8) : point],
       size: clamp(Number(ui.brushSizeInput.value) || 8, 1, 80),
       erase,
+      drawMode,
       groupId: '',
       style: createStrokeStyle(),
     };
@@ -663,7 +734,11 @@
 
   function extendStroke(point) {
     if (!state.currentStroke) return;
-    state.currentStroke.points.push(point);
+    if (state.currentStroke.drawMode === 'pixel') {
+      appendPixelPoints(state.currentStroke, point);
+    } else {
+      state.currentStroke.points.push(point);
+    }
     maybeExpandFreeform(point);
     renderScene();
   }
@@ -1324,6 +1399,7 @@
     ui.context = ui.canvas.getContext('2d');
     ui.drawStatus = $('drawStatus');
     ui.brushSizeInput = $('brushSizeInput');
+    ui.drawingModeSelect = $('drawingModeSelect');
     ui.strokeModeSelect = $('strokeModeSelect');
     ui.brushColorInput = $('brushColorInput');
     ui.brushColorSecondaryInput = $('brushColorSecondaryInput');
