@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-28-wordle-ui-and-reveal-fix',
+      title: 'Wordle layout and reveal polish',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-28T21:05:00-04:00',
+      summary: 'Wordle Infinite now uses stronger PlayR-themed buttons, reveals submitted guesses one tile at a time, and fills the old empty side rail with help and colour guides.',
+      details: [
+        'The Wordle controls were restyled to better match the PlayR theme instead of relying on flatter default-looking blue buttons.',
+        'Submitted guesses now animate tile-by-tile in sequence, and the old reveal glitch that could replay while typing a new guess was removed.',
+        'The empty side space now includes a short how-to-play panel plus a colour legend so players can understand the board feedback at a glance.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-28-draw-it-workspace-cleanup',
       title: 'Draw It workspace cleanup',
       category: 'update',

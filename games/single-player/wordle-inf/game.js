@@ -43,11 +43,13 @@
 		wordPool: FALLBACK_WORDS.slice(),
 		validWords: new Set(FALLBACK_WORDS),
 		guesses: [],
+		guessEvaluations: [],
 		currentGuess: '',
 		gameOver: false,
 		won: false,
 		revealAdminWord: false,
 		statusTimer: null,
+		revealingRowIndex: -1,
 	};
 
 	const els = {
@@ -221,8 +223,9 @@
 
 	function getKeyboardState() {
 		const stateMap = {};
-		for (const guess of state.guesses) {
-			const evaluation = evaluateGuess(guess, state.answer);
+		for (let guessIndex = 0; guessIndex < state.guesses.length; guessIndex += 1) {
+			const guess = state.guesses[guessIndex];
+			const evaluation = state.guessEvaluations[guessIndex] || evaluateGuess(guess, state.answer);
 			guess.split('').forEach((letter, index) => {
 				const nextState = evaluation[index];
 				const current = stateMap[letter];
@@ -246,9 +249,10 @@
 			const guess = state.guesses[rowIndex] || '';
 			const isCurrentRow = rowIndex === state.guesses.length && !state.gameOver;
 			const isInvalidRow = isCurrentRow && state.currentGuess.length === WORD_LENGTH && !state.validWords.has(state.currentGuess);
-			const evaluation = rowIndex < state.guesses.length ? evaluateGuess(guess, state.answer) : new Array(WORD_LENGTH).fill('');
+			const evaluation = rowIndex < state.guesses.length ? (state.guessEvaluations[rowIndex] || evaluateGuess(guess, state.answer)) : new Array(WORD_LENGTH).fill('');
 			const currentDisplay = isCurrentRow ? state.currentGuess.padEnd(WORD_LENGTH, ' ') : ' '.repeat(WORD_LENGTH);
 			const letters = (rowIndex < state.guesses.length ? guess : currentDisplay).split('');
+			const isRevealingRow = rowIndex === state.revealingRowIndex;
 
 			rows.push(`
 				<div class="guess-row${isInvalidRow ? ' invalid' : ''}" aria-label="Guess ${rowIndex + 1}">
@@ -258,8 +262,9 @@
 						const classes = ['guess-cell'];
 						if (filled) classes.push('filled');
 						if (statusClass) classes.push(statusClass);
-						if (rowIndex < state.guesses.length && statusClass) classes.push('flip');
-						return `<div class="${classes.join(' ')}">${filled ? letter : ''}</div>`;
+						if (isRevealingRow && statusClass) classes.push('revealing');
+						const delayStyle = isRevealingRow && statusClass ? ` style="--flip-delay:${letterIndex * 180}ms"` : '';
+						return `<div class="${classes.join(' ')}"${delayStyle}>${filled ? letter : ''}</div>`;
 					}).join('')}
 				</div>
 			`);
@@ -345,22 +350,41 @@
 			return;
 		}
 
-		state.guesses.push(state.currentGuess);
-		if (state.currentGuess === state.answer) {
+		const submittedGuess = state.currentGuess;
+		const guessRowIndex = state.guesses.length;
+		const evaluation = evaluateGuess(submittedGuess, state.answer);
+		state.guesses.push(submittedGuess);
+		state.guessEvaluations.push(evaluation);
+		state.revealingRowIndex = guessRowIndex;
+		if (submittedGuess === state.answer) {
 			state.currentGuess = '';
 			renderAll();
-			finishRound(true);
+			window.setTimeout(() => {
+				state.revealingRowIndex = -1;
+				renderBoard();
+				finishRound(true);
+			}, 1000);
 			return;
 		}
 
 		state.currentGuess = '';
 		if (state.guesses.length >= MAX_GUESSES) {
 			renderAll();
-			finishRound(false);
+			window.setTimeout(() => {
+				state.revealingRowIndex = -1;
+				renderBoard();
+				finishRound(false);
+			}, 1000);
 			return;
 		}
 
 		renderAll();
+		window.setTimeout(() => {
+			if (state.revealingRowIndex === guessRowIndex) {
+				state.revealingRowIndex = -1;
+				renderBoard();
+			}
+		}, 1000);
 	}
 
 	function handleKeyPress(key) {
@@ -386,10 +410,12 @@
 	function startNewWord() {
 		state.answer = pickAnswer();
 		state.guesses = [];
+		state.guessEvaluations = [];
 		state.currentGuess = '';
 		state.gameOver = false;
 		state.won = false;
 		state.revealAdminWord = false;
+		state.revealingRowIndex = -1;
 		setStatus('New word loaded.');
 		renderAll();
 	}

@@ -57,6 +57,7 @@
         <div class="wordle-top-row">
           <div>
             <h2>Wordle Infinite</h2>
+            <p class="wordle-subtitle">Guess the hidden five-letter word in six tries.</p>
           </div>
           <button id="nextWordBtn" class="action-btn secondary" type="button" hidden>Next Word</button>
         </div>
@@ -69,6 +70,47 @@
           <div id="keyboard" class="wordle-keyboard"></div>
         </section>
       </article>
+
+      <aside class="panel wordle-rail wordle-guide-rail" id="rightRail">
+        <section class="guide-card">
+          <p class="tag">How to play</p>
+          <h2>Read the board fast</h2>
+          <ul class="guide-list">
+            <li>Type a five-letter word and press Enter.</li>
+            <li>Each submitted row reveals one tile at a time.</li>
+            <li>Use the colour feedback to narrow down the answer.</li>
+            <li>Start a fresh round with Next Word after you finish.</li>
+          </ul>
+        </section>
+
+        <section class="guide-card">
+          <p class="tag">Colour key</p>
+          <h2>What the tiles mean</h2>
+          <div class="legend-list">
+            <div class="legend-item">
+              <span class="legend-swatch correct"></span>
+              <div>
+                <strong>Correct</strong>
+                <p>Right letter, right spot.</p>
+              </div>
+            </div>
+            <div class="legend-item">
+              <span class="legend-swatch present"></span>
+              <div>
+                <strong>Present</strong>
+                <p>Letter is in the word, but in a different spot.</p>
+              </div>
+            </div>
+            <div class="legend-item">
+              <span class="legend-swatch absent"></span>
+              <div>
+                <strong>Absent</strong>
+                <p>That letter is not in the answer.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </aside>
 
       <div id="gameEndModal" class="game-end-modal" hidden>
         <div class="modal-content">

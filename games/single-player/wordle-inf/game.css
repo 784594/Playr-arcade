@@ -78,6 +78,12 @@
 	gap: 14px;
 }
 
+.wordle-subtitle {
+	margin: 8px 0 0;
+	color: var(--wordle-muted);
+	line-height: 1.6;
+}
+
 .wordle-top-row {
 	display: flex;
 	justify-content: space-between;
@@ -128,6 +134,8 @@
 	text-transform: uppercase;
 	color: var(--wordle-text);
 	transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+	transform-style: preserve-3d;
+	backface-visibility: hidden;
 }
 
 .guess-cell.filled {
@@ -178,12 +186,14 @@
 .wordle-key {
 	min-height: 42px;
 	border-radius: 12px;
-	border: 1px solid rgba(132, 184, 255, 0.18);
-	background: linear-gradient(180deg, rgba(58, 119, 207, 0.78), rgba(28, 72, 148, 0.78));
+	border: 1px solid rgba(124, 240, 197, 0.26);
+	background: linear-gradient(180deg, rgba(74, 128, 245, 0.86), rgba(33, 77, 156, 0.88));
+	box-shadow: 0 12px 24px rgba(38, 78, 148, 0.22);
 	color: var(--wordle-text);
 	font-weight: 800;
 	cursor: pointer;
 	text-transform: uppercase;
+	transition: transform 100ms ease, border-color 100ms ease, box-shadow 100ms ease, background 100ms ease;
 }
 
 .wordle-key.wide {
@@ -215,19 +225,21 @@
 .action-btn {
 	min-height: 40px;
 	padding: 0 14px;
-	border: 1px solid rgba(125, 188, 255, 0.4);
-	background: linear-gradient(180deg, rgba(59, 124, 207, 0.8), rgba(28, 75, 148, 0.8));
-	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
-	color: var(--text);
-	border-radius: 10px;
-	font-weight: 700;
+	border: 1px solid rgba(124, 240, 197, 0.34);
+	background: linear-gradient(135deg, rgba(124, 240, 197, 0.96), rgba(214, 255, 125, 0.94));
+	box-shadow: 0 16px 32px rgba(124, 240, 197, 0.18);
+	color: #07101f;
+	border-radius: 14px;
+	font-weight: 800;
 	cursor: pointer;
-	transition: transform 100ms ease, border-color 100ms ease, opacity 100ms ease;
+	transition: transform 100ms ease, border-color 100ms ease, opacity 100ms ease, box-shadow 100ms ease;
 }
 
 .action-btn.secondary {
-	background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
 	border-color: rgba(177, 201, 255, 0.24);
+	box-shadow: none;
+	color: var(--wordle-text);
 }
 
 .action-btn:disabled {
@@ -294,8 +306,9 @@
 	90% { transform: translateX(-4px); }
 }
 
-.guess-cell.flip {
-	animation: flip 0.6s ease-in-out;
+.guess-cell.revealing {
+	animation: flip 0.54s ease-in-out both;
+	animation-delay: var(--flip-delay, 0ms);
 }
 
 @keyframes flip {
@@ -368,6 +381,78 @@
 	padding-top: 12px;
 	font-style: italic;
 	line-height: 1.6;
+}
+
+.wordle-guide-rail {
+	align-content: start;
+}
+
+.guide-card {
+	display: grid;
+	gap: 12px;
+	padding: 16px;
+	border-radius: 18px;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	background: rgba(255, 255, 255, 0.04);
+}
+
+.guide-card h2 {
+	margin: 0;
+	font-size: 1.2rem;
+	font-family: Georgia, "Times New Roman", serif;
+	letter-spacing: -0.03em;
+}
+
+.guide-list {
+	margin: 0;
+	padding-left: 18px;
+	display: grid;
+	gap: 10px;
+	color: var(--wordle-muted);
+	line-height: 1.6;
+}
+
+.legend-list {
+	display: grid;
+	gap: 12px;
+}
+
+.legend-item {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 12px;
+	align-items: start;
+}
+
+.legend-item strong {
+	display: block;
+	margin-bottom: 4px;
+}
+
+.legend-item p {
+	margin: 0;
+	color: var(--wordle-muted);
+	line-height: 1.55;
+}
+
+.legend-swatch {
+	width: 22px;
+	height: 22px;
+	border-radius: 8px;
+	border: 1px solid rgba(255, 255, 255, 0.14);
+	margin-top: 2px;
+}
+
+.legend-swatch.correct {
+	background: linear-gradient(180deg, rgba(62, 150, 98, 0.95), rgba(38, 98, 67, 0.96));
+}
+
+.legend-swatch.present {
+	background: linear-gradient(180deg, rgba(192, 163, 66, 0.95), rgba(132, 107, 27, 0.96));
+}
+
+.legend-swatch.absent {
+	background: linear-gradient(180deg, rgba(56, 65, 88, 0.95), rgba(33, 40, 56, 0.96));
 }
 
 [hidden] {
