@@ -22,7 +22,7 @@ service cloud.firestore {
     }
 
     function hasProfanity(loweredName) {
-      return loweredName.matches('.*(fuck|shit|bitch|asshole|bastard|dick|pussy|cunt|slut|whore|porn|sex|nude|nsfw|xxx|cock|fck|fcuk|shyt|btch|faggot|fag|nigga|nigger|retard|tranny|homo).*');
+      return loweredName.matches('.*(fuck|shit|bitch|asshole|bastard|dick|pussy|cunt|slut|whore|porn|sex|nude|nsfw|xxx|cock|fck|fcuk|shyt|btch|faggot|fag|nigga|nigger|retard|tranny|homo|daddy).*');
     }
 
     function hasObfuscatedProfanity(loweredName) {
@@ -32,9 +32,10 @@ service cloud.firestore {
         || loweredName.matches('.*[a@4v][s5$z][s5$z][h#][o0][l1!i|][e3].*')
         || loweredName.matches('.*[p9][uuvv@4][s5$][s5$][yuv].*')
         || loweredName.matches('.*[c(kq)][uuvv@4][n][t7+].*')
-        || loweredName.matches('.*[n][i1!l|][g9][g9][a@4].*')
+        || loweredName.matches('.*[n][i1!l|][g9][g9][a@4uxv].*')
         || loweredName.matches('.*[n][i1!l|][g9][g9][e3][r].*')
-        || loweredName.matches('.*[r][e3][t7+][a@4][r][d].*');
+        || loweredName.matches('.*[r][e3][t7+][a@4][r][db].*')
+        || loweredName.matches('.*[db][a@4vux][db][db][yuv].*');
     }
 
     function validDisplayName(displayName) {

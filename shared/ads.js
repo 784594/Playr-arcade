@@ -1936,7 +1936,14 @@
     const allowedIds = new Set(
       availableBadges
         .map((badge) => String(badge?.id || ''))
-        .filter((badgeId) => badgeId && badgeId !== 'level')
+        .filter((badgeId) => badgeId
+          && badgeId !== 'level'
+          && badgeId !== 'owner'
+          && badgeId !== 'vip'
+          && badgeId !== 'support'
+          && badgeId !== 'moderator'
+          && badgeId !== 'admin'
+          && !badgeId.startsWith('donation-'))
     );
     const equipped = [];
     (safeProfile.progression.cosmetics.equippedBadgeIds || []).forEach((badgeId) => {

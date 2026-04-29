@@ -2,6 +2,7 @@ const SINGLE_PLAYER_PLACEHOLDERS = [
   { id: 'snake', name: 'Snake', controls: 'Arrow keys' },
   { id: '2048', name: '2048', controls: 'Arrow keys' },
   { id: 'minesweeper', name: 'Minesweeper', controls: 'Mouse' },
+  { id: 'infinite-craft-clone', name: 'Infinite Craft', controls: 'Mouse' },
   { id: 'the-password-game', name: 'The Password Game', controls: 'Keyboard' },
   { id: 'tetris', name: 'Tetris', controls: 'Arrow keys' },
   { id: 'dino-run-clone', name: 'Dino Run Clone', controls: 'Space/Arrow' },
@@ -131,6 +132,7 @@ const COMPLETED_SINGLE_PLAYER_IDS = new Set([
   'frogger',
   'geometry-dash-clone',
   'hextris',
+  'infinite-craft-clone',
   'little-alchemy-clone',
   'memory-match',
   'minesweeper',
@@ -208,6 +210,7 @@ const FRIEND_REQUESTS_COLLECTION = 'friendRequests';
 const FRIENDSHIPS_COLLECTION = 'friendships';
 const PROFILE_SYNC_DEBOUNCE_MS = 900;
 const CLOUD_LEADERBOARD_CACHE_MS = 2 * 60 * 1000;
+const CLOUD_LEADERBOARD_PROFILE_LIMIT = 150;
 const PROFILE_CACHE_TTL_MS = 2 * 60 * 1000;
 const SOCIAL_CACHE_TTL_MS = 45 * 1000;
 const PROFILE_WARNING_HISTORY_LIMIT = 25;
@@ -339,7 +342,20 @@ function readStoredProfiles() {
 }
 
 function persistProfiles(profiles) {
-  localStorage.setItem(AUTH_STORAGE_KEYS.profiles, JSON.stringify(profiles || {}));
+  const safeProfiles = Object.fromEntries(
+    Object.entries(profiles || {}).map(([key, value]) => {
+      const profile = value && typeof value === 'object' ? value : {};
+      const mergedTheme = mergeProfileThemeState({}, profile.profileTheme);
+      return [key, {
+        ...profile,
+        profileTheme: {
+          banner: mergedTheme.banner,
+          customBanners: [],
+        },
+      }];
+    }),
+  );
+  localStorage.setItem(AUTH_STORAGE_KEYS.profiles, JSON.stringify(safeProfiles));
 }
 
 function getAuthUserCreatedAt(user = authState.currentUser) {
@@ -385,6 +401,14 @@ function mergeProfileThemeState(existingTheme = {}, incomingTheme = {}) {
   return {
     banner: incomingBannerUpdatedAt >= existingBannerUpdatedAt ? incomingBanner : existingBanner,
     customBanners: mergedCustomBanners,
+  };
+}
+
+function buildLeanProfileTheme(theme = {}, options = {}) {
+  const mergedTheme = mergeProfileThemeState({}, theme);
+  return {
+    banner: mergedTheme.banner,
+    customBanners: options.includeCustomBanners === true ? mergedTheme.customBanners : [],
   };
 }
 
@@ -446,7 +470,7 @@ function cacheProfileLocally(profile, { persist = true } = {}) {
     ...normalizedProfile,
     uid,
     createdAt: preservedCreatedAt.length ? Math.min(...preservedCreatedAt) : Date.now(),
-    profileTheme: mergedTheme,
+    profileTheme: buildLeanProfileTheme(mergedTheme),
   };
   if (persist) {
     persistProfiles(authState.profiles);
@@ -482,6 +506,7 @@ function buildCurrentAccountCloudProfile(account = getCurrentAccount()) {
     verified: account.verified || exported.verified || false,
     roles,
     isVip: Boolean(account.isVip || exported.isVip),
+    profileTheme: buildLeanProfileTheme(exported.profileTheme),
     progressionUpdatedAt: Math.max(0, Number(exported.progressionUpdatedAt) || Date.now()),
     createdAt: normalizeTimestampToMs(account.createdAt) || normalizeTimestampToMs(exported.createdAt) || Date.now(),
     updatedAt: Date.now(),
@@ -522,7 +547,7 @@ async function syncCurrentAccountProfileToFirestore({ immediate = false } = {}) 
       progression: profile.progression || null,
       activity: profile.activity || null,
       moderation: profile.moderation || null,
-      profileTheme: profile.profileTheme || null,
+      profileTheme: buildLeanProfileTheme(profile.profileTheme) || null,
       createdAt: profile.createdAt || Date.now(),
       progressionUpdatedAt: profile.progressionUpdatedAt || Date.now(),
       updatedAt: timestamp,
@@ -594,7 +619,11 @@ async function refreshCloudLeaderboardProfiles({ force = false } = {}) {
 
   authState.cloudLeaderboardFetchInFlight = true;
   try {
-    const snapshot = await firebaseDb.collection(USER_PROFILE_COLLECTION).get();
+    const snapshot = await firebaseDb
+      .collection(USER_PROFILE_COLLECTION)
+      .orderBy('progression.xp', 'desc')
+      .limit(CLOUD_LEADERBOARD_PROFILE_LIMIT)
+      .get();
     snapshot.forEach((doc) => {
       const data = doc.data() || {};
       if (!data.uid) {
@@ -613,6 +642,49 @@ async function refreshCloudLeaderboardProfiles({ force = false } = {}) {
   } finally {
     authState.cloudLeaderboardFetchInFlight = false;
   }
+}
+
+async function fetchCloudStaffProfiles() {
+  if (!firebaseDb) return [];
+  try {
+    const snapshot = await firebaseDb
+      .collection(USER_PROFILE_COLLECTION)
+      .where('staff.role', 'in', ['support', 'moderator', 'admin'])
+      .get();
+    return snapshot.docs.map((doc) => mergeCloudProfileShape({
+      uid: doc.id,
+      ...(doc.data() || {}),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+async function fetchCloudOwnerProfiles() {
+  if (!firebaseDb) return [];
+  try {
+    const snapshot = await firebaseDb
+      .collection(USER_PROFILE_COLLECTION)
+      .where('roles', 'array-contains', 'owner')
+      .get();
+    return snapshot.docs.map((doc) => mergeCloudProfileShape({
+      uid: doc.id,
+      ...(doc.data() || {}),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function mergeProfilesByUid(existingProfiles = [], incomingProfiles = []) {
+  const mergedByUid = new Map();
+  [...existingProfiles, ...incomingProfiles].forEach((profile) => {
+    const safeProfile = mergeCloudProfileShape(profile);
+    const uid = String(safeProfile.uid || '').trim();
+    if (!uid) return;
+    mergedByUid.set(uid, safeProfile);
+  });
+  return Array.from(mergedByUid.values());
 }
 
 function formatPlayerIdentityMarkup(name, options = {}) {
@@ -901,11 +973,15 @@ function getCachedProfileEntry(target = {}) {
 
 function cacheResolvedProfile(profile) {
   if (!profile || typeof profile !== 'object') return null;
-  const uid = String(profile.uid || '').trim();
-  const displayName = String(profile.displayName || '').trim();
+  const safeProfile = mergeCloudProfileShape({
+    ...profile,
+    profileTheme: buildLeanProfileTheme(profile.profileTheme),
+  });
+  const uid = String(safeProfile.uid || '').trim();
+  const displayName = String(safeProfile.displayName || '').trim();
   const normalizedName = normalizeDisplayNameForLookup(displayName);
   const cached = {
-    profile,
+    profile: safeProfile,
     uid,
     displayName,
     normalizedName,
@@ -1566,6 +1642,43 @@ function ensureProfileAndFriendsUi() {
     document.body.appendChild(overlay);
   }
 
+  if (!document.getElementById('profileCustomizeOverlay')) {
+    const overlay = document.createElement('div');
+    overlay.className = 'settings-overlay';
+    overlay.id = 'profileCustomizeOverlay';
+    overlay.hidden = true;
+    overlay.innerHTML = `
+      <section class="settings-modal panel-card" role="dialog" aria-modal="true" aria-labelledby="profileCustomizeTitle">
+        <div class="settings-modal-header">
+          <div>
+            <p class="eyebrow">Profile customization</p>
+            <h3 id="profileCustomizeTitle">Customize your profile</h3>
+          </div>
+          <button class="chip-button" type="button" id="profileCustomizeCloseBtn">Close</button>
+        </div>
+        <div class="settings-grid profile-customize-grid">
+          <section class="settings-card">
+            <h4>Display tags</h4>
+            <p class="settings-muted" id="profileCustomizeBadgeSummary">0/5 extra badges equipped. Level is always shown by default.</p>
+            <div class="settings-tag-list" id="profileCustomizeBadgeList"></div>
+          </section>
+          <section class="settings-card">
+            <h4>Profile banner</h4>
+            <p class="settings-muted">Pick a solid or gradient banner for your profile panel. Custom banners can be created in Draw It, but only VIP accounts can apply them.</p>
+            <div class="banner-picker-grid" id="profileCustomizeBannerGrid"></div>
+            <div class="settings-card profile-custom-banner-card">
+              <h4>Custom banners</h4>
+              <p class="settings-muted">Saved to your account. You can keep up to 5 custom banners and delete old ones here when you need space.</p>
+              <div class="social-list" id="profileCustomizeCustomBannerList"></div>
+            </div>
+          </section>
+        </div>
+        <p class="auth-status" id="profileCustomizeStatus"></p>
+      </section>
+    `;
+    document.body.appendChild(overlay);
+  }
+
   if (!document.getElementById('vipBannerUpsellOverlay')) {
     const overlay = document.createElement('div');
     overlay.className = 'profile-overlay';
@@ -1642,6 +1755,13 @@ function ensureProfileAndFriendsUi() {
   profileUi.vipBannerUpsellProgressBar = document.getElementById('vipBannerUpsellProgressBar');
   profileUi.vipBannerUpsellProgressLabel = document.getElementById('vipBannerUpsellProgressLabel');
   profileUi.vipBannerUpsellCloseBtn = document.getElementById('vipBannerUpsellCloseBtn');
+  profileUi.profileCustomizeOverlay = document.getElementById('profileCustomizeOverlay');
+  profileUi.profileCustomizeCloseBtn = document.getElementById('profileCustomizeCloseBtn');
+  profileUi.profileCustomizeStatus = document.getElementById('profileCustomizeStatus');
+  profileUi.profileCustomizeBadgeSummary = document.getElementById('profileCustomizeBadgeSummary');
+  profileUi.profileCustomizeBadgeList = document.getElementById('profileCustomizeBadgeList');
+  profileUi.profileCustomizeBannerGrid = document.getElementById('profileCustomizeBannerGrid');
+  profileUi.profileCustomizeCustomBannerList = document.getElementById('profileCustomizeCustomBannerList');
   profileUi.settingsStaffDirectoryList = document.getElementById('settingsStaffDirectoryList');
 }
 
@@ -1692,14 +1812,11 @@ async function renderStaffDirectory(account = getCurrentAccount()) {
 
   let profiles = Object.values(authState.profiles || {}).map((entry) => mergeCloudProfileShape(entry));
   if (firebaseDb) {
-    try {
-      const snapshot = await firebaseDb.collection(USER_PROFILE_COLLECTION).get();
-      profiles = snapshot.docs.map((doc) => mergeCloudProfileShape({
-        uid: doc.id,
-        ...(doc.data() || {}),
-      }));
+    const cloudStaffProfiles = await fetchCloudStaffProfiles();
+    if (cloudStaffProfiles.length) {
+      profiles = cloudStaffProfiles;
       profiles.forEach((profile) => cacheProfileLocally(profile, { persist: false }));
-    } catch {}
+    }
   }
 
   const staffProfiles = profiles
@@ -1724,14 +1841,13 @@ async function renderStaffDirectory(account = getCurrentAccount()) {
   `).join('');
 }
 
-function renderBannerSettings(account = getCurrentAccount()) {
-  ensureBannerSettingsCard();
-  if (!profileUi.settingsBannerGrid) return;
+function renderBannerSettingsInto(bannerGridEl, customBannerListEl, account = getCurrentAccount()) {
+  if (!bannerGridEl) return;
   authState.profiles = readStoredProfiles();
   const profile = getEditableCurrentProfile(account);
   const activeBanner = profile.profileTheme.banner;
   const customBanners = getCustomProfileBanners(profile);
-  profileUi.settingsBannerGrid.innerHTML = PROFILE_BANNER_PRESETS.map((preset) => {
+  bannerGridEl.innerHTML = PROFILE_BANNER_PRESETS.map((preset) => {
     const active = preset.type === activeBanner.type && preset.value === activeBanner.value;
     const style = preset.type === 'solid'
       ? `background:${preset.value};`
@@ -1744,12 +1860,12 @@ function renderBannerSettings(account = getCurrentAccount()) {
     `;
   }).join('');
 
-  if (!profileUi.settingsCustomBannerList) return;
+  if (!customBannerListEl) return;
   if (!customBanners.length) {
-    profileUi.settingsCustomBannerList.innerHTML = '<p class="settings-muted">No custom banners saved yet. Use Draw It to create one. If you just saved one, give Settings a moment to refresh or reopen it.</p>';
+    customBannerListEl.innerHTML = '<p class="settings-muted">No custom banners saved yet. Use Draw It to create one. If you just saved one, give this panel a moment to refresh or reopen it.</p>';
     return;
   }
-  profileUi.settingsCustomBannerList.innerHTML = customBanners.map((banner) => {
+  customBannerListEl.innerHTML = customBanners.map((banner) => {
     const active = activeBanner.type === 'vip-custom' && activeBanner.customBannerId === banner.id;
     const applyLabel = isCurrentAccountVip(account) ? (active ? 'Applied' : 'Apply') : 'VIP only';
     return `
@@ -1768,15 +1884,24 @@ function renderBannerSettings(account = getCurrentAccount()) {
   }).join('');
 }
 
+function renderBannerSettings(account = getCurrentAccount()) {
+  ensureBannerSettingsCard();
+  renderBannerSettingsInto(profileUi.settingsBannerGrid, profileUi.settingsCustomBannerList, account);
+}
+
+function renderProfileCustomizationBannerSettings(account = getCurrentAccount()) {
+  renderBannerSettingsInto(profileUi.profileCustomizeBannerGrid, profileUi.profileCustomizeCustomBannerList, account);
+}
+
 function applySelectedBannerPreset(presetId) {
   const account = getCurrentAccount();
   if (!account?.uid) {
-    setSettingsStatus('Log in to update your profile banner.', 'danger');
+    setProfileCustomizationMessage('Log in to update your profile banner.', 'danger');
     return;
   }
   const preset = PROFILE_BANNER_PRESETS.find((entry) => entry.id === String(presetId || '').trim());
   if (!preset) {
-    setSettingsStatus('That banner preset is unavailable.', 'danger');
+    setProfileCustomizationMessage('That banner preset is unavailable.', 'danger');
     return;
   }
   void persistProfileThemeUpdate(account, {
@@ -1796,7 +1921,7 @@ async function persistProfileThemeUpdate(account, nextTheme, successMessage = 'P
   if (Array.isArray(nextTheme?.customBanners) && window.PlayrProgression?.replaceStoredCustomBanners) {
     const storeResult = window.PlayrProgression.replaceStoredCustomBanners(nextTheme.customBanners, account);
     if (!storeResult?.ok) {
-      setSettingsStatus(storeResult?.reason || 'That banner image could not be saved.', 'danger');
+      setProfileCustomizationMessage(storeResult?.reason || 'That banner image could not be saved.', 'danger');
       return false;
     }
     nextTheme = {
@@ -1813,30 +1938,30 @@ async function persistProfileThemeUpdate(account, nextTheme, successMessage = 'P
   if (window.PlayrProgression?.importProfile) {
     window.PlayrProgression.importProfile(account, profile, { prefer: 'remote', emit: true });
   }
-  renderBannerSettings(account);
+  renderProfileCustomizationPanel(account);
   window.dispatchEvent(new CustomEvent('playr-profiles-updated', {
     detail: { uid: account.uid },
   }));
   await syncCurrentAccountProfileToFirestore({ immediate: true });
-  setSettingsStatus(successMessage, 'success');
+  setProfileCustomizationMessage(successMessage, 'success');
   return true;
 }
 
 function applySavedCustomBanner(customBannerId) {
   const account = getCurrentAccount();
   if (!account?.uid) {
-    setSettingsStatus('Log in to update your profile banner.', 'danger');
+    setProfileCustomizationMessage('Log in to update your profile banner.', 'danger');
     return;
   }
   const profile = getEditableCurrentProfile(account);
   const customBanner = getCustomProfileBanners(profile).find((entry) => entry.id === String(customBannerId || '').trim());
   if (!customBanner) {
-    setSettingsStatus('That custom banner could not be found.', 'danger');
+    setProfileCustomizationMessage('That custom banner could not be found.', 'danger');
     return;
   }
   if (!isCurrentAccountVip(account)) {
     openVipBannerUpsell(customBanner);
-    setSettingsStatus('This is a VIP option only! Reach 25 qualified referrals to unlock VIP and use custom banners.', 'info');
+    setProfileCustomizationMessage('This is a VIP option only! Reach 25 qualified referrals to unlock VIP and use custom banners.', 'info');
     return;
   }
   void persistProfileThemeUpdate(account, {
@@ -1853,7 +1978,7 @@ function applySavedCustomBanner(customBannerId) {
 function deleteSavedCustomBanner(customBannerId) {
   const account = getCurrentAccount();
   if (!account?.uid) {
-    setSettingsStatus('Log in to manage custom banners.', 'danger');
+    setProfileCustomizationMessage('Log in to manage custom banners.', 'danger');
     return;
   }
   const profile = getEditableCurrentProfile(account);
@@ -2034,7 +2159,10 @@ async function renderOpenProfilePanel() {
   if (!currentAccount) {
     profileUi.profileActionArea.innerHTML = '<button class="button secondary" type="button" data-open-login-from-profile="true">Log in to add friends</button>';
   } else if (isSelf) {
-    profileUi.profileActionArea.innerHTML = '<span class="profile-pill">This is you</span>';
+    profileUi.profileActionArea.innerHTML = `
+      <span class="profile-pill">This is you</span>
+      <button class="button secondary" type="button" data-open-profile-customization="true">Customize Profile</button>
+    `;
   } else if (relationship === 'friends') {
     profileUi.profileActionArea.innerHTML = '<span class="profile-pill">Already friends</span>';
   } else if (relationship === 'outgoing') {
@@ -2187,14 +2315,15 @@ async function getModerationCopyRecipients(actor, action) {
     recipients.push(profile);
   };
   let allProfiles = Object.values(authState.profiles || {}).map((entry) => mergeCloudProfileShape(entry));
-  if (firebaseDb) {
-    try {
-      const snapshot = await firebaseDb.collection(USER_PROFILE_COLLECTION).get();
-      allProfiles = snapshot.docs.map((doc) => mergeCloudProfileShape({
-        uid: doc.id,
-        ...(doc.data() || {}),
-      }));
-    } catch {}
+  const cloudOwners = await fetchCloudOwnerProfiles();
+  if (cloudOwners.length) {
+    allProfiles = mergeProfilesByUid(allProfiles, cloudOwners);
+  }
+  if (actorRole === 'support' || actorRole === 'moderator') {
+    const cloudStaffProfiles = await fetchCloudStaffProfiles();
+    if (cloudStaffProfiles.length) {
+      allProfiles = mergeProfilesByUid(allProfiles, cloudStaffProfiles);
+    }
   }
   if (actorRole === 'support') {
     allProfiles.filter((profile) => ['moderator', 'admin'].includes(getProfilePrimaryRole(profile)) || isOwnerAccount(profile)).forEach(addRecipient);
@@ -3504,6 +3633,7 @@ const settingsQualifiedReferrals = document.getElementById('settingsQualifiedRef
 const settingsReferralRewards = document.getElementById('settingsReferralRewards');
 const settingsBadgeSummary = document.getElementById('settingsBadgeSummary');
 const settingsBadgeList = document.getElementById('settingsBadgeList');
+const settingsBadgeCard = settingsBadgeSummary?.closest('.settings-card') || null;
 const adminSettingsCard = document.getElementById('adminSettingsCard');
 const ownerXpSettingsCard = document.getElementById('ownerXpSettingsCard');
 const ownerXpAmountInput = document.getElementById('ownerXpAmountInput');
@@ -3813,6 +3943,13 @@ const profileUi = {
   profileComposeSubmitBtn: null,
   profileUnmuteBtn: null,
   profileUnbanBtn: null,
+  profileCustomizeOverlay: null,
+  profileCustomizeCloseBtn: null,
+  profileCustomizeStatus: null,
+  profileCustomizeBadgeSummary: null,
+  profileCustomizeBadgeList: null,
+  profileCustomizeBannerGrid: null,
+  profileCustomizeCustomBannerList: null,
   settingsBannerCard: null,
   settingsBannerGrid: null,
   settingsCustomBannerList: null,
@@ -4704,12 +4841,20 @@ function setSettingsStatus(message, tone = 'info') {
   settingsStatus.style.color = tone === 'danger' ? '#ff9cb1' : tone === 'success' ? '#9ff5cb' : '#d2e5ff';
 }
 
-function renderSettingsBadgeManager(account = getCurrentAccount()) {
-  if (!settingsBadgeSummary || !settingsBadgeList) return;
-  const progression = getProgressionSnapshotForAccount(account);
+function setProfileCustomizationStatus(message, tone = 'info') {
+  if (!profileUi.profileCustomizeStatus) return;
+  profileUi.profileCustomizeStatus.textContent = message || '';
+  profileUi.profileCustomizeStatus.style.color = tone === 'danger' ? '#ff9cb1' : tone === 'success' ? '#9ff5cb' : '#d2e5ff';
+}
+
+function setProfileCustomizationMessage(message, tone = 'info') {
+  setSettingsStatus(message, tone);
+  setProfileCustomizationStatus(message, tone);
+}
+
+function getExtraBadgeOptions(progression = {}) {
   const availableBadges = Array.isArray(progression.availableBadges) ? progression.availableBadges : [];
-  const mandatoryStaffRole = getAccountPrimaryRole(account);
-  const extraBadges = availableBadges.filter((badge) => {
+  return availableBadges.filter((badge) => {
     const badgeId = String(badge?.id || '').trim();
     return badgeId
       && badgeId !== 'level'
@@ -4720,19 +4865,26 @@ function renderSettingsBadgeManager(account = getCurrentAccount()) {
       && badgeId !== 'admin'
       && !badgeId.startsWith('donation-');
   });
+}
+
+function renderBadgeManagerInto(summaryEl, listEl, account = getCurrentAccount()) {
+  if (!summaryEl || !listEl) return;
+  const progression = getProgressionSnapshotForAccount(account);
+  const mandatoryStaffRole = getAccountPrimaryRole(account);
+  const extraBadges = getExtraBadgeOptions(progression);
   const equippedIds = Array.isArray(progression.equippedBadgeIds) ? progression.equippedBadgeIds : [];
   const equippedSet = new Set(equippedIds);
 
-  settingsBadgeSummary.textContent = mandatoryStaffRole
+  summaryEl.textContent = mandatoryStaffRole
     ? `${Math.min(equippedIds.length + 1, 5)}/5 visible tag slots used. Your ${mandatoryStaffRole} staff badge is permanent and uses 1 slot.`
     : `${Math.min(equippedIds.length, 5)}/5 extra badges equipped. Level is always shown by default.`;
-  settingsBadgeList.innerHTML = '';
+  listEl.innerHTML = '';
 
   if (!extraBadges.length) {
     const empty = document.createElement('p');
     empty.className = 'settings-muted';
     empty.textContent = 'No extra earned badges yet. As you unlock them, you can equip up to 5 here.';
-    settingsBadgeList.appendChild(empty);
+    listEl.appendChild(empty);
     return;
   }
 
@@ -4765,8 +4917,16 @@ function renderSettingsBadgeManager(account = getCurrentAccount()) {
 
     details.append(stateLabel, desc);
     button.append(preview, details);
-    settingsBadgeList.appendChild(button);
+    listEl.appendChild(button);
   });
+}
+
+function renderSettingsBadgeManager(account = getCurrentAccount()) {
+  renderBadgeManagerInto(settingsBadgeSummary, settingsBadgeList, account);
+}
+
+function renderProfileCustomizationBadgeManager(account = getCurrentAccount()) {
+  renderBadgeManagerInto(profileUi.profileCustomizeBadgeSummary, profileUi.profileCustomizeBadgeList, account);
 }
 
 function renderSettingsProgression(account = getCurrentAccount()) {
@@ -4800,7 +4960,12 @@ function renderSettingsProgression(account = getCurrentAccount()) {
       </div>
     `).join('');
   }
-  renderSettingsBadgeManager(account);
+}
+
+function renderProfileCustomizationPanel(account = getCurrentAccount()) {
+  ensureProfileAndFriendsUi();
+  renderProfileCustomizationBadgeManager(account);
+  renderProfileCustomizationBannerSettings(account);
 }
 
 function toggleEquippedSettingsBadge(badgeId) {
@@ -4808,14 +4973,14 @@ function toggleEquippedSettingsBadge(badgeId) {
   if (!safeBadgeId || safeBadgeId === 'level') return;
   const account = getCurrentAccount();
   if (!account) {
-    setSettingsStatus('Log in to manage your tags.', 'danger');
+    setProfileCustomizationMessage('Log in to manage your tags.', 'danger');
     return;
   }
 
   const progression = getProgressionSnapshotForAccount(account);
   const availableIds = new Set((progression.availableBadges || []).map((badge) => String(badge?.id || '')));
   if (!availableIds.has(safeBadgeId)) {
-    setSettingsStatus('That tag is not unlocked on this account.', 'danger');
+    setProfileCustomizationMessage('That tag is not unlocked on this account.', 'danger');
     return;
   }
 
@@ -4827,7 +4992,7 @@ function toggleEquippedSettingsBadge(badgeId) {
     nextEquipped.splice(existingIndex, 1);
   } else {
     if (nextEquipped.length >= maxEquipCount) {
-      setSettingsStatus(mandatoryStaffRole ? `Your ${mandatoryStaffRole} staff badge uses 1 of the 5 visible slots.` : 'You can equip up to 5 extra badges at a time.', 'info');
+      setProfileCustomizationMessage(mandatoryStaffRole ? `Your ${mandatoryStaffRole} staff badge uses 1 of the 5 visible slots.` : 'You can equip up to 5 extra badges at a time.', 'info');
       return;
     }
     nextEquipped.push(safeBadgeId);
@@ -4835,7 +5000,7 @@ function toggleEquippedSettingsBadge(badgeId) {
 
   const snapshot = window.PlayrProgression?.setEquippedBadges?.(nextEquipped);
   if (!snapshot) {
-    setSettingsStatus('Could not update equipped tags right now.', 'danger');
+    setProfileCustomizationMessage('Could not update equipped tags right now.', 'danger');
     return;
   }
 
@@ -4843,7 +5008,8 @@ function toggleEquippedSettingsBadge(badgeId) {
   syncLegacyAuthState();
   exposePlayrAuth();
   refreshSettingsProgressionIfOpen();
-  setSettingsStatus(existingIndex >= 0 ? 'Tag unequipped.' : 'Tag equipped.', 'success');
+  renderProfileCustomizationBadgeManager(account);
+  setProfileCustomizationMessage(existingIndex >= 0 ? 'Tag unequipped.' : 'Tag equipped.', 'success');
 }
 
 function openSettingsOverlay() {
@@ -4861,8 +5027,10 @@ function openSettingsOverlay() {
   if (settingsShowPasswordsToggle) settingsShowPasswordsToggle.checked = false;
   setSettingsPasswordVisibility(false);
   renderSettingsProgression(account);
-  renderBannerSettings(account);
   void renderStaffDirectory(account);
+  if (settingsBadgeCard) {
+    settingsBadgeCard.hidden = true;
+  }
 
   const isAdmin = isCurrentAccountAdmin(account);
   const isOwner = isOwnerAccount(account);
@@ -5192,6 +5360,21 @@ function renderAuthUi() {
   authFormSection.hidden = true;
   if (authCaptchaShell) authCaptchaShell.hidden = true;
   setAuthNameIndicator('idle');
+}
+
+function openProfileCustomizationOverlay() {
+  ensureProfileAndFriendsUi();
+  const account = getCurrentAccount();
+  if (!account?.uid || !profileUi.profileCustomizeOverlay) return;
+  renderProfileCustomizationPanel(account);
+  profileUi.profileCustomizeOverlay.hidden = false;
+  setProfileCustomizationStatus('');
+}
+
+function closeProfileCustomizationOverlay() {
+  if (!profileUi.profileCustomizeOverlay) return;
+  profileUi.profileCustomizeOverlay.hidden = true;
+  setProfileCustomizationStatus('');
 }
 
 function openAuthOverlay(prefillMessage = '') {
@@ -6769,8 +6952,8 @@ function init() {
 
   window.addEventListener('playr-profiles-updated', () => {
     authState.profiles = readStoredProfiles();
-    if (!settingsOverlay?.hidden) {
-      renderBannerSettings(getCurrentAccount());
+    if (!profileUi.profileCustomizeOverlay?.hidden) {
+      renderProfileCustomizationPanel(getCurrentAccount());
     }
   });
 
@@ -6822,6 +7005,14 @@ function init() {
     });
   }
 
+  if (profileUi.profileCustomizeBadgeList) {
+    profileUi.profileCustomizeBadgeList.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-badge-id]');
+      if (!button) return;
+      toggleEquippedSettingsBadge(button.getAttribute('data-badge-id') || '');
+    });
+  }
+
   if (ownerXpAddBtn) {
     ownerXpAddBtn.addEventListener('click', () => {
       updateOwnerXpFromSettings('add');
@@ -6850,6 +7041,10 @@ function init() {
 
   if (profileUi.profileCloseBtn) {
     profileUi.profileCloseBtn.addEventListener('click', closeProfilePanel);
+  }
+
+  if (profileUi.profileCustomizeCloseBtn) {
+    profileUi.profileCustomizeCloseBtn.addEventListener('click', closeProfileCustomizationOverlay);
   }
 
   if (profileUi.friendsAddBtn) {
@@ -6919,6 +7114,12 @@ function init() {
       }).catch(() => {
         setProfilePanelStatus('Could not send friend request right now.', 'danger');
       });
+      return;
+    }
+
+    const openCustomizationBtn = event.target.closest('[data-open-profile-customization="true"]');
+    if (openCustomizationBtn) {
+      openProfileCustomizationOverlay();
       return;
     }
 
@@ -7097,6 +7298,14 @@ function init() {
     profileUi.profileOverlay.addEventListener('click', (event) => {
       if (event.target === profileUi.profileOverlay) {
         closeProfilePanel();
+      }
+    });
+  }
+
+  if (profileUi.profileCustomizeOverlay) {
+    profileUi.profileCustomizeOverlay.addEventListener('click', (event) => {
+      if (event.target === profileUi.profileCustomizeOverlay) {
+        closeProfileCustomizationOverlay();
       }
     });
   }

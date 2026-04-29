@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-29-security-improvements',
+      title: 'Security improvements',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-29T20:35:00-04:00',
+      summary: 'Display-name filtering was tightened again, stale donation-tag conflicts were cleaned up, and heavy profile customization tools were moved out of the main Settings overlay.',
+      details: [
+        'The latest rules pass adds more blocked profanity coverage for account names, and the badge renderer now ignores old equipped donation entries that could stack with the automatic supporter badge.',
+        'Profile banner and extra-tag customization now open from your own profile instead of loading inside the main Settings overlay, which lightens the Settings screen and reduces delayed scrolling.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-29-staff-role-ladder-and-rank-moderation',
       title: 'Staff role ladder and rank moderation update',
       category: 'update',
