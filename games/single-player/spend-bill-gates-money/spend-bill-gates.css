@@ -122,6 +122,57 @@ body {
   margin-bottom: 16px;
 }
 
+.receipt-card {
+  width: min(760px, 100%);
+  text-align: left;
+}
+
+.receipt-list {
+  display: grid;
+  gap: 10px;
+  max-height: 420px;
+  overflow: auto;
+  margin-bottom: 18px;
+  padding-right: 6px;
+}
+
+.receipt-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(76, 175, 80, 0.22);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.receipt-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.receipt-item strong {
+  display: block;
+  color: #e8f7ea;
+}
+
+.receipt-item span {
+  color: #9cb79f;
+  font-size: 0.9rem;
+}
+
+.receipt-icon {
+  font-size: 1.5rem;
+}
+
+.receipt-total {
+  color: #8de391;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+}
+
 .charity-cutscene-card {
   width: min(700px, 100%);
   padding: 22px;
@@ -418,6 +469,11 @@ section h2 {
   color: #aaa;
 }
 
+.btn-owned {
+  font-size: 0.7rem;
+  color: #b9c7d6;
+}
+
 .btn-income {
   font-size: 0.7rem;
   color: #81c784;
@@ -571,6 +627,19 @@ section h2 {
 .asset-upkeep {
   font-size: 0.8rem;
   color: #ff9800;
+}
+
+.asset-income {
+  font-size: 0.8rem;
+  color: #81c784;
+}
+
+.asset-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .empty-state {

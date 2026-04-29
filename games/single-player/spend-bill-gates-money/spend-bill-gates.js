@@ -4,7 +4,7 @@
 
 const GAME_CONFIG = {
   STARTING_MONEY: 100_000_000_000, // $100B
-  BASE_DAILY_INCOME: 10_000_000, // $10M/day
+  BASE_DAILY_INCOME: 50_000_000, // $50M/day
   GAME_DAY_MS: 15_000, // 15 seconds = 1 in-game day
   STOCK_UPDATE_MS: 10_000, // Stocks update every 10 seconds
   TESLA_EASTER_EGG_MS: 300_000, // 5 minutes from game start
@@ -51,6 +51,8 @@ const gameState = {
   // UI overlays
   messageHideTimer: null,
   isCharityCutsceneRunning: false,
+  purchaseHistory: [],
+  hasWon: false,
 };
 
 // ============================================
@@ -58,46 +60,66 @@ const gameState = {
 // ============================================
 
 const PURCHASE_CATALOG = {
-  'General Purchases': [
-    { id: 'coffee', icon: '☕', name: 'Coffee', cost: 50, upkeep: 0, income: 0 },
-    { id: 'groceries', icon: '🛒', name: 'Groceries', cost: 1_500, upkeep: 0, income: 0 },
-    { id: 'gas', icon: '⛽', name: 'Gas/Fuel', cost: 800, upkeep: 0, income: 0 },
-    { id: 'meal', icon: '🍔', name: 'Restaurant Meal', cost: 600, upkeep: 0, income: 0 },
-    { id: 'movie', icon: '🎬', name: 'Movie Ticket', cost: 300, upkeep: 0, income: 0 },
-    { id: 'clothes', icon: '👕', name: 'Clothes', cost: 2_500, upkeep: 0, income: 0 },
+  'Daily Stuff': [
+    { id: 'big-mac', icon: '🍔', name: 'Big Mac', cost: 2, upkeep: 0, income: 0, maxPurchases: 2_000_000 },
+    { id: 'flip-flops', icon: '🩴', name: 'Flip Flops', cost: 3, upkeep: 0, income: 0, maxPurchases: 250_000 },
+    { id: 'coca-cola-pack', icon: '🥤', name: 'Coca-Cola Pack', cost: 5, upkeep: 0, income: 0, maxPurchases: 1_000_000 },
+    { id: 'movie-ticket', icon: '🎬', name: 'Movie Ticket', cost: 12, upkeep: 0, income: 0, maxPurchases: 500_000 },
+    { id: 'book', icon: '📘', name: 'Book', cost: 15, upkeep: 0, income: 0, maxPurchases: 500_000 },
+    { id: 'lobster-dinner', icon: '🦞', name: 'Lobster Dinner', cost: 45, upkeep: 0, income: 0, maxPurchases: 250_000 },
+    { id: 'video-game', icon: '🎮', name: 'Video Game', cost: 60, upkeep: 0, income: 0, maxPurchases: 250_000 },
   ],
-  'Real Estate': [
-    { id: 'house', icon: '🏠', name: 'House', cost: 45_000_000, upkeep: 2_500_000, income: 0 },
-    { id: 'mansion', icon: '🏰', name: 'Mansion', cost: 650_000_000, upkeep: 35_000_000, income: 0 },
-    { id: 'island', icon: '🏝️', name: 'Private Island', cost: 7_500_000_000, upkeep: 180_000_000, income: 40_000_000 },
-    { id: 'penthouse', icon: '🏢', name: 'Penthouse', cost: 250_000_000, upkeep: 12_000_000, income: 0 },
+  'Tech & Lifestyle': [
+    { id: 'amazon-echo', icon: '🔊', name: 'Amazon Echo', cost: 99, upkeep: 0, income: 0, maxPurchases: 100_000 },
+    { id: 'year-of-netflix', icon: '📺', name: 'Year of Netflix', cost: 100, upkeep: 0, income: 0, maxPurchases: 100_000 },
+    { id: 'air-jordans', icon: '👟', name: 'Air Jordans', cost: 125, upkeep: 0, income: 0, maxPurchases: 50_000 },
+    { id: 'airpods', icon: '🎧', name: 'Airpods', cost: 199, upkeep: 0, income: 0, maxPurchases: 50_000 },
+    { id: 'gaming-console', icon: '🕹️', name: 'Gaming Console', cost: 299, upkeep: 0, income: 0, maxPurchases: 40_000 },
+    { id: 'drone', icon: '🚁', name: 'Drone', cost: 350, upkeep: 0, income: 0, maxPurchases: 20_000 },
+    { id: 'smartphone', icon: '📱', name: 'Smartphone', cost: 699, upkeep: 0, income: 0, maxPurchases: 30_000 },
+    { id: 'bike', icon: '🚲', name: 'Bike', cost: 800, upkeep: 0, income: 0, maxPurchases: 15_000 },
   ],
-  'Vehicles': [
-    { id: 'car', icon: '🚗', name: 'Luxury Cars', cost: 10_000_000, upkeep: 900_000, income: 0, cooldownMs: 8_000 },
-    { id: 'yacht', icon: '⛵', name: 'Yacht', cost: 2_200_000_000, upkeep: 120_000_000, income: 0 },
-    { id: 'jet', icon: '✈️', name: 'Private Jet', cost: 650_000_000, upkeep: 45_000_000, income: 0 },
-    { id: 'helicopter', icon: '🚁', name: 'Helicopter', cost: 180_000_000, upkeep: 14_000_000, income: 0 },
+  'Animals & Transport': [
+    { id: 'kitten', icon: '🐱', name: 'Kitten', cost: 1_500, upkeep: 30, income: 0, maxPurchases: 200 },
+    { id: 'puppy', icon: '🐶', name: 'Puppy', cost: 1_500, upkeep: 35, income: 0, maxPurchases: 200 },
+    { id: 'auto-rickshaw', icon: '🛺', name: 'Auto Rickshaw', cost: 2_300, upkeep: 25, income: 40, maxPurchases: 400 },
+    { id: 'horse', icon: '🐎', name: 'Horse', cost: 2_500, upkeep: 80, income: 0, maxPurchases: 50 },
+    { id: 'jet-ski', icon: '🌊', name: 'Jet Ski', cost: 12_000, upkeep: 150, income: 0, maxPurchases: 40 },
+    { id: 'ford-f150', icon: '🛻', name: 'Ford F-150', cost: 30_000, upkeep: 450, income: 0, maxPurchases: 40 },
+    { id: 'tesla', icon: '⚡', name: 'Tesla', cost: 75_000, upkeep: 1_250, income: 0, maxPurchases: 30 },
+    { id: 'monster-truck', icon: '🚚', name: 'Monster Truck', cost: 150_000, upkeep: 2_200, income: 0, maxPurchases: 20 },
+    { id: 'ferrari', icon: '🏎️', name: 'Ferrari', cost: 250_000, upkeep: 3_500, income: 0, maxPurchases: 20 },
   ],
-  'Companies': [
-    { id: 'startup', icon: '💻', name: 'Tech Startup', cost: 320_000_000, upkeep: 22_000_000, income: 40_000_000 },
-    { id: 'farm', icon: '🌾', name: 'Organic Farm', cost: 65_000_000, upkeep: 6_000_000, income: 12_000_000 },
-    { id: 'hotel', icon: '🏨', name: 'Hotel Chain', cost: 3_000_000_000, upkeep: 150_000_000, income: 260_000_000 },
-    { id: 'gaming-studio', icon: '🎮', name: 'Gaming Studio', cost: 1_100_000_000, upkeep: 70_000_000, income: 120_000_000 },
+  'Luxury Goods': [
+    { id: 'acre-farmland', icon: '🌾', name: 'Acre of Farmland', cost: 3_000, upkeep: 40, income: 85, maxPurchases: 25_000 },
+    { id: 'designer-handbag', icon: '👜', name: 'Designer Handbag', cost: 5_500, upkeep: 0, income: 0, maxPurchases: 5_000 },
+    { id: 'hot-tub', icon: '♨️', name: 'Hot Tub', cost: 6_000, upkeep: 90, income: 0, maxPurchases: 200 },
+    { id: 'luxury-wine', icon: '🍷', name: 'Luxury Wine', cost: 7_000, upkeep: 0, income: 0, maxPurchases: 2_000 },
+    { id: 'diamond-ring', icon: '💍', name: 'Diamond Ring', cost: 10_000, upkeep: 0, income: 0, maxPurchases: 2_000 },
+    { id: 'rolex', icon: '⌚', name: 'Rolex', cost: 15_000, upkeep: 0, income: 0, maxPurchases: 1_500 },
+    { id: 'gold-bar', icon: '🪙', name: 'Gold Bar', cost: 700_000, upkeep: 0, income: 6_000, maxPurchases: 500, resaleMultiplier: 0.92 },
   ],
-  'Charity & Vanity': [
-    { id: 'charity-donation', icon: '❤️', name: 'Charity Donation', cost: 250_000_000, upkeep: 0, income: 0 },
-    { id: 'statue', icon: '🗿', name: 'Golden Statue of Self', cost: 1_500_000_000, upkeep: 0, income: 0 },
-    { id: 'zoo', icon: '🦁', name: 'Personal Zoo', cost: 2_700_000_000, upkeep: 180_000_000, income: 0 },
-    { id: 'museum', icon: '🖼️', name: 'Private Museum', cost: 3_300_000_000, upkeep: 140_000_000, income: 30_000_000 },
+  'Property & Franchises': [
+    { id: 'single-family-home', icon: '🏠', name: 'Single Family Home', cost: 300_000, upkeep: 3_000, income: 18_000, maxPurchases: 300, resaleMultiplier: 0.7 },
+    { id: 'mcdonalds-franchise', icon: '🍟', name: 'McDonalds Franchise', cost: 1_500_000, upkeep: 45_000, income: 210_000, maxPurchases: 120, resaleMultiplier: 0.55 },
+    { id: 'mansion', icon: '🏰', name: 'Mansion', cost: 45_000_000, upkeep: 850_000, income: 0, maxPurchases: 12, resaleMultiplier: 0.5 },
+    { id: 'skyscraper', icon: '🏙️', name: 'Skyscraper', cost: 850_000_000, upkeep: 12_000_000, income: 28_000_000, maxPurchases: 10, resaleMultiplier: 0.58 },
+    { id: 'cruise-ship', icon: '🛳️', name: 'Cruise Ship', cost: 930_000_000, upkeep: 22_000_000, income: 34_000_000, maxPurchases: 8, resaleMultiplier: 0.52 },
   ],
-  'Mega Purchases': [
-    { id: 'space-program', icon: '🚀', name: 'Space Program', cost: 42_000_000_000, upkeep: 2_000_000_000, income: 480_000_000 },
-    { id: 'city', icon: '🏙️', name: 'Small City', cost: 26_000_000_000, upkeep: 1_100_000_000, income: 320_000_000 },
-    { id: 'nuclear-reactor', icon: '⚛️', name: 'Nuclear Reactor', cost: 12_000_000_000, upkeep: 700_000_000, income: 180_000_000 },
+  'Mega Experiences': [
+    { id: 'superbowl-ad', icon: '📣', name: 'Superbowl Ad', cost: 5_250_000, upkeep: 0, income: 0, maxPurchases: 25, onPurchaseOutcome: { type: 'campaign', chance: 0.42, winMinMultiplier: 0.2, winMaxMultiplier: 1.15, lossMinMultiplier: 0.08, lossMaxMultiplier: 0.55, successLabel: 'The campaign goes viral.', failureLabel: 'The ad underperforms.' } },
+    { id: 'yacht', icon: '🛥️', name: 'Yacht', cost: 7_500_000, upkeep: 180_000, income: 0, maxPurchases: 15, resaleMultiplier: 0.46 },
+    { id: 'm1-abrams', icon: '🪖', name: 'M1 Abrams', cost: 8_000_000, upkeep: 220_000, income: 0, maxPurchases: 10, resaleMultiplier: 0.4 },
+    { id: 'formula-1-car', icon: '🏁', name: 'Formula 1 Car', cost: 15_000_000, upkeep: 360_000, income: 0, maxPurchases: 12, resaleMultiplier: 0.42 },
+    { id: 'apache-helicopter', icon: '🚁', name: 'Apache Helicopter', cost: 31_000_000, upkeep: 780_000, income: 0, maxPurchases: 10, resaleMultiplier: 0.38 },
+    { id: 'make-a-movie', icon: '🎥', name: 'Make a Movie', cost: 100_000_000, upkeep: 0, income: 0, maxPurchases: 12, onPurchaseOutcome: { type: 'movie', chance: 0.34, winMinMultiplier: 0.5, winMaxMultiplier: 2.6, lossMinMultiplier: 0.05, lossMaxMultiplier: 0.35, successLabel: 'It becomes a hit.', failureLabel: 'It flops at the box office.' } },
+    { id: 'boeing-747', icon: '✈️', name: 'Boeing 747', cost: 148_000_000, upkeep: 3_400_000, income: 0, maxPurchases: 10, resaleMultiplier: 0.48 },
+    { id: 'mona-lisa', icon: '🖼️', name: 'Mona Lisa', cost: 780_000_000, upkeep: 0, income: 0, maxPurchases: 1, resaleMultiplier: 0.9 },
+    { id: 'nba-team', icon: '🏀', name: 'NBA Team', cost: 2_120_000_000, upkeep: 26_000_000, income: 36_000_000, maxPurchases: 20, onPurchaseOutcome: { type: 'sports', baseChance: 0.08, chancePerOwned: 0.025, maxChance: 0.58, winMinMultiplier: 0.08, winMaxMultiplier: 0.38, lossMinMultiplier: 0.01, lossMaxMultiplier: 0.08, successLabel: 'Deep playoff run!', failureLabel: 'Early playoff exit.' } },
   ],
 };
 
-const CHARITY_ACTIVITY_IDS = new Set(['charity-donation']);
+const CHARITY_ACTIVITY_IDS = new Set();
 
 // ============================================
 // STOCK MARKET
@@ -164,8 +186,19 @@ function getIncomeBonus() {
   return 1.0;
 }
 
+function getTotalPassiveIncome() {
+  let total = 0;
+  for (const assetId in gameState.assets) {
+    const item = findPurchaseById(assetId);
+    if (item && item.income > 0) {
+      total += item.income * gameState.assets[assetId].count;
+    }
+  }
+  return total;
+}
+
 function getDailyIncome() {
-  return GAME_CONFIG.BASE_DAILY_INCOME * getIncomeBonus();
+  return (GAME_CONFIG.BASE_DAILY_INCOME + getTotalPassiveIncome()) * getIncomeBonus();
 }
 
 function getTotalSpent() {
@@ -199,8 +232,10 @@ function getTotalAssetValue() {
   for (const assetId in gameState.assets) {
     const item = findPurchaseById(assetId);
     if (item) {
-      // Heavy depreciation makes spending meaningfully reduce net worth/score.
-      value += item.cost * GAME_CONFIG.ASSET_RESALE_MULTIPLIER * gameState.assets[assetId].count;
+      const resaleMultiplier = typeof item.resaleMultiplier === 'number'
+        ? item.resaleMultiplier
+        : GAME_CONFIG.ASSET_RESALE_MULTIPLIER;
+      value += item.cost * resaleMultiplier * gameState.assets[assetId].count;
     }
   }
   return value;
@@ -235,6 +270,29 @@ function findPurchaseById(itemId) {
 
 function canAfford(cost) {
   return gameState.cash >= cost;
+}
+
+function getOwnedCount(itemId) {
+  return gameState.assets[itemId]?.count || 0;
+}
+
+function hasReachedMaxPurchases(item) {
+  return Number.isFinite(Number(item?.maxPurchases))
+    && getOwnedCount(item.id) >= Number(item.maxPurchases);
+}
+
+function applyCashDelta(amount) {
+  const safeAmount = Number(amount) || 0;
+  if (!safeAmount) return;
+  gameState.cash += safeAmount;
+  if (gameState.cash < 0) {
+    gameState.debt += Math.abs(gameState.cash);
+    gameState.cash = 0;
+  }
+}
+
+function rollRange(min, max) {
+  return min + Math.random() * (max - min);
 }
 
 function isCoolingDown(type, id) {
@@ -412,6 +470,11 @@ async function purchase(itemId) {
     return false;
   }
 
+  if (hasReachedMaxPurchases(item)) {
+    showGameMessage(`Max purchases reached for ${item.name}.`, 'Purchase Limit', { autoCloseMs: 1800 });
+    return false;
+  }
+
   // Check affordability
   if (!canAfford(item.cost)) {
     showGameMessage('Insufficient funds!', 'Purchase Failed');
@@ -431,6 +494,8 @@ async function purchase(itemId) {
     gameState.assets[itemId] = { count: 0, totalUpkeep: 0 };
   }
   gameState.assets[itemId].count += 1;
+  recordPurchase(item);
+  const ownedCount = gameState.assets[itemId].count;
 
   // Increase cooldowns on larger purchases, with optional per-item override.
   let cooldown = 0;
@@ -471,7 +536,18 @@ async function purchase(itemId) {
     gameState.isCharityCutsceneRunning = false;
   }
 
+  const purchaseOutcome = resolvePurchaseOutcome(item, ownedCount);
+  if (purchaseOutcome) {
+    applyCashDelta(purchaseOutcome.payout);
+    showGameMessage(
+      `${purchaseOutcome.title}: ${purchaseOutcome.summary} ${purchaseOutcome.success ? `You earn back ${formatCurrency(purchaseOutcome.payout)}.` : `You only recover ${formatCurrency(purchaseOutcome.payout)}.`}`,
+      purchaseOutcome.success ? 'Return Hit' : 'Return Miss',
+      { autoCloseMs: 2400 }
+    );
+  }
+
   forceRender();
+  checkForWin();
   return true;
 }
 
@@ -482,6 +558,89 @@ function getCharitySwingAmount() {
   const buckets = Math.floor((max - min) / step);
   const n = Math.floor(Math.random() * (buckets + 1));
   return min + n * step;
+}
+
+function resolvePurchaseOutcome(item, ownedCount) {
+  const profile = item?.onPurchaseOutcome;
+  if (!profile) return null;
+
+  let successChance = Number(profile.chance) || 0;
+  if (profile.type === 'sports') {
+    successChance = Math.min(
+      Number(profile.maxChance) || 1,
+      (Number(profile.baseChance) || 0) + (Math.max(0, ownedCount - 1) * (Number(profile.chancePerOwned) || 0))
+    );
+  }
+
+  const success = Math.random() < successChance;
+  const multiplier = success
+    ? rollRange(Number(profile.winMinMultiplier) || 0, Number(profile.winMaxMultiplier) || 0)
+    : rollRange(Number(profile.lossMinMultiplier) || 0, Number(profile.lossMaxMultiplier) || 0);
+  const payout = Math.round(item.cost * multiplier);
+
+  return {
+    success,
+    payout,
+    title: item.name,
+    summary: success ? profile.successLabel : profile.failureLabel,
+  };
+}
+
+function recordPurchase(item) {
+  const existing = gameState.purchaseHistory.find((entry) => entry.id === item.id);
+  if (existing) {
+    existing.count += 1;
+    existing.totalSpent += item.cost;
+    existing.lastPurchasedAt = Date.now();
+    return;
+  }
+  gameState.purchaseHistory.push({
+    id: item.id,
+    icon: item.icon,
+    name: item.name,
+    count: 1,
+    totalSpent: item.cost,
+    lastPurchasedAt: Date.now(),
+  });
+}
+
+function buildReceiptMarkup() {
+  return gameState.purchaseHistory
+    .slice()
+    .sort((left, right) => right.totalSpent - left.totalSpent)
+    .map((entry) => `
+      <div class="receipt-row">
+        <div class="receipt-item">
+          <span class="receipt-icon">${entry.icon}</span>
+          <div>
+            <strong>${entry.name}</strong>
+            <span>x${entry.count}</span>
+          </div>
+        </div>
+        <span class="receipt-total">${formatCurrency(entry.totalSpent)}</span>
+      </div>
+    `)
+    .join('');
+}
+
+function showReceipt() {
+  const overlay = document.getElementById('receiptOverlay');
+  const summary = document.getElementById('receiptSummary');
+  const list = document.getElementById('receiptList');
+  if (!overlay || !summary || !list) return;
+  const totalSpent = gameState.purchaseHistory.reduce((sum, entry) => sum + entry.totalSpent, 0);
+  summary.textContent = `You spent the full ${formatCurrency(GAME_CONFIG.STARTING_MONEY)}. Final total spent: ${formatCurrency(totalSpent)}.`;
+  list.innerHTML = buildReceiptMarkup() || '<p class="empty-state">No purchases recorded.</p>';
+  overlay.classList.remove('hidden');
+}
+
+function checkForWin() {
+  if (gameState.hasWon) return;
+  if (gameState.cash > 0 || gameState.debt > 0) return;
+  gameState.hasWon = true;
+  gameState.isGameStarted = false;
+  forceRender();
+  showReceipt();
 }
 
 // ============================================
@@ -744,6 +903,18 @@ function renderPurchases() {
       const cooldownRemaining = getCooldownRemaining('purchases', item.id);
       const cooldownText =
         cooldownRemaining > 0 ? ` (${(cooldownRemaining / 1000).toFixed(1)}s)` : '';
+      const ownedCount = getOwnedCount(item.id);
+      const maxedOut = hasReachedMaxPurchases(item);
+      const maxLabel = Number.isFinite(Number(item.maxPurchases))
+        ? `${ownedCount}/${item.maxPurchases}`
+        : `${ownedCount}`;
+      const returnLabel = item.onPurchaseOutcome
+        ? (item.onPurchaseOutcome.type === 'movie'
+          ? 'Hit or flop'
+          : item.onPurchaseOutcome.type === 'sports'
+            ? 'Win chance scales'
+            : 'Chance return')
+        : '';
 
       btn.innerHTML = `
         <div class="btn-icon">${item.icon}</div>
@@ -751,10 +922,13 @@ function renderPurchases() {
         <div class="btn-cost">${formatCurrency(item.cost)}</div>
         ${item.upkeep > 0 ? `<div class="btn-upkeep">-${formatCurrency(item.upkeep)}/day</div>` : ''}
         ${item.income > 0 ? `<div class="btn-income">+${formatCurrency(item.income)}/day</div>` : ''}
+        <div class="btn-owned">Owned ${maxLabel}</div>
+        ${returnLabel ? `<div class="btn-income">${returnLabel}</div>` : ''}
         <div class="btn-cooldown" data-purchase-cooldown="${item.id}">${cooldownText}</div>
       `;
 
       btn.addEventListener('click', () => purchase(item.id));
+      btn.disabled = btn.disabled || maxedOut;
       itemsGrid.appendChild(btn);
     });
 
@@ -824,12 +998,13 @@ function refreshLiveUi() {
 
   document.querySelectorAll('[data-purchase-id]').forEach((button) => {
     const itemId = button.dataset.purchaseId;
+    const item = findPurchaseById(itemId);
     const remaining = getCooldownRemaining('purchases', itemId);
     const cooldownLabel = button.querySelector(`[data-purchase-cooldown="${itemId}"]`);
     if (cooldownLabel) {
       cooldownLabel.textContent = remaining > 0 ? `(${(remaining / 1000).toFixed(1)}s)` : '';
     }
-    button.disabled = remaining > 0;
+    button.disabled = remaining > 0 || (item ? hasReachedMaxPurchases(item) : false);
   });
 
   document.querySelectorAll('.buy-btn[data-symbol]').forEach((button) => {
@@ -880,7 +1055,10 @@ function renderAssets() {
         <span class="asset-name">${item.icon} ${item.name}</span>
         <span style="color: #888; margin-left: 8px;">×${count}</span>
       </div>
-      ${item.upkeep > 0 ? `<span class="asset-upkeep">-${formatCurrency(item.upkeep * count)}/day</span>` : ''}
+      <div class="asset-meta">
+        ${item.income > 0 ? `<span class="asset-income">+${formatCurrency(item.income * count)}/day</span>` : ''}
+        ${item.upkeep > 0 ? `<span class="asset-upkeep">-${formatCurrency(item.upkeep * count)}/day</span>` : ''}
+      </div>
     `;
 
     container.appendChild(assetDiv);
@@ -943,6 +1121,8 @@ function init() {
   const helpMessage = document.getElementById('helpMessage');
   const gameMessageClose = document.getElementById('gameMessageClose');
   const gameMessageOverlay = document.getElementById('gameMessageOverlay');
+  const receiptClose = document.getElementById('receiptClose');
+  const receiptOverlay = document.getElementById('receiptOverlay');
 
   if (gameMessageClose) {
     gameMessageClose.addEventListener('click', hideGameMessage);
@@ -952,6 +1132,20 @@ function init() {
     gameMessageOverlay.addEventListener('click', (event) => {
       if (event.target === gameMessageOverlay) {
         hideGameMessage();
+      }
+    });
+  }
+
+  if (receiptClose) {
+    receiptClose.addEventListener('click', () => {
+      receiptOverlay?.classList.add('hidden');
+    });
+  }
+
+  if (receiptOverlay) {
+    receiptOverlay.addEventListener('click', (event) => {
+      if (event.target === receiptOverlay) {
+        receiptOverlay.classList.add('hidden');
       }
     });
   }
@@ -970,12 +1164,23 @@ function init() {
       gameState.sessionStartTime = Date.now();
       gameState.currentDay = 1;
       gameState.lastStockUpdate = 0;
-      gameState.categoryOpenState['General Purchases'] = true;
+      gameState.cash = GAME_CONFIG.STARTING_MONEY;
+      gameState.assets = {};
+      gameState.investments = {};
+      gameState.stocks = {};
+      gameState.debt = 0;
+      gameState.purchaseHistory = [];
+      gameState.hasWon = false;
+      gameState.cooldowns = { purchases: {}, investments: {} };
+      gameState.stockSellUnlockAt = {};
+      gameState.teslaWipeTriggered = false;
+      gameState.categoryOpenState = { 'Daily Stuff': true };
       initializeStocks();
 
       if (startPanel) {
         startPanel.classList.add('hidden');
       }
+      receiptOverlay?.classList.add('hidden');
 
       forceRender();
       refreshLiveUi();

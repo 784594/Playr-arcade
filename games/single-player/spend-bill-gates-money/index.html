@@ -19,7 +19,7 @@
           <button id="startGameButton" class="button primary" type="button">Start Game</button>
         </div>
         <p id="helpMessage" class="help-message" hidden>
-          Target run length is around 8 minutes, but strong choices can finish earlier. Stocks refresh every 10 seconds. Each stock can be bought once every 30 seconds, and shares must be held for 10 seconds before selling.
+          Spend the full $100B to win. Some purchases have max ownership caps, some assets pay daily returns, and a few risky buys can hit or flop. Stocks refresh every 10 seconds. Each stock can be bought once every 30 seconds, and shares must be held for 10 seconds before selling.
         </p>
       </div>
     </div>
@@ -108,6 +108,15 @@
           <div class="charity-reel-pointer">▶</div>
         </div>
         <p id="charityCutsceneStatus" class="charity-cutscene-status">Spinning...</p>
+      </div>
+    </div>
+
+    <div id="receiptOverlay" class="game-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="receiptTitle">
+      <div class="game-modal-card receipt-card">
+        <h3 id="receiptTitle">Receipt</h3>
+        <p id="receiptSummary">You spent the full fortune.</p>
+        <div id="receiptList" class="receipt-list"></div>
+        <button id="receiptClose" class="button primary" type="button">Close</button>
       </div>
     </div>
   </div>

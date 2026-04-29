@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-29-spend-bill-gates-overhaul',
+      title: 'Spend Bill Gates’ Money overhaul',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-29T22:05:00-04:00',
+      summary: 'The spending catalog now uses a much larger item list with caps, passive-return assets, risky payoff purchases, and a final receipt when the full $100B is spent.',
+      details: [
+        'New items were added across everyday goods, luxury buys, transport, property, and huge purchases, with max-purchase limits to keep the run readable and balanced.',
+        'Some items now generate daily returns while a few major purchases can hit or flop, and finishing the run now opens a receipt showing what was bought to spend the full fortune.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-29-security-improvements',
       title: 'Security improvements',
       category: 'update',
