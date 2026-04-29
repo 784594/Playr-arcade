@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Hextris module scaffold for PlayR." />
+  <meta name="description" content="Hextris survival inside PlayR with fast rotations, falling lane blocks, and combo clears." />
   <title>Hextris | PlayR</title>
   <link rel="stylesheet" href="../../shared/game-shell.css" />
   <link rel="stylesheet" href="game.css" />
@@ -13,60 +13,69 @@
   <script defer src="game.js"></script>
 </head>
 <body>
-  <div class="page" id="gameRoot" data-game-title="Hextris" data-metric="survival_time_seconds" data-direction="desc" data-scope="global">
+  <div class="page hextris-page" id="gameRoot" data-game-title="Hextris" data-metric="survival_time_seconds" data-direction="desc" data-scope="global">
     <div class="top">
       <a class="back-link" href="/">Back to hub</a>
       <div class="board-meta">
         <span class="tag">Type: single-player</span>
-        <span class="tag">Controls: Arrow keys</span>
+        <span class="tag">Controls: A/D or Left/Right</span>
+        <span class="tag">Fast drop: S or Down Arrow</span>
       </div>
     </div>
 
-    <header class="header">
-      <p class="tag">PlayR Game Module</p>
+    <header class="header hero">
+      <p class="eyebrow">PlayR Survival Module</p>
       <h1>Hextris</h1>
-      <div class="meta">
-        <span class="tag">Leaderboard scope: global</span>
-        <span class="tag">Metric: survival_time_seconds</span>
-        <span class="tag">Direction: desc</span>
-      </div>
-      <p id="gameStatus">Loading scaffold...</p>
+      <p class="hero-copy">Rotate the hex core, catch incoming lane blocks, and clear matching arcs before the center gets buried. Survive longer and the fall speed keeps climbing.</p>
+      <p id="gameStatus" class="status-line">Press Start or tap Space to begin.</p>
     </header>
 
-    <section class="main-grid">
-      <aside class="panel">
-        <h2>Build Checklist</h2>
-        <ul>
-          <li>Implement game state and rule engine.</li>
-          <li>Add full UI flow for inputs and rounds.</li>
-          <li>Wire score submit + fetch for global rankings.</li>
-          <li>Add anti-cheat validations for submissions.</li>
-        </ul>
-      </aside>
-
-      <article class="play-area">
-        <h2>Game Surface</h2>
+    <section class="hextris-layout">
+      <article class="play-area hextris-stage-card">
+        <div class="hextris-canvas-shell">
+          <canvas id="hextrisCanvas" width="760" height="760" aria-label="Hextris game board"></canvas>
+        </div>
+        <div class="hextris-action-row">
+          <button class="action-btn action-btn-primary" id="startBtn" type="button">Start Run</button>
+          <button class="action-btn" id="restartBtn" type="button">Restart</button>
+        </div>
       </article>
-    </section>
 
-    <section class="leaderboard" style="margin-top: 14px;">
-      <h2>Leaderboard Preview</h2>
-      <table class="table" aria-label="Hextris leaderboard preview">
-        <thead>
-          <tr>
-            <th>Rank</th>
-            <th>Player</th>
-            <th>survival_time_seconds</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td>#1</td><td>AtlasOne</td><td>--</td></tr>
-          <tr><td>#2</td><td>ArcRunner</td><td>--</td></tr>
-          <tr><td>#3</td><td>NeonFox</td><td>--</td></tr>
-        </tbody>
-      </table>
+      <aside class="panel hextris-sidebar">
+        <section class="hextris-card">
+          <h2>Run Stats</h2>
+          <div class="hextris-stat-grid">
+            <p><span>Score</span><strong id="scoreValue">0</strong></p>
+            <p><span>Time</span><strong id="timeValue">0.0s</strong></p>
+            <p><span>Speed</span><strong id="speedValue">1.00x</strong></p>
+            <p><span>Best</span><strong id="bestValue">0.0s</strong></p>
+          </div>
+        </section>
+
+        <section class="hextris-card">
+          <h2>How To Play</h2>
+          <ul class="hextris-list">
+            <li>Rotate left with <strong>A</strong> or <strong>Left Arrow</strong>.</li>
+            <li>Rotate right with <strong>D</strong> or <strong>Right Arrow</strong>.</li>
+            <li>Hold <strong>S</strong> or <strong>Down Arrow</strong> to make incoming blocks fall faster.</li>
+            <li>Match 3 or more connected top blocks of the same colour around the ring to clear them.</li>
+            <li>If any lane stack reaches the center cap, the run ends.</li>
+          </ul>
+        </section>
+
+        <section class="hextris-card">
+          <h2>Clear Rules</h2>
+          <div class="hextris-legend">
+            <span class="hextris-swatch hextris-swatch-pink"></span>
+            <span>Connected same-colour arcs clear together.</span>
+            <span class="hextris-swatch hextris-swatch-blue"></span>
+            <span>Chain clears give bigger score bursts.</span>
+            <span class="hextris-swatch hextris-swatch-gold"></span>
+            <span>Survival time is the main leaderboard metric.</span>
+          </div>
+        </section>
+      </aside>
     </section>
   </div>
 </body>
 </html>
-
