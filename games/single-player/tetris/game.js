@@ -527,11 +527,10 @@
 	}
 
 	function clearRows(rows) {
-		const orderedRows = rows.slice().sort((a, b) => b - a);
-		for (const row of orderedRows) {
-			state.board.splice(row, 1);
-			state.board.unshift(Array(COLS).fill(null));
-		}
+		const rowsToClear = new Set(rows);
+		const remainingRows = state.board.filter((_, rowIndex) => !rowsToClear.has(rowIndex));
+		const newRows = Array.from({ length: rows.length }, () => Array(COLS).fill(null));
+		state.board = newRows.concat(remainingRows);
 	}
 
 	function finishClearAnimation() {

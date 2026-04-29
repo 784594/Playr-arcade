@@ -22,6 +22,9 @@
     if (!document.body || document.querySelector('[data-site-footer]')) {
       return;
     }
+    if (window.location.pathname === '/' || window.location.pathname === '/index.html') {
+      return;
+    }
 
     ensureFooterStyles();
 
