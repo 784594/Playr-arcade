@@ -1427,7 +1427,7 @@
       updateStatus('Log in to save a custom banner.');
       return;
     }
-    const exportData = getExportData('png');
+    const exportData = getExportData('webp');
     const stamp = safeNow();
     const entry = {
       id: `custom-banner-${stamp}`,
@@ -1438,14 +1438,18 @@
       createdAt: stamp,
       updatedAt: stamp,
     };
-    const result = persistBannerLocally(entry);
+    const result = window.PlayrAuth?.saveCustomBanner
+      ? await window.PlayrAuth.saveCustomBanner(entry)
+      : persistBannerLocally(entry);
     if (!result.ok) {
       updateStatus(result.reason || 'That banner could not be saved.');
       return;
     }
     ui.saveOverlay.hidden = false;
     try {
-      await persistBannerToCloud();
+      if (!window.PlayrAuth?.saveCustomBanner) {
+        await persistBannerToCloud();
+      }
       clearDirty();
       closeFinishOverlay();
       state.lastSavedAt = safeNow();

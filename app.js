@@ -1510,10 +1510,11 @@ function applySelectedBannerPreset(presetId) {
     window.PlayrProgression.importProfile(account, profile, { prefer: 'remote', emit: true });
   }
   renderBannerSettings(account);
+  void syncCurrentAccountProfileToFirestore({ immediate: true });
   setSettingsStatus('Profile banner updated.', 'success');
 }
 
-function persistProfileThemeUpdate(account, nextTheme, successMessage = 'Profile banner updated.') {
+async function persistProfileThemeUpdate(account, nextTheme, successMessage = 'Profile banner updated.') {
   if (!account?.uid) return false;
   const profile = mergeCloudProfileShape(authState.profiles[account.uid] || {});
   profile.profileTheme = {
@@ -1526,6 +1527,10 @@ function persistProfileThemeUpdate(account, nextTheme, successMessage = 'Profile
     window.PlayrProgression.importProfile(account, profile, { prefer: 'remote', emit: true });
   }
   renderBannerSettings(account);
+  window.dispatchEvent(new CustomEvent('playr-profiles-updated', {
+    detail: { uid: account.uid },
+  }));
+  await syncCurrentAccountProfileToFirestore({ immediate: true });
   setSettingsStatus(successMessage, 'success');
   return true;
 }
@@ -1547,7 +1552,7 @@ function applySavedCustomBanner(customBannerId) {
     setSettingsStatus('This is a VIP option only! Reach 25 qualified referrals to unlock VIP and use custom banners.', 'info');
     return;
   }
-  persistProfileThemeUpdate(account, {
+  void persistProfileThemeUpdate(account, {
     banner: {
       type: 'vip-custom',
       value: customBanner.dataUrl,
@@ -1570,13 +1575,13 @@ function deleteSavedCustomBanner(customBannerId) {
   const nextBanner = profile.profileTheme.banner?.customBannerId === safeId
     ? { ...getDefaultProfileBanner(), customBannerId: '', updatedAt: Date.now() }
     : profile.profileTheme.banner;
-  persistProfileThemeUpdate(account, {
+  void persistProfileThemeUpdate(account, {
     banner: nextBanner,
     customBanners: nextCustomBanners,
   }, 'Custom banner removed.');
 }
 
-function saveNewCustomBanner({ label = 'Custom banner', dataUrl = '', width = 0, height = 0 } = {}) {
+async function saveNewCustomBanner({ label = 'Custom banner', dataUrl = '', width = 0, height = 0 } = {}) {
   const account = getCurrentAccount();
   if (!account?.uid) {
     return { ok: false, reason: 'Log in to save a custom banner.' };
@@ -1599,9 +1604,12 @@ function saveNewCustomBanner({ label = 'Custom banner', dataUrl = '', width = 0,
     createdAt: stamp,
     updatedAt: stamp,
   };
-  persistProfileThemeUpdate(account, {
+  const saved = await persistProfileThemeUpdate(account, {
     customBanners: [...current, bannerEntry],
   }, 'Custom banner saved to your account.');
+  if (!saved) {
+    return { ok: false, reason: 'That banner image could not be saved.' };
+  }
   return { ok: true, banner: bannerEntry, vipRequired: !isCurrentAccountVip(account) };
 }
 
@@ -3741,6 +3749,9 @@ function exposePlayrAuth() {
     },
     shouldShowAds() {
       return !isCurrentAccountVip();
+    },
+    async saveCustomBanner(entry = {}) {
+      return saveNewCustomBanner(entry);
     },
   };
 

@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-28-custom-banner-cloud-save-fix',
+      title: 'Custom banner save sync fix',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-28T23:55:00-04:00',
+      summary: 'Custom banners now save through the shared account profile flow and push an immediate cloud sync so the Settings banner list can see them reliably.',
+      details: [
+        'Draw It now saves custom banners through the same shared profile-update path the main Settings screen already uses instead of relying on a parallel local-only flow.',
+        'Profile-theme banner changes and new custom-banner saves now trigger an immediate Firestore sync, and saved banner art uses a lighter export format to make the cloud-backed save path more reliable.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-28-draw-it-object-eraser-and-undo',
       title: 'Draw It object eraser and undo support',
       category: 'update',
