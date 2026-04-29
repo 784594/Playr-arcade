@@ -648,6 +648,20 @@ function getCustomProfileBanners(profile = {}) {
     : [];
 }
 
+function getEditableCurrentProfile(account = getCurrentAccount()) {
+  if (!account?.uid) return mergeCloudProfileShape({});
+  const localProfile = mergeCloudProfileShape(authState.profiles[account.uid] || {});
+  const exported = getProgressionProfileExport(account);
+  if (!exported || typeof exported !== 'object') {
+    return localProfile;
+  }
+  return mergeCloudProfileShape({
+    ...localProfile,
+    ...exported,
+    profileTheme: mergeProfileThemeState(localProfile.profileTheme, exported.profileTheme),
+  });
+}
+
 function getModerationPresetById(presetId) {
   return MODERATION_DURATION_PRESETS.find((preset) => preset.id === String(presetId || '').trim()) || MODERATION_DURATION_PRESETS[1];
 }
@@ -1510,7 +1524,7 @@ function renderBannerSettings(account = getCurrentAccount()) {
   ensureBannerSettingsCard();
   if (!profileUi.settingsBannerGrid) return;
   authState.profiles = readStoredProfiles();
-  const profile = mergeCloudProfileShape(authState.profiles[account?.uid] || {});
+  const profile = getEditableCurrentProfile(account);
   const activeBanner = profile.profileTheme.banner;
   const customBanners = getCustomProfileBanners(profile);
   profileUi.settingsBannerGrid.innerHTML = PROFILE_BANNER_PRESETS.map((preset) => {
@@ -1574,7 +1588,7 @@ function applySelectedBannerPreset(presetId) {
 
 async function persistProfileThemeUpdate(account, nextTheme, successMessage = 'Profile banner updated.') {
   if (!account?.uid) return false;
-  const profile = mergeCloudProfileShape(authState.profiles[account.uid] || {});
+  const profile = getEditableCurrentProfile(account);
   profile.profileTheme = {
     ...(profile.profileTheme && typeof profile.profileTheme === 'object' ? profile.profileTheme : {}),
     ...nextTheme,
@@ -1599,7 +1613,7 @@ function applySavedCustomBanner(customBannerId) {
     setSettingsStatus('Log in to update your profile banner.', 'danger');
     return;
   }
-  const profile = mergeCloudProfileShape(authState.profiles[account.uid] || {});
+  const profile = getEditableCurrentProfile(account);
   const customBanner = getCustomProfileBanners(profile).find((entry) => entry.id === String(customBannerId || '').trim());
   if (!customBanner) {
     setSettingsStatus('That custom banner could not be found.', 'danger');
@@ -1627,7 +1641,7 @@ function deleteSavedCustomBanner(customBannerId) {
     setSettingsStatus('Log in to manage custom banners.', 'danger');
     return;
   }
-  const profile = mergeCloudProfileShape(authState.profiles[account.uid] || {});
+  const profile = getEditableCurrentProfile(account);
   const safeId = String(customBannerId || '').trim();
   const nextCustomBanners = getCustomProfileBanners(profile).filter((entry) => entry.id !== safeId);
   const nextBanner = profile.profileTheme.banner?.customBannerId === safeId
@@ -1647,7 +1661,7 @@ async function saveNewCustomBanner({ label = 'Custom banner', dataUrl = '', widt
   if (!String(dataUrl || '').startsWith('data:image/')) {
     return { ok: false, reason: 'That banner image could not be saved.' };
   }
-  const profile = mergeCloudProfileShape(authState.profiles[account.uid] || {});
+  const profile = getEditableCurrentProfile(account);
   const current = getCustomProfileBanners(profile);
   if (current.length >= CUSTOM_PROFILE_BANNER_LIMIT) {
     return { ok: false, reason: `You can save up to ${CUSTOM_PROFILE_BANNER_LIMIT} custom banners. Delete one in settings first.` };
@@ -3631,7 +3645,7 @@ const mineStateData = {
 };
 
 function getCurrentAccount() {
-  const user = authState.currentUser;
+  const user = authState.currentUser || firebaseAuth?.currentUser || null;
   if (!user) return null;
 
   const identifier = user.email || user.phoneNumber || user.uid;

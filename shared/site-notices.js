@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-29-custom-banner-settings-sync-fix',
+      title: 'Custom banners now stay in Settings',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-29T13:52:00-04:00',
+      summary: 'Saved custom banners now persist more reliably in the Settings banner picker instead of disappearing after profile sync or cache merges.',
+      details: [
+        'The profile merge path now preserves newer local custom-banner entries instead of letting an older incoming snapshot replace the entire saved banner list.',
+        'The Settings banner picker now prefers the freshest exported progression/profile state, so newly saved custom banners are more likely to appear as applyable options right away.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-29-hextris-side-lock-and-overlay-polish',
       title: 'Hextris side-lock and overlay polish',
       category: 'update',

@@ -600,6 +600,46 @@
     return merged;
   }
 
+  function mergeCustomBannerEntries(existingEntries = [], incomingEntries = []) {
+    const mergedById = new Map();
+    [...existingEntries, ...incomingEntries].forEach((entry) => {
+      if (!entry || typeof entry !== 'object') return;
+      const id = String(entry.id || '').trim();
+      const dataUrl = String(entry.dataUrl || '').trim();
+      if (!id || !dataUrl) return;
+      const normalized = {
+        id,
+        label: normalizeName(entry.label || 'Custom banner'),
+        dataUrl,
+        width: Math.max(1, Number(entry.width) || 0),
+        height: Math.max(1, Number(entry.height) || 0),
+        createdAt: Math.max(0, Number(entry.createdAt) || 0),
+        updatedAt: Math.max(0, Number(entry.updatedAt) || 0),
+      };
+      const previous = mergedById.get(id);
+      if (!previous || normalized.updatedAt >= previous.updatedAt) {
+        mergedById.set(id, normalized);
+      }
+    });
+    return Array.from(mergedById.values())
+      .sort((left, right) => Math.max(0, right.updatedAt || right.createdAt) - Math.max(0, left.updatedAt || left.createdAt))
+      .slice(0, CUSTOM_PROFILE_BANNER_LIMIT);
+  }
+
+  function mergeProfileThemeState(existingTheme = {}, incomingTheme = {}) {
+    const existingBanner = existingTheme?.banner && typeof existingTheme.banner === 'object' ? existingTheme.banner : {};
+    const incomingBanner = incomingTheme?.banner && typeof incomingTheme.banner === 'object' ? incomingTheme.banner : {};
+    const existingBannerUpdatedAt = Math.max(0, Number(existingBanner.updatedAt) || 0);
+    const incomingBannerUpdatedAt = Math.max(0, Number(incomingBanner.updatedAt) || 0);
+    return {
+      banner: incomingBannerUpdatedAt >= existingBannerUpdatedAt ? incomingBanner : existingBanner,
+      customBanners: mergeCustomBannerEntries(
+        Array.isArray(existingTheme?.customBanners) ? existingTheme.customBanners : [],
+        Array.isArray(incomingTheme?.customBanners) ? incomingTheme.customBanners : [],
+      ),
+    };
+  }
+
   function resolveProfileKey(record, profiles = readProfiles()) {
     if (!record) return null;
 
@@ -758,6 +798,7 @@
       ...remoteProfile,
       ...record,
     });
+    const mergedTheme = mergeProfileThemeState(existingProfile.profileTheme, remoteProfile.profileTheme);
     const mergedProfile = ensureProfileShape({
       ...existingProfile,
       ...remoteProfile,
@@ -771,6 +812,7 @@
       progressionUpdatedAt: remoteStamp || localStamp || Date.now(),
       updatedAt: Math.max(remoteStamp, Number(remoteProfile.updatedAt) || 0, Number(existingProfile.updatedAt) || 0),
       createdAt: existingProfile.createdAt || Number(remoteProfile.createdAt) || Date.now(),
+      profileTheme: mergedTheme,
       progression: remoteProfile.progression && typeof remoteProfile.progression === 'object'
         ? remoteProfile.progression
         : existingProfile.progression,
