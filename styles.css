@@ -1272,6 +1272,14 @@ a {
   margin-left: auto;
 }
 
+.profile-settings-gear {
+  min-width: 42px;
+  min-height: 42px;
+  padding: 0 12px;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
 .profile-pill,
 .profile-warning-chip {
   display: inline-flex;

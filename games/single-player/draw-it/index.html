@@ -68,6 +68,11 @@
                 <canvas id="drawCanvas" aria-label="Drawing board"></canvas>
               </div>
             </div>
+            <div class="selection-action-grid canvas-action-grid">
+              <button id="groupSelectionBtn" class="action-btn" type="button" title="Bind selected items into one group">Group</button>
+              <button id="ungroupSelectionBtn" class="action-btn" type="button" title="Break the current group apart">Ungroup</button>
+              <button id="deleteSelectionBtn" class="action-btn action-btn-danger" type="button" title="Delete the selected items">Delete</button>
+            </div>
             <p class="draw-note" id="bannerModeNote" hidden>Banner mode reminder: if a saved custom banner is applied and later found to be offensive, the account can be banned.</p>
           </section>
 
@@ -107,6 +112,32 @@
               <p><span>Objects</span><strong id="strokeCountLabel">0</strong></p>
               <p><span>Last saved</span><strong id="lastSavedLabel">None yet</strong></p>
             </div>
+            <section class="background-panel animation-panel">
+              <div class="draw-card-head compact-draw-head">
+                <div>
+                  <p class="eyebrow">Animation</p>
+                  <h3>Selected objects</h3>
+                </div>
+              </div>
+              <div class="tool-stack compact-tool-stack">
+                <p class="draw-note" id="animationSummary">Select objects to add a simple loop animation.</p>
+                <label>
+                  Animation preset
+                  <select id="objectAnimationSelect">
+                    <option value="none">No animation</option>
+                    <option value="jump">Jump</option>
+                    <option value="shake">Shake</option>
+                    <option value="float">Float</option>
+                    <option value="pulse">Pulse</option>
+                    <option value="redraw">Redraw (drawn objects)</option>
+                  </select>
+                </label>
+                <div class="tool-inline-actions">
+                  <button id="applyObjectAnimationBtn" class="action-btn" type="button">Apply to selected</button>
+                  <button id="clearObjectAnimationBtn" class="action-btn" type="button">Clear animation</button>
+                </div>
+              </div>
+            </section>
           </section>
         </div>
 
@@ -211,38 +242,6 @@
                   </div>
                 </div>
               </section>
-              <section class="background-panel animation-panel">
-                <div class="draw-card-head compact-draw-head">
-                  <div>
-                    <p class="eyebrow">Animation</p>
-                    <h3>Selected objects</h3>
-                  </div>
-                </div>
-                <div class="tool-stack compact-tool-stack">
-                  <p class="draw-note" id="animationSummary">Select objects to add a simple loop animation.</p>
-                  <label>
-                    Animation preset
-                    <select id="objectAnimationSelect">
-                      <option value="none">No animation</option>
-                      <option value="jump">Jump</option>
-                      <option value="shake">Shake</option>
-                      <option value="float">Float</option>
-                      <option value="pulse">Pulse</option>
-                      <option value="redraw">Redraw (drawn objects)</option>
-                    </select>
-                  </label>
-                  <div class="tool-inline-actions">
-                    <button id="applyObjectAnimationBtn" class="action-btn" type="button">Apply to selected</button>
-                    <button id="clearObjectAnimationBtn" class="action-btn" type="button">Clear animation</button>
-                  </div>
-                  <p class="draw-note">To keep banners smooth, only 6 objects can animate at once and profile playback runs once when the profile opens.</p>
-                </div>
-              </section>
-              <div class="selection-action-grid">
-                <button id="groupSelectionBtn" class="action-btn" type="button" title="Bind selected items into one group">Group</button>
-                <button id="ungroupSelectionBtn" class="action-btn" type="button" title="Break the current group apart">Ungroup</button>
-                <button id="deleteSelectionBtn" class="action-btn action-btn-danger" type="button" title="Delete the selected items">Delete</button>
-              </div>
             </div>
           </section>
         </aside>
@@ -281,8 +280,9 @@
       <div class="actions">
         <button id="downloadBtn" class="action-btn action-btn-primary" type="button">Download</button>
         <button id="saveBannerBtn" class="action-btn" type="button" hidden>Save as custom banner</button>
+        <button id="applyBannerNowBtn" class="action-btn" type="button" hidden>Apply to profile now</button>
       </div>
-      <p class="draw-note" id="saveBannerHint" hidden>Saved banner art stays on your account. Applying it is a VIP-only option from Settings.</p>
+      <p class="draw-note" id="saveBannerHint" hidden>Saved banner art stays on your account. Applying it is a VIP-only option from your own profile settings.</p>
       <p class="draw-note">Animated custom banners save their motion scene and play once when a profile opens, keeping profile views lightweight.</p>
       <details class="draw-recents-toggle">
         <summary>Recent local drawings</summary>

@@ -149,7 +149,15 @@
   }
 
   function getCurrentAccount() {
-    const local = state.currentUser || getLocalCurrentUser();
+    const authUser = state.firebaseAuth?.currentUser
+      ? {
+          uid: state.firebaseAuth.currentUser.uid,
+          displayName: String(state.firebaseAuth.currentUser.displayName || getLocalCurrentUser()?.displayName || 'Player').slice(0, 24),
+          identifier: String(state.firebaseAuth.currentUser.email || state.firebaseAuth.currentUser.phoneNumber || state.firebaseAuth.currentUser.uid),
+          identifierType: state.firebaseAuth.currentUser.email ? 'email' : (state.firebaseAuth.currentUser.phoneNumber ? 'phone' : 'uid'),
+        }
+      : null;
+    const local = state.currentUser || authUser || getLocalCurrentUser();
     if (!local?.uid) return null;
     const profiles = readProfiles();
     const stored = profiles[local.uid] || {};
@@ -833,6 +841,7 @@
     });
     ui.bannerModeNote.hidden = mode !== 'profile-banner';
     ui.saveBannerBtn.hidden = !state.finishOpen || mode !== 'profile-banner';
+    if (ui.applyBannerNowBtn) ui.applyBannerNowBtn.hidden = !state.finishOpen || mode !== 'profile-banner';
     ui.saveBannerHint.hidden = mode !== 'profile-banner';
     renderBackgroundStops();
     renderScene();
@@ -1174,7 +1183,9 @@
     const currentlyAnimatedOutsideSelection = state.objects.filter((item) => !state.selectedIds.has(item.id) && isObjectAnimated(item)).length;
     const nextAnimatedSelected = animationType === 'none' ? 0 : selected.length;
     if ((currentlyAnimatedOutsideSelection + nextAnimatedSelected) > MAX_ANIMATED_OBJECTS) {
-      updateStatus(`To keep banners smooth, only ${MAX_ANIMATED_OBJECTS} objects can animate at once.`);
+      const message = `Only ${MAX_ANIMATED_OBJECTS} objects can animate at once. Clear one first, then try again.`;
+      updateStatus(message);
+      showToast(message);
       return;
     }
     pushHistorySnapshot();
@@ -1457,6 +1468,7 @@
     ui.finishOverlay.hidden = false;
     state.finishOpen = true;
     ui.saveBannerBtn.hidden = state.mode !== 'profile-banner';
+    if (ui.applyBannerNowBtn) ui.applyBannerNowBtn.hidden = state.mode !== 'profile-banner';
     ui.saveBannerHint.hidden = state.mode !== 'profile-banner';
     startFinishPreviewPlayback();
   }
@@ -1466,6 +1478,7 @@
     ui.finishOverlay.hidden = true;
     state.finishOpen = false;
     ui.saveBannerBtn.hidden = true;
+    if (ui.applyBannerNowBtn) ui.applyBannerNowBtn.hidden = true;
     ui.saveBannerHint.hidden = true;
   }
 
@@ -1678,21 +1691,88 @@
     }
   }
 
-  async function saveCurrentAsBanner() {
+  async function persistAppliedBannerDirectly(entry) {
+    const account = getCurrentAccount();
+    if (!account?.uid) {
+      return { ok: false, reason: 'Log in to apply a custom banner.' };
+    }
+    const safeEntry = entry && typeof entry === 'object' ? entry : null;
+    if (!safeEntry?.dataUrl) {
+      return { ok: false, reason: 'That banner could not be applied.' };
+    }
+    const nextBanner = {
+      type: 'vip-custom',
+      value: String(safeEntry.dataUrl || '').trim(),
+      label: String(safeEntry.label || 'Custom banner').trim() || 'Custom banner',
+      customBannerId: String(safeEntry.id || '').trim(),
+      animated: Boolean(safeEntry.animated),
+      scene: safeEntry.scene || buildBannerScenePayload(),
+      updatedAt: safeNow(),
+    };
+    try {
+      if (window.PlayrProgression?.exportProfile && window.PlayrProgression?.importProfile) {
+        const exported = window.PlayrProgression.exportProfile(account) || {};
+        const nextProfile = {
+          ...exported,
+          uid: account.uid,
+          displayName: account.displayName,
+          identifier: account.identifier,
+          identifierType: account.identifierType,
+          profileTheme: {
+            ...(exported.profileTheme && typeof exported.profileTheme === 'object' ? exported.profileTheme : {}),
+            banner: nextBanner,
+          },
+          updatedAt: safeNow(),
+        };
+        window.PlayrProgression.importProfile(account, nextProfile, { prefer: 'remote', emit: true });
+      } else {
+        const profiles = readProfiles();
+        const existing = profiles[account.uid] && typeof profiles[account.uid] === 'object' ? profiles[account.uid] : {};
+        profiles[account.uid] = {
+          ...existing,
+          uid: account.uid,
+          displayName: account.displayName,
+          identifier: account.identifier,
+          identifierType: account.identifierType,
+          profileTheme: {
+            ...(existing.profileTheme && typeof existing.profileTheme === 'object' ? existing.profileTheme : {}),
+            banner: nextBanner,
+          },
+          updatedAt: safeNow(),
+        };
+        writeJson(PROFILE_STORAGE_KEY, profiles);
+      }
+      window.dispatchEvent(new CustomEvent('playr-profiles-updated', {
+        detail: { uid: account.uid },
+      }));
+      await persistBannerToCloud();
+      return { ok: true };
+    } catch {
+      return { ok: false, reason: 'That banner could not be applied right now.' };
+    }
+  }
+
+  async function saveCurrentAsBanner({ applyAfterSave = false } = {}) {
     if (state.savingBanner) return;
     if (state.mode !== 'profile-banner') {
-      updateStatus('Switch to Profile banner mode before saving banner art.');
+      const message = 'Switch to Profile banner mode before saving banner art.';
+      updateStatus(message);
+      showToast(message);
       return;
     }
     const account = getCurrentAccount();
     if (!account?.uid) {
-      updateStatus('Log in to save a custom banner.');
+      const message = 'Log in to save a custom banner.';
+      updateStatus(message);
+      showToast(message);
       return;
     }
     state.savingBanner = true;
     ui.saveBannerBtn.disabled = true;
+    if (ui.applyBannerNowBtn) ui.applyBannerNowBtn.disabled = true;
     ui.saveOverlay.hidden = false;
     try {
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
       const exportData = getExportData('webp');
       const stamp = safeNow();
       const entry = {
@@ -1708,21 +1788,92 @@
       };
       const result = persistBannerLocally(entry);
       if (!result?.ok) {
-        updateStatus(result?.reason || 'That banner could not be saved.');
+        const message = result?.reason || 'That banner could not be saved.';
+        updateStatus(message);
+        showToast(message);
         return;
+      }
+      if (applyAfterSave) {
+        const applied = await persistAppliedBannerDirectly(entry);
+        if (!applied?.ok) {
+          const message = applied?.reason || 'Saved the banner, but could not apply it right now.';
+          updateStatus(message);
+          showToast(message);
+          return;
+        }
       }
       await persistBannerToCloud();
       clearDirty();
       closeFinishOverlay();
       state.lastSavedAt = safeNow();
       updateMeta();
-      showToast('Saved to your banners!');
-      updateStatus('Banner save complete. If Settings is already open, give it a moment or reopen it.');
+      showToast(applyAfterSave ? 'Saved and applied to your profile!' : 'Saved to your banners!');
+      updateStatus(applyAfterSave
+        ? 'Banner saved and applied. You can manage it from your own profile settings.'
+        : 'Banner save complete. You can manage it from your own profile settings.');
     } catch {
-      updateStatus('That banner could not be saved. Please try again.');
+      const message = 'That banner could not be saved. Please try again.';
+      updateStatus(message);
+      showToast(message);
     } finally {
       state.savingBanner = false;
       ui.saveBannerBtn.disabled = false;
+      if (ui.applyBannerNowBtn) ui.applyBannerNowBtn.disabled = false;
+      ui.saveOverlay.hidden = true;
+    }
+  }
+
+  async function applyCurrentBannerNow() {
+    if (state.savingBanner) return;
+    if (state.mode !== 'profile-banner') {
+      const message = 'Switch to Profile banner mode before applying banner art.';
+      updateStatus(message);
+      showToast(message);
+      return;
+    }
+    const account = getCurrentAccount();
+    if (!account?.uid) {
+      const message = 'Log in to apply a custom banner.';
+      updateStatus(message);
+      showToast(message);
+      return;
+    }
+    state.savingBanner = true;
+    ui.saveBannerBtn.disabled = true;
+    if (ui.applyBannerNowBtn) ui.applyBannerNowBtn.disabled = true;
+    ui.saveOverlay.hidden = false;
+    try {
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+      const exportData = getExportData('webp');
+      const applied = await persistAppliedBannerDirectly({
+        id: '',
+        label: `Live banner ${new Date().toLocaleDateString()}`,
+        dataUrl: exportData.dataUrl,
+        width: state.canvasWidth,
+        height: state.canvasHeight,
+        animated: sceneHasAnimations(),
+        scene: buildBannerScenePayload(),
+      });
+      if (!applied?.ok) {
+        const message = applied?.reason || 'That banner could not be applied right now.';
+        updateStatus(message);
+        showToast(message);
+        return;
+      }
+      clearDirty();
+      closeFinishOverlay();
+      state.lastSavedAt = safeNow();
+      updateMeta();
+      showToast('Applied to your profile!');
+      updateStatus('Banner applied. Open your own profile settings to manage saved banner slots.');
+    } catch {
+      const message = 'That banner could not be applied right now.';
+      updateStatus(message);
+      showToast(message);
+    } finally {
+      state.savingBanner = false;
+      ui.saveBannerBtn.disabled = false;
+      if (ui.applyBannerNowBtn) ui.applyBannerNowBtn.disabled = false;
       ui.saveOverlay.hidden = true;
     }
   }
@@ -1935,6 +2086,11 @@
     ui.saveBannerBtn.addEventListener('click', () => {
       saveCurrentAsBanner();
     });
+    if (ui.applyBannerNowBtn) {
+      ui.applyBannerNowBtn.addEventListener('click', () => {
+        applyCurrentBannerNow();
+      });
+    }
 
     ui.backgroundModeSelect.addEventListener('change', () => {
       pushHistorySnapshot();
@@ -2058,6 +2214,7 @@
     ui.fileNameInput = $('fileNameInput');
     ui.downloadBtn = $('downloadBtn');
     ui.saveBannerBtn = $('saveBannerBtn');
+    ui.applyBannerNowBtn = $('applyBannerNowBtn');
     ui.saveBannerHint = $('saveBannerHint');
     ui.unsavedOverlay = $('unsavedOverlay');
     ui.unsavedFormatSelect = $('unsavedFormatSelect');

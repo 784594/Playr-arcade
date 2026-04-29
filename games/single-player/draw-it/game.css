@@ -181,6 +181,10 @@
   gap: 10px;
 }
 
+.canvas-action-grid {
+  margin-top: 4px;
+}
+
 .compact-tool-stack,
 .mini-recent-panel,
 .gradient-editor,
@@ -319,6 +323,10 @@
 .gradient-stop-editor-row input[type="range"] {
   width: 100%;
   accent-color: var(--draw-accent);
+}
+
+.animation-panel {
+  margin-top: 2px;
 }
 
 .gradient-editor {

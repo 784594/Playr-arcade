@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-29-draw-it-save-and-profile-settings-polish',
+      title: 'Draw It save flow and profile settings polish',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-29T23:58:00-04:00',
+      summary: 'Draw It now places object actions and animation tools in cleaner spots, banner save/apply feedback is more visible, and profile customization now lives behind your own profile instead of the heavy main Settings view.',
+      details: [
+        'Group, ungroup, and delete actions now sit directly under the canvas, while selected-object animations move under the main scene settings for a tighter workspace layout.',
+        'Saving or instantly applying a profile-banner scene from Draw It now shows stronger feedback, including visible loading state before export work starts and a direct apply-to-profile fallback button.',
+        'Main Settings now points you to your own profile for badge and banner customization, and your self-profile uses a dedicated gear shortcut to open those profile settings faster.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-29-animated-banners-and-trolley-art-refresh',
       title: 'Animated banners and trolley art refresh',
       category: 'update',

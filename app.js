@@ -2067,23 +2067,24 @@ function ensureProfileAndFriendsUi() {
 function ensureBannerSettingsCard() {
   ensureProfileAndFriendsUi();
   if (!settingsGrid || profileUi.settingsBannerCard) return;
+  const existingCard = document.getElementById('settingsBannerCard');
+  if (existingCard) {
+    profileUi.settingsBannerCard = existingCard;
+    profileUi.settingsBannerGrid = null;
+    profileUi.settingsCustomBannerList = null;
+    return;
+  }
   const card = document.createElement('section');
   card.className = 'settings-card';
   card.id = 'settingsBannerCard';
   card.innerHTML = `
-    <h4>Profile banner</h4>
-    <p class="settings-muted">Pick a solid or gradient banner for your profile panel. Custom banners can be created in Draw It, but only VIP accounts can apply them.</p>
-    <div class="banner-picker-grid" id="settingsBannerGrid"></div>
-    <div class="settings-card profile-custom-banner-card">
-      <h4>Custom banners</h4>
-      <p class="settings-muted">Saved to your account. You can keep up to 5 custom banners and delete old ones here when you need space.</p>
-      <div class="social-list" id="settingsCustomBannerList"></div>
-    </div>
+    <h4>Profile customization settings are moved!</h4>
+    <p class="settings-muted">Profile customization settings are moved! Now found when you look at your own profile</p>
   `;
   settingsGrid.appendChild(card);
   profileUi.settingsBannerCard = card;
-  profileUi.settingsBannerGrid = card.querySelector('#settingsBannerGrid');
-  profileUi.settingsCustomBannerList = card.querySelector('#settingsCustomBannerList');
+  profileUi.settingsBannerGrid = null;
+  profileUi.settingsCustomBannerList = null;
 }
 
 function ensureStaffDirectoryCard() {
@@ -2185,7 +2186,6 @@ function renderBannerSettingsInto(bannerGridEl, customBannerListEl, account = ge
 
 function renderBannerSettings(account = getCurrentAccount()) {
   ensureBannerSettingsCard();
-  renderBannerSettingsInto(profileUi.settingsBannerGrid, profileUi.settingsCustomBannerList, account);
 }
 
 function renderProfileCustomizationBannerSettings(account = getCurrentAccount()) {
@@ -2467,7 +2467,7 @@ async function renderOpenProfilePanel() {
   } else if (isSelf) {
     profileUi.profileActionArea.innerHTML = `
       <span class="profile-pill">This is you</span>
-      <button class="button secondary" type="button" data-open-profile-customization="true">Customize Profile</button>
+      <button class="chip-button profile-settings-gear" type="button" data-open-profile-customization="true" aria-label="Open profile settings" title="Open profile settings">⚙</button>
     `;
   } else if (relationship === 'friends') {
     profileUi.profileActionArea.innerHTML = '<span class="profile-pill">Already friends</span>';
