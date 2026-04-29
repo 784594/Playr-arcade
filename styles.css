@@ -1097,6 +1097,8 @@ a {
   max-height: min(92vh, 980px);
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
 }
 
 .friends-modal-header,
@@ -1244,11 +1246,22 @@ a {
 }
 
 .profile-banner {
+  position: relative;
+  overflow: hidden;
   height: 130px;
   border-radius: 20px;
   margin-bottom: 18px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.profile-banner-animation-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
 }
 
 .profile-header-actions {
@@ -1350,7 +1363,7 @@ a {
 
 .profile-moderation {
   margin-top: 16px;
-  padding-bottom: 10px;
+  padding-bottom: 18px;
 }
 
 .profile-moderation-summary {

@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-29-animated-banners-and-trolley-art-refresh',
+      title: 'Animated banners and trolley art refresh',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-29T23:40:00-04:00',
+      summary: 'Draw It custom banners can now store lightweight object animations, profile banners can play those scenes once on open, and the absurd trolley scene now uses the new custom sprite art.',
+      details: [
+        'Draw It now supports a compact selected-object animation panel, GIF-capable imports, finish-panel animated previews, and saved banner scene metadata so animated custom banners can be reused later without running heavy playback everywhere.',
+        'Profile modals now have safer scrolling for longer staff moderation panels, and animated custom banners only play once when a profile is opened to keep the site responsive while still showing the motion work.',
+        'The Absurd Trolley Problem scene now swaps the old placeholder trolley, lever, and victim art for the new custom trolley sprite sheets while keeping the existing decision flow and track movement logic intact.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-29-spend-bill-gates-overhaul',
       title: 'Spend Bill Gates’ Money overhaul',
       category: 'update',

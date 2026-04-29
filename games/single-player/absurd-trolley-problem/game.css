@@ -16,6 +16,8 @@
   --paper-mid: #bfd0df;
   --ink: #0a1120;
   --ink-muted: rgba(10, 17, 32, 0.72);
+  --trolley-sheet-a: url("/images/trolley%20problem/Gemini_Generated_Image_qsmpdpqsmpdpqsmp-removebg-preview.png");
+  --trolley-sheet-b: url("/images/trolley%20problem/Gemini_Generated_Image_itw3f3itw3f3itw3-removebg-preview.png");
 }
 
 * {
@@ -239,6 +241,14 @@ body::before {
   pointer-events: none;
 }
 
+.atlas-sprite {
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  image-rendering: auto;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.3));
+}
+
 .trolley {
   position: absolute;
   left: 0;
@@ -251,201 +261,65 @@ body::before {
   animation: trolley-bob 2.4s ease-in-out infinite;
 }
 
-.trolley-roof {
+.trolley-sprite {
   position: absolute;
-  left: 18%;
-  top: 2%;
-  width: 58%;
-  height: 16%;
-  border: 3px solid #08121d;
-  border-bottom-width: 2px;
-  border-radius: 36% 36% 10% 10%;
-  background: linear-gradient(180deg, #18415e 0%, #0f2538 100%);
-}
-
-.trolley-body {
-  position: absolute;
-  left: 10%;
-  top: 18%;
-  width: 76%;
-  height: 62%;
-  border: 3px solid #08121d;
-  border-radius: 20% 24% 10% 10%;
-  background:
-    linear-gradient(180deg, rgba(124, 240, 197, 0.16), transparent 34%),
-    linear-gradient(180deg, #14314a 0%, #0b1a28 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7%;
-  overflow: hidden;
-}
-
-.trolley-body::before {
-  content: "";
-  position: absolute;
-  inset: 14% 16% auto 10%;
-  height: 14%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(124, 240, 197, 0.22), rgba(122, 169, 255, 0.08), rgba(255, 255, 255, 0.05));
-}
-
-.trolley-body span {
-  width: 11%;
-  height: 15%;
-  border: 2px solid #09111b;
-  border-radius: 24% 24% 8% 8%;
-  background: linear-gradient(180deg, #e6f7ff 0%, #9fdcff 55%, #d3eef7 100%);
-  box-shadow: inset 0 -2px 0 rgba(9, 17, 27, 0.25), 0 0 8px rgba(124, 240, 197, 0.2);
-  margin-top: 8%;
-  position: relative;
-  z-index: 1;
-}
-
-.trolley-body::after {
-  content: "";
-  position: absolute;
-  left: 10%;
-  right: 14%;
-  bottom: 12%;
-  height: 8%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(122, 169, 255, 0.0), rgba(122, 169, 255, 0.45), rgba(124, 240, 197, 0.12), rgba(122, 169, 255, 0.45), rgba(122, 169, 255, 0.0));
-  opacity: 0.68;
-}
-
-.trolley-wheels {
-  position: absolute;
-  left: 20%;
-  bottom: -4%;
-  width: 46%;
-  display: flex;
-  justify-content: space-between;
-}
-
-.trolley-wheels i {
-  position: relative;
-  width: 16%;
-  aspect-ratio: 1 / 1;
-  border: 3px solid #09111b;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #8cefe1 0%, #2d5465 18%, #0b1320 56%, #050b12 100%);
-  box-shadow: 0 2px 0 rgba(255, 255, 255, 0.1), inset 0 0 0 1px rgba(124, 240, 197, 0.18);
-}
-
-.trolley-wheels i::after {
-  content: "";
-  position: absolute;
-  inset: 26%;
-  border-radius: 50%;
-  background: rgba(236, 246, 255, 0.9);
+  inset: 0;
+  background-image: var(--trolley-sheet-b);
+  background-size: 600% 200%;
+  background-position: 20% 100%;
 }
 
 .lever-person {
   position: absolute;
-  left: 29.5%;
-  top: 55.5%;
-  width: clamp(78px, 8.6vw, 112px);
-  aspect-ratio: 0.86 / 1;
+  left: 27%;
+  top: 51.5%;
+  width: clamp(118px, 12vw, 164px);
+  aspect-ratio: 1.08 / 1;
   z-index: 3;
 }
 
-.lever-person .head {
+.lever-operator-sprite {
   position: absolute;
-  left: 34%;
-  top: 2%;
-  width: 30%;
-  aspect-ratio: 1 / 1;
-  border: 3px solid #08121d;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #d8e4ef, #bdd0df);
+  right: 8%;
+  top: 0;
+  width: 54%;
+  height: 86%;
+  background-image: var(--trolley-sheet-a);
+  background-size: 500% 300%;
+  background-position: 100% 0%;
 }
 
-.lever-person .torso {
+.lever-stick-art {
   position: absolute;
-  left: 36%;
-  top: 24%;
-  width: 28%;
+  left: 4%;
+  top: 44%;
+  width: 38%;
   height: 38%;
-  border: 3px solid #08121d;
-  border-radius: 42% 42% 24% 24%;
-  background: linear-gradient(180deg, #14314a, #0a1725);
-}
-
-.lever-person .arm,
-.lever-person .leg {
-  position: absolute;
-  height: 0;
-  border-top: 3px solid #08121d;
-  border-radius: 999px;
-}
-
-.lever-person .arm-left {
-  left: 16%;
-  top: 37%;
-  width: 24%;
-  transform: rotate(34deg);
-}
-
-.lever-person .arm-right {
-  left: 62%;
-  top: 37%;
-  width: 24%;
-  transform: rotate(-17deg);
-}
-
-.lever-person .leg-left {
-  left: 25%;
-  top: 66%;
-  width: 24%;
-  transform: rotate(76deg);
-}
-
-.lever-person .leg-right {
-  left: 50%;
-  top: 67%;
-  width: 24%;
-  transform: rotate(106deg);
-}
-
-.lever-base {
-  position: absolute;
-  left: -18%;
-  top: 74%;
-  width: 28%;
-  height: 7%;
-  border: 2px solid #08121d;
-  border-radius: 999px;
-  background: rgba(8, 18, 29, 0.42);
-}
-
-.lever-stick {
-  position: absolute;
-  left: -10%;
-  top: 53%;
-  width: 33%;
-  height: 4px;
   border: 0;
-  border-radius: 12px;
-  background: linear-gradient(90deg, #d8e4ef, #7cf0c5 72%, #2b4960);
+  background-color: transparent;
+  background-image: var(--trolley-sheet-b);
+  background-size: 600% 200%;
+  background-position: 80% 100%;
   transform-origin: right center;
   transform: rotate(58deg);
   cursor: default;
 }
 
-.lever-stick::after {
-  content: "";
+.track-split-art {
   position: absolute;
-  left: -8px;
-  top: -7px;
-  width: 16px;
-  aspect-ratio: 1 / 1;
-  border: 2px solid #08121d;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #e7f2fb, #9eb8c8);
+  left: 38.8%;
+  top: 48.6%;
+  width: clamp(140px, 15vw, 200px);
+  aspect-ratio: 1.7 / 1;
+  z-index: 1;
+  opacity: 0.36;
+  background-image: var(--trolley-sheet-b);
+  background-size: 600% 200%;
+  background-position: 100% 100%;
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.28));
 }
 
-.lever-person.pulled .lever-stick {
+.lever-person.pulled .lever-stick-art {
   transform: rotate(16deg);
 }
 
@@ -458,54 +332,55 @@ body::before {
 
 .victim {
   position: absolute;
-  width: clamp(36px, 3vw, 52px);
-  height: clamp(62px, 5vw, 86px);
+  width: clamp(52px, 4.3vw, 78px);
+  height: clamp(58px, 5.3vw, 92px);
   transform-origin: center center;
   filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.3));
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
 }
 
-.victim .v-head {
-  position: absolute;
-  left: 26%;
-  top: 2%;
-  width: 48%;
-  aspect-ratio: 1 / 1;
-  border: 2px solid #08121d;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #d8e4ef, #bdd0df);
+.victim.variant-standing-a,
+.victim.variant-standing-b,
+.victim.variant-cat,
+.victim.variant-crowd,
+.victim.variant-robot,
+.victim.variant-tied-round,
+.victim.variant-tied-side,
+.victim.variant-girl-tied,
+.victim.variant-formal-tied {
+  background-image: var(--trolley-sheet-a);
+  background-size: 500% 300%;
 }
 
-.victim .v-body {
-  position: absolute;
-  left: 24%;
-  top: 22%;
-  width: 52%;
-  height: 54%;
-  border: 2px solid #08121d;
-  border-radius: 40% 40% 26% 26%;
-  background:
-    repeating-linear-gradient(to bottom, transparent 0, transparent 5px, rgba(236, 246, 255, 0.25) 5px, rgba(236, 246, 255, 0.25) 7px),
-    linear-gradient(180deg, #11263b, #0a1522);
+.victim.variant-lobster,
+.victim.variant-art,
+.victim.variant-mystery-box-1,
+.victim.variant-mystery-box-2,
+.victim.variant-elderly-tied,
+.victim.variant-good-citizen,
+.victim.variant-girl-tied {
+  background-image: var(--trolley-sheet-b);
+  background-size: 600% 200%;
 }
 
-.victim .v-leg {
-  position: absolute;
-  height: 26%;
-  width: 0;
-  border-left: 2px solid #08121d;
-  border-radius: 999px;
-  top: 72%;
-}
+.victim.variant-standing-a { background-position: 50% 0%; }
+.victim.variant-standing-b { background-position: 75% 0%; }
+.victim.variant-cat { background-position: 0% 50%; }
+.victim.variant-crowd { background-position: 25% 50%; width: clamp(66px, 5.4vw, 106px); }
+.victim.variant-robot { background-position: 50% 50%; width: clamp(58px, 4.6vw, 84px); }
+.victim.variant-tied-round { background-position: 75% 50%; }
+.victim.variant-tied-side { background-position: 100% 50%; }
+.victim.variant-formal-tied { background-position: 100% 100%; }
 
-.victim .v-leg.left {
-  left: 34%;
-  transform: rotate(18deg);
-}
-
-.victim .v-leg.right {
-  left: 58%;
-  transform: rotate(-18deg);
-}
+.victim.variant-lobster { background-position: 0% 0%; width: clamp(62px, 5vw, 96px); }
+.victim.variant-art { background-position: 20% 0%; width: clamp(62px, 5vw, 96px); }
+.victim.variant-mystery-box-1 { background-position: 60% 0%; width: clamp(60px, 4.8vw, 92px); }
+.victim.variant-mystery-box-2 { background-position: 80% 0%; width: clamp(60px, 4.8vw, 92px); }
+.victim.variant-elderly-tied { background-position: 40% 0%; }
+.victim.variant-good-citizen { background-position: 60% 100%; }
+.victim.variant-girl-tied { background-position: 75% 100%; }
 
 .splat {
   position: absolute;

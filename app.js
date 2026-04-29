@@ -216,7 +216,9 @@ const SOCIAL_CACHE_TTL_MS = 45 * 1000;
 const PROFILE_WARNING_HISTORY_LIMIT = 25;
 const CUSTOM_PROFILE_BANNER_LIMIT = 5;
 const MAILBOX_STORAGE_KEY = 'playrMailboxV1';
+const CUSTOM_BANNER_LIBRARY_KEY = 'playrCustomBannersV1';
 const PROFILE_BANNER_DRAW_SIZE = { width: 1500, height: 420 };
+const PROFILE_BANNER_ANIMATION_MAX_MS = 2400;
 const STAFF_ROLE_SEQUENCE = ['support', 'moderator', 'admin'];
 const STAFF_PROMOTION_COOLDOWN_MS = 5 * 24 * 60 * 60 * 1000;
 const MODERATION_DURATION_PRESETS = [
@@ -358,6 +360,16 @@ function persistProfiles(profiles) {
   localStorage.setItem(AUTH_STORAGE_KEYS.profiles, JSON.stringify(safeProfiles));
 }
 
+function readStoredCustomBannerLibrary() {
+  try {
+    const raw = localStorage.getItem(CUSTOM_BANNER_LIBRARY_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 function getAuthUserCreatedAt(user = authState.currentUser) {
   const createdAt = normalizeTimestampToMs(user?.metadata?.creationTime);
   return createdAt || 0;
@@ -376,6 +388,8 @@ function mergeCustomBannerEntries(existingEntries = [], incomingEntries = []) {
       dataUrl,
       width: Math.max(1, Number(entry.width) || 0),
       height: Math.max(1, Number(entry.height) || 0),
+      animated: Boolean(entry.animated),
+      scene: normalizeBannerScene(entry.scene),
       createdAt: normalizeTimestampToMs(entry.createdAt),
       updatedAt: normalizeTimestampToMs(entry.updatedAt),
     };
@@ -387,6 +401,98 @@ function mergeCustomBannerEntries(existingEntries = [], incomingEntries = []) {
   return Array.from(mergedById.values())
     .sort((left, right) => Math.max(0, right.updatedAt || right.createdAt) - Math.max(0, left.updatedAt || left.createdAt))
     .slice(0, CUSTOM_PROFILE_BANNER_LIMIT);
+}
+
+function normalizeBannerScene(scene = null) {
+  if (!scene || typeof scene !== 'object') return null;
+  const width = Math.max(1, Number(scene.width) || PROFILE_BANNER_DRAW_SIZE.width);
+  const height = Math.max(1, Number(scene.height) || PROFILE_BANNER_DRAW_SIZE.height);
+  const backgroundSource = scene.background && typeof scene.background === 'object' ? scene.background : {};
+  const background = {
+    mode: backgroundSource.mode === 'gradient' ? 'gradient' : 'solid',
+    color: /^#[0-9a-f]{6}$/i.test(String(backgroundSource.color || '').trim()) ? String(backgroundSource.color).trim() : '#ffffff',
+    angle: Math.max(0, Math.min(360, Number(backgroundSource.angle) || 135)),
+    stops: Array.isArray(backgroundSource.stops)
+      ? backgroundSource.stops
+        .map((stop, index) => ({
+          id: String(stop?.id || `bg-stop-${index + 1}`),
+          offset: Math.max(0, Math.min(1, Number(stop?.offset) || 0)),
+          color: /^#[0-9a-f]{6}$/i.test(String(stop?.color || '').trim()) ? String(stop.color).trim() : '#ffffff',
+        }))
+        .sort((left, right) => left.offset - right.offset)
+      : [],
+  };
+  const objects = Array.isArray(scene.objects) ? scene.objects.map((item, index) => normalizeBannerSceneObject(item, index)).filter(Boolean).slice(0, 24) : [];
+  return { version: 1, width, height, background, objects };
+}
+
+function normalizeBannerSceneObject(item, index = 0) {
+  if (!item || typeof item !== 'object') return null;
+  const type = item.type === 'image' ? 'image' : item.type === 'stroke' ? 'stroke' : '';
+  if (!type) return null;
+  const baseAnimation = normalizeBannerSceneAnimation(item.animation, type);
+  if (type === 'stroke') {
+    const points = Array.isArray(item.points)
+      ? item.points.map((point) => ({
+        x: Number(point?.x) || 0,
+        y: Number(point?.y) || 0,
+      })).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y)).slice(0, 2000)
+      : [];
+    if (!points.length) return null;
+    return {
+      id: String(item.id || `stroke-${index}`),
+      type: 'stroke',
+      points,
+      size: Math.max(1, Math.min(80, Number(item.size) || 8)),
+      erase: Boolean(item.erase),
+      drawMode: item.drawMode === 'pixel' ? 'pixel' : 'freehand',
+      groupId: String(item.groupId || ''),
+      style: {
+        mode: item.style?.mode === 'gradient' ? 'gradient' : 'solid',
+        colorA: /^#[0-9a-f]{6}$/i.test(String(item.style?.colorA || '').trim()) ? String(item.style.colorA).trim() : '#183a8f',
+        colorB: /^#[0-9a-f]{6}$/i.test(String(item.style?.colorB || '').trim()) ? String(item.style.colorB).trim() : '#7cf0c5',
+        angle: Math.max(0, Math.min(360, Number(item.style?.angle) || 35)),
+        stops: Array.isArray(item.style?.stops)
+          ? item.style.stops.map((stop, stopIndex) => ({
+            id: String(stop?.id || `stroke-stop-${stopIndex + 1}`),
+            offset: Math.max(0, Math.min(1, Number(stop?.offset) || 0)),
+            color: /^#[0-9a-f]{6}$/i.test(String(stop?.color || '').trim()) ? String(stop.color).trim() : '#183a8f',
+          })).sort((left, right) => left.offset - right.offset).slice(0, 6)
+          : [],
+      },
+      animation: baseAnimation,
+    };
+  }
+  const src = String(item.src || '').trim();
+  if (!src.startsWith('data:image/')) return null;
+  return {
+    id: String(item.id || `image-${index}`),
+    type: 'image',
+    src,
+    x: Number(item.x) || 0,
+    y: Number(item.y) || 0,
+    width: Math.max(10, Number(item.width) || 120),
+    height: Math.max(10, Number(item.height) || 120),
+    baseWidth: Math.max(10, Number(item.baseWidth) || Number(item.width) || 120),
+    baseHeight: Math.max(10, Number(item.baseHeight) || Number(item.height) || 120),
+    scale: Math.max(20, Math.min(250, Number(item.scale) || 100)),
+    groupId: String(item.groupId || ''),
+    mimeType: String(item.mimeType || '').trim().toLowerCase(),
+    animation: baseAnimation,
+  };
+}
+
+function normalizeBannerSceneAnimation(animation = null, objectType = 'stroke') {
+  const safeType = String(animation?.type || 'none').trim().toLowerCase();
+  const allowed = new Set(['none', 'jump', 'shake', 'float', 'pulse', 'redraw']);
+  const type = allowed.has(safeType) ? safeType : 'none';
+  if (type === 'redraw' && objectType !== 'stroke') {
+    return { type: 'none', duration: 0 };
+  }
+  return {
+    type,
+    duration: type === 'none' ? 0 : Math.max(320, Math.min(PROFILE_BANNER_ANIMATION_MAX_MS, Number(animation?.duration) || 1200)),
+  };
 }
 
 function mergeProfileThemeState(existingTheme = {}, incomingTheme = {}) {
@@ -721,10 +827,18 @@ function getCustomProfileBanners(profile = {}, account = getCurrentAccount()) {
   const localEntries = Array.isArray(profile?.profileTheme?.customBanners)
     ? profile.profileTheme.customBanners
     : [];
+  const libraryEntries = account?.uid
+    ? (Array.isArray(readStoredCustomBannerLibrary()[account.uid])
+      ? readStoredCustomBannerLibrary()[account.uid]
+      : [])
+    : [];
   const progressionEntries = window.PlayrProgression?.getStoredCustomBanners
     ? window.PlayrProgression.getStoredCustomBanners(account || profile)
     : [];
-  return mergeCustomBannerEntries(localEntries, progressionEntries);
+  return mergeCustomBannerEntries(
+    mergeCustomBannerEntries(localEntries, libraryEntries),
+    progressionEntries,
+  );
 }
 
 function getEditableCurrentProfile(account = getCurrentAccount()) {
@@ -1007,6 +1121,187 @@ function applyBannerStyleToElement(element, banner = {}) {
   element.style.background = banner?.value || getDefaultProfileBanner().value;
 }
 
+function stopProfileBannerAnimation() {
+  if (profileUi.profileBannerAnimationFrame) {
+    window.cancelAnimationFrame(profileUi.profileBannerAnimationFrame);
+    profileUi.profileBannerAnimationFrame = 0;
+  }
+  if (profileUi.profileBannerAnimationCanvas) {
+    profileUi.profileBannerAnimationCanvas.remove();
+    profileUi.profileBannerAnimationCanvas = null;
+  }
+}
+
+function buildBannerAnimationFrame(animation = {}, elapsedMs = 0) {
+  const type = String(animation?.type || 'none').trim().toLowerCase();
+  const duration = Math.max(320, Math.min(PROFILE_BANNER_ANIMATION_MAX_MS, Number(animation?.duration) || 1200));
+  if (type === 'none') {
+    return { type: 'none', translateX: 0, translateY: 0, scale: 1, visibleRatio: 1 };
+  }
+  const progress = Math.min(1, Math.max(0, elapsedMs / duration));
+  const loop = progress;
+  const sine = Math.sin(loop * Math.PI * 2);
+  if (type === 'jump') return { type, translateX: 0, translateY: -Math.sin(loop * Math.PI) * 16, scale: 1, visibleRatio: 1 };
+  if (type === 'shake') return { type, translateX: sine * 7, translateY: 0, scale: 1, visibleRatio: 1 };
+  if (type === 'float') return { type, translateX: 0, translateY: sine * -10, scale: 1, visibleRatio: 1 };
+  if (type === 'pulse') return { type, translateX: 0, translateY: 0, scale: 0.96 + (Math.sin(loop * Math.PI) * 0.08), visibleRatio: 1 };
+  if (type === 'redraw') return { type, translateX: 0, translateY: 0, scale: 1, visibleRatio: Math.max(0.02, progress) };
+  return { type: 'none', translateX: 0, translateY: 0, scale: 1, visibleRatio: 1 };
+}
+
+function renderBannerSceneBackground(context, background, width, height) {
+  if (background?.mode === 'gradient' && Array.isArray(background?.stops) && background.stops.length >= 2) {
+    const radians = ((Number(background.angle) || 135) * Math.PI) / 180;
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const radius = Math.max(width, height) / 2;
+    const dx = Math.cos(radians) * radius;
+    const dy = Math.sin(radians) * radius;
+    const gradient = context.createLinearGradient(centerX - dx, centerY - dy, centerX + dx, centerY + dy);
+    background.stops.forEach((stop) => {
+      gradient.addColorStop(Math.max(0, Math.min(1, Number(stop.offset) || 0)), String(stop.color || '#ffffff'));
+    });
+    context.fillStyle = gradient;
+  } else {
+    context.fillStyle = String(background?.color || '#ffffff');
+  }
+  context.fillRect(0, 0, width, height);
+}
+
+function renderBannerSceneStroke(context, object, frame) {
+  const points = Array.isArray(object.points) ? object.points : [];
+  if (!points.length) return;
+  context.save();
+  if (object.style?.mode === 'gradient' && Array.isArray(object.style?.stops) && object.style.stops.length >= 2) {
+    const xs = points.map((point) => point.x);
+    const ys = points.map((point) => point.y);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const radians = ((Number(object.style?.angle) || 35) * Math.PI) / 180;
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    const radius = Math.max(maxX - minX, maxY - minY, 1) / 2;
+    const dx = Math.cos(radians) * radius;
+    const dy = Math.sin(radians) * radius;
+    const gradient = context.createLinearGradient(centerX - dx, centerY - dy, centerX + dx, centerY + dy);
+    object.style.stops.forEach((stop) => {
+      gradient.addColorStop(Math.max(0, Math.min(1, Number(stop.offset) || 0)), String(stop.color || '#183a8f'));
+    });
+    context.strokeStyle = gradient;
+    context.fillStyle = gradient;
+  } else {
+    context.strokeStyle = String(object.style?.colorA || '#183a8f');
+    context.fillStyle = String(object.style?.colorA || '#183a8f');
+  }
+  const visibleCount = frame.type === 'redraw'
+    ? Math.max(1, Math.ceil(points.length * frame.visibleRatio))
+    : points.length;
+  const visiblePoints = points.slice(0, visibleCount);
+  if (object.drawMode === 'pixel') {
+    const pixelSize = Math.max(2, Math.round(Number(object.size) || 8));
+    visiblePoints.forEach((point) => {
+      context.fillRect(point.x, point.y, pixelSize, pixelSize);
+    });
+  } else {
+    context.lineJoin = 'round';
+    context.lineCap = 'round';
+    context.lineWidth = Math.max(1, Number(object.size) || 8);
+    context.beginPath();
+    context.moveTo(visiblePoints[0].x, visiblePoints[0].y);
+    for (let index = 1; index < visiblePoints.length; index += 1) {
+      context.lineTo(visiblePoints[index].x, visiblePoints[index].y);
+    }
+    if (visiblePoints.length === 1) {
+      context.lineTo(visiblePoints[0].x + 0.01, visiblePoints[0].y + 0.01);
+    }
+    context.stroke();
+  }
+  context.restore();
+}
+
+function renderBannerSceneObject(context, object, elapsedMs, imageCache) {
+  const frame = buildBannerAnimationFrame(object.animation, elapsedMs);
+  const bounds = object.type === 'image'
+    ? { x: object.x, y: object.y, width: object.width, height: object.height }
+    : (() => {
+        const xs = (object.points || []).map((point) => point.x);
+        const ys = (object.points || []).map((point) => point.y);
+        return {
+          x: Math.min(...xs),
+          y: Math.min(...ys),
+          width: Math.max(...xs) - Math.min(...xs),
+          height: Math.max(...ys) - Math.min(...ys),
+        };
+      })();
+  const centerX = bounds.x + (bounds.width / 2);
+  const centerY = bounds.y + (bounds.height / 2);
+  context.save();
+  context.translate(centerX + frame.translateX, centerY + frame.translateY);
+  context.scale(frame.scale, frame.scale);
+  context.translate(-centerX, -centerY);
+  if (object.type === 'image') {
+    const img = imageCache.get(object.id);
+    if (img) {
+      context.drawImage(img, object.x, object.y, object.width, object.height);
+    }
+  } else {
+    renderBannerSceneStroke(context, object, frame);
+  }
+  context.restore();
+}
+
+function startProfileBannerAnimation(element, banner = {}) {
+  stopProfileBannerAnimation();
+  const scene = normalizeBannerScene(banner?.scene);
+  const hasMotion = scene?.objects?.some((object) => (object.animation?.type && object.animation.type !== 'none') || /gif/i.test(String(object?.mimeType || object?.src || '')));
+  if (!element || !scene || !hasMotion) {
+    return;
+  }
+  const canvas = document.createElement('canvas');
+  canvas.className = 'profile-banner-animation-canvas';
+  canvas.width = scene.width;
+  canvas.height = scene.height;
+  element.appendChild(canvas);
+  profileUi.profileBannerAnimationCanvas = canvas;
+  const context = canvas.getContext('2d');
+  const imageObjects = scene.objects.filter((object) => object.type === 'image');
+  const imageCache = new Map();
+  let loadedImages = 0;
+  const beginPlayback = () => {
+    const totalDuration = Math.max(...scene.objects.map((object) => Math.max(0, Number(object.animation?.duration) || (/gif/i.test(String(object?.mimeType || object?.src || '')) ? 1800 : 0))), 1200);
+    const startedAt = performance.now();
+    const tick = (now) => {
+      const elapsedMs = now - startedAt;
+      context.clearRect(0, 0, scene.width, scene.height);
+      renderBannerSceneBackground(context, scene.background, scene.width, scene.height);
+      scene.objects.forEach((object) => renderBannerSceneObject(context, object, elapsedMs, imageCache));
+      if (elapsedMs < totalDuration) {
+        profileUi.profileBannerAnimationFrame = window.requestAnimationFrame(tick);
+      } else {
+        stopProfileBannerAnimation();
+      }
+    };
+    profileUi.profileBannerAnimationFrame = window.requestAnimationFrame(tick);
+  };
+  if (!imageObjects.length) {
+    beginPlayback();
+    return;
+  }
+  imageObjects.forEach((object) => {
+    const image = new Image();
+    image.onload = image.onerror = () => {
+      loadedImages += 1;
+      imageCache.set(object.id, image);
+      if (loadedImages >= imageObjects.length) {
+        beginPlayback();
+      }
+    };
+    image.src = object.src;
+  });
+}
+
 function mergeCloudProfileShape(profile = {}) {
   const banner = profile.profileTheme?.banner && typeof profile.profileTheme.banner === 'object'
     ? profile.profileTheme.banner
@@ -1025,6 +1320,8 @@ function mergeCloudProfileShape(profile = {}) {
       dataUrl: String(entry.dataUrl || '').trim(),
       width: Math.max(1, Number(entry.width) || 0),
       height: Math.max(1, Number(entry.height) || 0),
+      animated: Boolean(entry.animated),
+      scene: normalizeBannerScene(entry.scene),
       createdAt: normalizeTimestampToMs(entry.createdAt),
       updatedAt: normalizeTimestampToMs(entry.updatedAt),
     } : null)
@@ -1036,6 +1333,8 @@ function mergeCloudProfileShape(profile = {}) {
     value: String(banner.value || getDefaultProfileBanner().value).trim() || getDefaultProfileBanner().value,
     label: String(banner.label || getProfileBannerPresetByValue(banner.type, banner.value)?.label || getDefaultProfileBanner().label).trim(),
     customBannerId: String(banner.customBannerId || '').trim(),
+    animated: Boolean(banner.animated),
+    scene: normalizeBannerScene(banner.scene),
     updatedAt: normalizeTimestampToMs(banner.updatedAt),
   };
   return {
@@ -1970,6 +2269,8 @@ function applySavedCustomBanner(customBannerId) {
       value: customBanner.dataUrl,
       label: customBanner.label,
       customBannerId: customBanner.id,
+      animated: Boolean(customBanner.animated),
+      scene: normalizeBannerScene(customBanner.scene),
       updatedAt: Date.now(),
     },
   }, 'Custom banner applied.');
@@ -1993,7 +2294,7 @@ function deleteSavedCustomBanner(customBannerId) {
   }, 'Custom banner removed.');
 }
 
-async function saveNewCustomBanner({ label = 'Custom banner', dataUrl = '', width = 0, height = 0 } = {}) {
+async function saveNewCustomBanner({ label = 'Custom banner', dataUrl = '', width = 0, height = 0, animated = false, scene = null } = {}) {
   const account = getCurrentAccount();
   if (!account?.uid) {
     return { ok: false, reason: 'Log in to save a custom banner.' };
@@ -2013,6 +2314,8 @@ async function saveNewCustomBanner({ label = 'Custom banner', dataUrl = '', widt
     dataUrl: String(dataUrl || '').trim(),
     width: Math.max(1, Number(width) || PROFILE_BANNER_DRAW_SIZE.width),
     height: Math.max(1, Number(height) || PROFILE_BANNER_DRAW_SIZE.height),
+    animated: Boolean(animated),
+    scene: normalizeBannerScene(scene),
     createdAt: stamp,
     updatedAt: stamp,
   };
@@ -2054,6 +2357,7 @@ function closeFriendsPanel() {
 async function openProfilePanel(target = {}) {
   ensureProfileAndFriendsUi();
   if (!profileUi.profileOverlay) return;
+  stopProfileBannerAnimation();
   profileUi.profileOverlay.hidden = false;
   profileUi.profileOverlay.dataset.profileUid = String(target.uid || '').trim();
   profileUi.profileOverlay.dataset.profileName = String(target.displayName || '').trim();
@@ -2073,6 +2377,7 @@ async function openProfilePanel(target = {}) {
 
 function closeProfilePanel() {
   if (!profileUi.profileOverlay) return;
+  stopProfileBannerAnimation();
   profileUi.profileOverlay.hidden = true;
   profileUi.profileOverlay.dataset.profileUid = '';
   profileUi.profileOverlay.dataset.profileName = '';
@@ -2135,6 +2440,7 @@ async function renderOpenProfilePanel() {
   }
   profileUi.profileMeta.textContent = statusBits.join(' • ');
   applyBannerStyleToElement(profileUi.profileBanner, banner);
+  startProfileBannerAnimation(profileUi.profileBanner, banner);
   profileUi.profileStats.innerHTML = `
     <div class="profile-stat-card">
       <span>Favourite Game</span>
@@ -3921,6 +4227,8 @@ const profileUi = {
   profileOverlay: null,
   profileCloseBtn: null,
   profileBanner: null,
+  profileBannerAnimationCanvas: null,
+  profileBannerAnimationFrame: 0,
   profileName: null,
   profileMeta: null,
   profileStats: null,
@@ -6952,6 +7260,12 @@ function init() {
 
   window.addEventListener('playr-profiles-updated', () => {
     authState.profiles = readStoredProfiles();
+    if (!profileUi.profileCustomizeOverlay?.hidden) {
+      renderProfileCustomizationPanel(getCurrentAccount());
+    }
+  });
+
+  window.addEventListener('playr-custom-banners-updated', () => {
     if (!profileUi.profileCustomizeOverlay?.hidden) {
       renderProfileCustomizationPanel(getCurrentAccount());
     }

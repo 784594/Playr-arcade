@@ -32,7 +32,7 @@
     <header class="header hero">
       <p class="eyebrow">PlayR Canvas Lab</p>
       <h1>Draw It</h1>
-      <p class="hero-copy">Make wallpapers, banner concepts, imported-image layouts, and flexible scene compositions. Draw It now supports selection, grouping, gradients, erasing, image imports, and shared finishing tools.</p>
+      <p class="hero-copy">Make wallpapers, banner concepts, imported-image layouts, and flexible scene compositions. Draw It now supports selection, grouping, gradients, erasing, GIF-ready image imports, and lightweight object animations.</p>
       <p class="status-line" id="drawStatus">Pick a canvas mode and start building.</p>
     </header>
 
@@ -165,23 +165,6 @@
             </div>
           </section>
 
-          <section class="panel draw-card draw-import-card">
-            <div class="draw-card-head">
-              <div>
-                <p class="eyebrow">Import Panel</p>
-                <h3>Place images</h3>
-              </div>
-              <button class="hint-chip" type="button" data-help-tip="Import PNG or JPEG files, then move and scale them as part of the scene.">?</button>
-            </div>
-            <div class="tool-stack compact-tool-stack">
-              <input id="imageImportInput" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" hidden />
-              <div class="tool-inline-actions">
-                <button id="importImageBtn" class="action-btn action-btn-primary" type="button">Choose PNG/JPEG</button>
-              </div>
-              <p class="draw-note">Imported images can be selected, moved, resized, grouped, and exported as part of the scene.</p>
-            </div>
-          </section>
-
           <section class="panel draw-card draw-selection-card">
             <div class="draw-card-head">
               <div>
@@ -194,6 +177,7 @@
               <p class="draw-note" id="selectionSummary">No selection yet.</p>
             </div>
             <div class="selection-controls-stack">
+              <input id="imageImportInput" type="file" accept=".png,.jpg,.jpeg,.gif,image/png,image/jpeg,image/gif" hidden />
               <label class="selection-scale-field">
                 Selected image scale
                 <input id="selectedImageScaleInput" type="range" min="20" max="250" value="100" />
@@ -227,6 +211,33 @@
                   </div>
                 </div>
               </section>
+              <section class="background-panel animation-panel">
+                <div class="draw-card-head compact-draw-head">
+                  <div>
+                    <p class="eyebrow">Animation</p>
+                    <h3>Selected objects</h3>
+                  </div>
+                </div>
+                <div class="tool-stack compact-tool-stack">
+                  <p class="draw-note" id="animationSummary">Select objects to add a simple loop animation.</p>
+                  <label>
+                    Animation preset
+                    <select id="objectAnimationSelect">
+                      <option value="none">No animation</option>
+                      <option value="jump">Jump</option>
+                      <option value="shake">Shake</option>
+                      <option value="float">Float</option>
+                      <option value="pulse">Pulse</option>
+                      <option value="redraw">Redraw (drawn objects)</option>
+                    </select>
+                  </label>
+                  <div class="tool-inline-actions">
+                    <button id="applyObjectAnimationBtn" class="action-btn" type="button">Apply to selected</button>
+                    <button id="clearObjectAnimationBtn" class="action-btn" type="button">Clear animation</button>
+                  </div>
+                  <p class="draw-note">To keep banners smooth, only 6 objects can animate at once and profile playback runs once when the profile opens.</p>
+                </div>
+              </section>
               <div class="selection-action-grid">
                 <button id="groupSelectionBtn" class="action-btn" type="button" title="Bind selected items into one group">Group</button>
                 <button id="ungroupSelectionBtn" class="action-btn" type="button" title="Break the current group apart">Ungroup</button>
@@ -249,6 +260,7 @@
         <button id="finishCloseBtn" class="chip-button" type="button">Close</button>
       </div>
       <div class="draw-finish-preview-shell">
+        <canvas id="exportPreviewCanvas" hidden aria-hidden="true"></canvas>
         <img id="exportPreview" alt="Finished drawing preview" />
       </div>
       <div class="tool-grid finish-tool-grid">
@@ -271,7 +283,7 @@
         <button id="saveBannerBtn" class="action-btn" type="button" hidden>Save as custom banner</button>
       </div>
       <p class="draw-note" id="saveBannerHint" hidden>Saved banner art stays on your account. Applying it is a VIP-only option from Settings.</p>
-      <p class="draw-note">Animated banners can layer in later for VIP with simple motion presets and GIF export only for animated pieces.</p>
+      <p class="draw-note">Animated custom banners save their motion scene and play once when a profile opens, keeping profile views lightweight.</p>
       <details class="draw-recents-toggle">
         <summary>Recent local drawings</summary>
         <div class="recent-list" id="recentList"></div>

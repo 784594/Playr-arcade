@@ -52,6 +52,8 @@ const divertTopTrack = document.getElementById('divertTopTrack');
 const divertBottomTrack = document.getElementById('divertBottomTrack');
 const trackMarksMain = document.getElementById('trackMarksMain');
 const trackMarksDivert = document.getElementById('trackMarksDivert');
+const MAIN_VARIANTS = ['standing-a', 'standing-b', 'cat', 'crowd', 'robot', 'lobster', 'art', 'mystery-box-1', 'mystery-box-2'];
+const DIVERT_VARIANTS = ['elderly-tied', 'good-citizen', 'tied-round', 'tied-side', 'girl-tied', 'formal-tied'];
 
 const state = {
 	index: 0,
@@ -115,29 +117,20 @@ function renderVictims(container, count, path) {
 	container.innerHTML = '';
 	const startT = drawCount <= 2 ? 0.86 : 0.78;
 	const spread = drawCount <= 2 ? 0.08 : 0.17;
+	const variantPool = container === mainVictims ? MAIN_VARIANTS : DIVERT_VARIANTS;
+	const scenarioSeed = state.index + (container === mainVictims ? 7 : 13);
 
 	for (let i = 0; i < drawCount; i += 1) {
 		const victim = document.createElement('div');
-		victim.className = 'victim';
+		const variant = count >= 90 && container === mainVictims
+			? 'crowd'
+			: variantPool[(scenarioSeed + i) % variantPool.length];
+		victim.className = `victim variant-${variant}`;
 
 		const p = pathSample(path, startT + ((i / Math.max(1, drawCount - 1)) * spread));
 		victim.style.left = `${toPercentX(p.x)}%`;
 		victim.style.top = `${toPercentY(p.y)}%`;
 		victim.style.transform = `translate(-50%, -57%) rotate(${p.angle + 92}deg)`;
-
-		const head = document.createElement('span');
-		head.className = 'v-head';
-		const body = document.createElement('span');
-		body.className = 'v-body';
-		const leftLeg = document.createElement('span');
-		leftLeg.className = 'v-leg left';
-		const rightLeg = document.createElement('span');
-		rightLeg.className = 'v-leg right';
-
-		victim.appendChild(head);
-		victim.appendChild(body);
-		victim.appendChild(leftLeg);
-		victim.appendChild(rightLeg);
 		container.appendChild(victim);
 	}
 }

@@ -22,6 +22,15 @@
   const FREEFORM_EXPAND_BY = 220;
   const MAX_RECENT_DRAWS = 10;
   const MAX_HISTORY_ENTRIES = 80;
+  const MAX_ANIMATED_OBJECTS = 6;
+  const ANIMATION_PRESETS = {
+    none: { label: 'No animation', duration: 0 },
+    jump: { label: 'Jump', duration: 1400 },
+    shake: { label: 'Shake', duration: 700 },
+    float: { label: 'Float', duration: 2200 },
+    pulse: { label: 'Pulse', duration: 1600 },
+    redraw: { label: 'Redraw', duration: 2000 },
+  };
 
   const state = {
     mode: 'wallpaper-pc',
@@ -58,6 +67,9 @@
     firestore: null,
     toastTimer: null,
     history: [],
+    savingBanner: false,
+    finishPreviewFrame: 0,
+    finishPreviewStartAt: 0,
   };
 
   const ui = {};
@@ -368,6 +380,7 @@
             { id: uid('stroke-stop'), offset: 1, color: normalizeHex(item.style?.colorB, '#7cf0c5') },
           ]),
         },
+        animation: sanitizeAnimation(item.animation, 'stroke'),
       };
     }
     if (item.type === 'image' && String(item.src || '').startsWith('data:image/')) {
@@ -383,10 +396,26 @@
         baseHeight: Math.max(10, Number(item.baseHeight) || Number(item.height) || 200),
         scale: clamp(Number(item.scale) || 100, 20, 250),
         groupId: item.groupId ? String(item.groupId) : '',
+        mimeType: String(item.mimeType || '').trim().toLowerCase(),
         imageEl: null,
+        animation: sanitizeAnimation(item.animation, 'image'),
       };
     }
     return null;
+  }
+
+  function sanitizeAnimation(animation, objectType = 'stroke') {
+    const safeType = String(animation?.type || 'none').trim().toLowerCase();
+    const normalizedType = Object.hasOwn(ANIMATION_PRESETS, safeType) ? safeType : 'none';
+    if (normalizedType === 'redraw' && objectType !== 'stroke') {
+      return { type: 'none', duration: 0 };
+    }
+    return {
+      type: normalizedType,
+      duration: normalizedType === 'none'
+        ? 0
+        : Math.max(320, Number(animation?.duration) || ANIMATION_PRESETS[normalizedType].duration || 1200),
+    };
   }
 
   function normalizeGradientStops(stops, fallbackStops = []) {
@@ -527,61 +556,137 @@
     return getStrokeBounds(item);
   }
 
-  function renderStroke(context, stroke) {
-    if (!Array.isArray(stroke.points) || !stroke.points.length) return;
+  function isObjectAnimated(item) {
+    return Boolean(item?.animation && item.animation.type && item.animation.type !== 'none');
+  }
+
+  function getAnimatedObjectCount(objects = state.objects) {
+    return objects.filter(isObjectAnimated).length;
+  }
+
+  function buildAnimationFrame(item, now = 0, options = {}) {
+    const animation = sanitizeAnimation(item?.animation, item?.type || 'stroke');
+    const playOnce = options.playOnce === true;
+    if (animation.type === 'none' || animation.duration <= 0) {
+      return {
+        type: 'none',
+        progress: 1,
+        translateX: 0,
+        translateY: 0,
+        scale: 1,
+        visibleRatio: 1,
+      };
+    }
+    const safeNow = Math.max(0, Number(now) || 0);
+    const rawRatio = animation.duration > 0 ? safeNow / animation.duration : 1;
+    const cycleRatio = playOnce ? Math.min(1, rawRatio) : (rawRatio % 1);
+    const sine = Math.sin(cycleRatio * Math.PI * 2);
+    const pulse = 0.96 + (Math.sin(cycleRatio * Math.PI) * 0.08);
+    const result = {
+      type: animation.type,
+      progress: cycleRatio,
+      translateX: 0,
+      translateY: 0,
+      scale: 1,
+      visibleRatio: 1,
+    };
+    if (animation.type === 'jump') {
+      result.translateY = -Math.sin(cycleRatio * Math.PI) * 16;
+    } else if (animation.type === 'shake') {
+      result.translateX = sine * 7;
+    } else if (animation.type === 'float') {
+      result.translateY = sine * -10;
+    } else if (animation.type === 'pulse') {
+      result.scale = pulse;
+    } else if (animation.type === 'redraw') {
+      result.visibleRatio = cycleRatio;
+    }
+    return result;
+  }
+
+  function withAnimatedObjectContext(context, item, frame, drawFn) {
+    const animatedFrame = frame || buildAnimationFrame(item, 0);
+    if (animatedFrame.type === 'none') {
+      drawFn(context, animatedFrame);
+      return;
+    }
+    const bounds = getObjectBounds(item);
+    const centerX = bounds.x + (bounds.width / 2);
+    const centerY = bounds.y + (bounds.height / 2);
     context.save();
-    if (stroke.erase) {
-      context.globalCompositeOperation = 'destination-out';
-    }
-    if (stroke.style.mode === 'gradient') {
-      const bounds = getStrokeBounds(stroke);
-      const gradient = createLinearGradient(
-        context,
-        bounds.x,
-        bounds.y,
-        Math.max(bounds.width, 1),
-        Math.max(bounds.height, 1),
-        stroke.style.angle,
-      );
-      normalizeGradientStops(stroke.style.stops, [
-        { id: uid('fallback-stop'), offset: 0, color: normalizeHex(stroke.style.colorA, '#183a8f') },
-        { id: uid('fallback-stop'), offset: 1, color: normalizeHex(stroke.style.colorB, '#7cf0c5') },
-      ]).forEach((stop) => {
-        gradient.addColorStop(clamp(stop.offset, 0, 1), normalizeHex(stop.color, '#183a8f'));
-      });
-      context.strokeStyle = gradient;
-      context.fillStyle = gradient;
-    } else {
-      const solidColor = normalizeHex(stroke.style.colorA, '#183a8f');
-      context.strokeStyle = solidColor;
-      context.fillStyle = solidColor;
-    }
-    if (stroke.drawMode === 'pixel') {
-      const pixelSize = Math.max(2, Math.round(stroke.size));
-      stroke.points.forEach((point) => {
-        context.fillRect(point.x, point.y, pixelSize, pixelSize);
-      });
-    } else {
-      context.lineJoin = 'round';
-      context.lineCap = 'round';
-      context.lineWidth = stroke.size;
-      context.beginPath();
-      context.moveTo(stroke.points[0].x, stroke.points[0].y);
-      for (let index = 1; index < stroke.points.length; index += 1) {
-        const point = stroke.points[index];
-        context.lineTo(point.x, point.y);
-      }
-      if (stroke.points.length === 1) {
-        context.lineTo(stroke.points[0].x + 0.01, stroke.points[0].y + 0.01);
-      }
-      context.stroke();
-    }
+    context.translate(centerX + animatedFrame.translateX, centerY + animatedFrame.translateY);
+    context.scale(animatedFrame.scale, animatedFrame.scale);
+    context.translate(-centerX, -centerY);
+    drawFn(context, animatedFrame);
     context.restore();
   }
 
-  function renderImageObject(context, item) {
+  function renderStroke(context, stroke, animationFrame = null) {
+    if (!Array.isArray(stroke.points) || !stroke.points.length) return;
+    withAnimatedObjectContext(context, stroke, animationFrame, (drawContext, frame) => {
+      drawContext.save();
+      if (stroke.erase) {
+        drawContext.globalCompositeOperation = 'destination-out';
+      }
+      if (stroke.style.mode === 'gradient') {
+        const bounds = getStrokeBounds(stroke);
+        const gradient = createLinearGradient(
+          drawContext,
+          bounds.x,
+          bounds.y,
+          Math.max(bounds.width, 1),
+          Math.max(bounds.height, 1),
+          stroke.style.angle,
+        );
+        normalizeGradientStops(stroke.style.stops, [
+          { id: uid('fallback-stop'), offset: 0, color: normalizeHex(stroke.style.colorA, '#183a8f') },
+          { id: uid('fallback-stop'), offset: 1, color: normalizeHex(stroke.style.colorB, '#7cf0c5') },
+        ]).forEach((stop) => {
+          gradient.addColorStop(clamp(stop.offset, 0, 1), normalizeHex(stop.color, '#183a8f'));
+        });
+        drawContext.strokeStyle = gradient;
+        drawContext.fillStyle = gradient;
+      } else {
+        const solidColor = normalizeHex(stroke.style.colorA, '#183a8f');
+        drawContext.strokeStyle = solidColor;
+        drawContext.fillStyle = solidColor;
+      }
+
+      const totalPoints = stroke.points.length;
+      const visiblePoints = frame.type === 'redraw'
+        ? Math.max(1, Math.ceil(totalPoints * clamp(frame.visibleRatio, 0.02, 1)))
+        : totalPoints;
+      const pointsToDraw = stroke.points.slice(0, visiblePoints);
+
+      if (stroke.drawMode === 'pixel') {
+        const pixelSize = Math.max(2, Math.round(stroke.size));
+        pointsToDraw.forEach((point) => {
+          drawContext.fillRect(point.x, point.y, pixelSize, pixelSize);
+        });
+      } else {
+        drawContext.lineJoin = 'round';
+        drawContext.lineCap = 'round';
+        drawContext.lineWidth = stroke.size;
+        drawContext.beginPath();
+        drawContext.moveTo(pointsToDraw[0].x, pointsToDraw[0].y);
+        for (let index = 1; index < pointsToDraw.length; index += 1) {
+          const point = pointsToDraw[index];
+          drawContext.lineTo(point.x, point.y);
+        }
+        if (pointsToDraw.length === 1) {
+          drawContext.lineTo(pointsToDraw[0].x + 0.01, pointsToDraw[0].y + 0.01);
+        }
+        drawContext.stroke();
+      }
+      drawContext.restore();
+    });
+  }
+
+  function renderImageObject(context, item, animationFrame = null) {
     if (!item.imageEl) return;
-    context.drawImage(item.imageEl, item.x, item.y, item.width, item.height);
+    withAnimatedObjectContext(context, item, animationFrame, (drawContext) => {
+      drawContext.drawImage(item.imageEl, item.x, item.y, item.width, item.height);
+    });
   }
 
   function getSelectionBounds() {
@@ -609,7 +714,7 @@
     context.restore();
   }
 
-  function renderScene(targetContext = ui.context, { includeSelection = true } = {}) {
+  function renderScene(targetContext = ui.context, { includeSelection = true, animationNow = null, playAnimations = false, playOnce = false } = {}) {
     if (targetContext === ui.context) {
       if (ui.canvas.width !== state.canvasWidth) ui.canvas.width = state.canvasWidth;
       if (ui.canvas.height !== state.canvasHeight) ui.canvas.height = state.canvasHeight;
@@ -618,10 +723,11 @@
     targetContext.clearRect(0, 0, state.canvasWidth, state.canvasHeight);
     renderBackground(targetContext, state.canvasWidth, state.canvasHeight);
     state.objects.forEach((item) => {
+      const frame = playAnimations ? buildAnimationFrame(item, animationNow || 0, { playOnce }) : null;
       if (item.type === 'image') {
-        renderImageObject(targetContext, item);
+        renderImageObject(targetContext, item, frame);
       } else {
-        renderStroke(targetContext, item);
+        renderStroke(targetContext, item, frame);
       }
     });
     if (includeSelection) {
@@ -668,6 +774,34 @@
     if (ui.backgroundAngleField) ui.backgroundAngleField.hidden = !isGradient;
     if (ui.backgroundStopsList) ui.backgroundStopsList.hidden = !isGradient;
     if (ui.backgroundStopActions) ui.backgroundStopActions.hidden = !isGradient;
+  }
+
+  function getAnimationDisplayLabel(type = 'none') {
+    return ANIMATION_PRESETS[type]?.label || ANIMATION_PRESETS.none.label;
+  }
+
+  function updateAnimationUi() {
+    if (!ui.objectAnimationSelect || !ui.animationSummary) return;
+    const selected = getSelectedObjects();
+    const animatedCount = getAnimatedObjectCount();
+    const singleAnimation = selected.length === 1
+      ? sanitizeAnimation(selected[0].animation, selected[0].type).type
+      : '';
+    ui.objectAnimationSelect.value = singleAnimation && Object.hasOwn(ANIMATION_PRESETS, singleAnimation)
+      ? singleAnimation
+      : 'none';
+    ui.objectAnimationSelect.disabled = !selected.length;
+    if (ui.applyObjectAnimationBtn) ui.applyObjectAnimationBtn.disabled = !selected.length;
+    if (ui.clearObjectAnimationBtn) ui.clearObjectAnimationBtn.disabled = !selected.some((item) => isObjectAnimated(item));
+
+    if (!selected.length) {
+      ui.animationSummary.textContent = 'Select objects to add a simple loop animation.';
+      return;
+    }
+
+    const invalidRedrawCount = selected.filter((item) => item.type !== 'stroke').length;
+    const selectionAnimatedCount = selected.filter((item) => isObjectAnimated(item)).length;
+    ui.animationSummary.textContent = `${selected.length} object${selected.length === 1 ? '' : 's'} selected. ${selectionAnimatedCount} already animated. ${animatedCount}/${MAX_ANIMATED_OBJECTS} animated objects used.${invalidRedrawCount ? ' Redraw works only on drawn strokes.' : ''}`;
   }
 
   function setTool(tool) {
@@ -738,6 +872,7 @@
     if (selectedImage) {
       ui.selectedImageScaleInput.value = String(selectedImage.scale || 100);
     }
+    updateAnimationUi();
   }
 
   function getObjectById(id) {
@@ -1024,6 +1159,55 @@
     updateStatus('Selection removed.');
   }
 
+  function applyAnimationToSelection() {
+    const selected = getSelectedObjects();
+    if (!selected.length) {
+      updateStatus('Select at least one object first.');
+      return;
+    }
+    const requestedType = String(ui.objectAnimationSelect?.value || 'none').trim().toLowerCase();
+    const animationType = Object.hasOwn(ANIMATION_PRESETS, requestedType) ? requestedType : 'none';
+    if (animationType === 'redraw' && selected.some((item) => item.type !== 'stroke')) {
+      updateStatus('Redraw only works on drawn stroke objects.');
+      return;
+    }
+    const currentlyAnimatedOutsideSelection = state.objects.filter((item) => !state.selectedIds.has(item.id) && isObjectAnimated(item)).length;
+    const nextAnimatedSelected = animationType === 'none' ? 0 : selected.length;
+    if ((currentlyAnimatedOutsideSelection + nextAnimatedSelected) > MAX_ANIMATED_OBJECTS) {
+      updateStatus(`To keep banners smooth, only ${MAX_ANIMATED_OBJECTS} objects can animate at once.`);
+      return;
+    }
+    pushHistorySnapshot();
+    selected.forEach((item) => {
+      item.animation = sanitizeAnimation({
+        type: animationType,
+        duration: ANIMATION_PRESETS[animationType]?.duration || 0,
+      }, item.type);
+    });
+    markDirty();
+    renderScene();
+    updateMeta();
+    updateStatus(animationType === 'none'
+      ? 'Animation cleared for the selected objects.'
+      : `Applied ${getAnimationDisplayLabel(animationType)} to ${selected.length} selected object${selected.length === 1 ? '' : 's'}.`);
+  }
+
+  function clearAnimationFromSelection() {
+    const selected = getSelectedObjects().filter((item) => isObjectAnimated(item));
+    if (!selected.length) {
+      updateStatus('No animated objects are selected.');
+      return;
+    }
+    pushHistorySnapshot();
+    selected.forEach((item) => {
+      item.animation = { type: 'none', duration: 0 };
+    });
+    markDirty();
+    renderScene();
+    updateMeta();
+    updateStatus('Animation cleared from the selected objects.');
+  }
+
   function addBackgroundStop() {
     pushHistorySnapshot();
     state.background.mode = 'gradient';
@@ -1219,6 +1403,52 @@
     };
   }
 
+  function sceneHasAnimations(objects = state.objects) {
+    return objects.some((item) => isObjectAnimated(item) || /gif/i.test(String(item?.mimeType || item?.src || '')));
+  }
+
+  function stopFinishPreviewPlayback() {
+    if (state.finishPreviewFrame) {
+      window.cancelAnimationFrame(state.finishPreviewFrame);
+      state.finishPreviewFrame = 0;
+    }
+    state.finishPreviewStartAt = 0;
+    if (ui.exportPreviewCanvas) {
+      ui.exportPreviewCanvas.hidden = true;
+    }
+    if (ui.exportPreview) {
+      ui.exportPreview.hidden = false;
+    }
+  }
+
+  function startFinishPreviewPlayback() {
+    if (!ui.exportPreviewCanvas || !sceneHasAnimations()) {
+      stopFinishPreviewPlayback();
+      return;
+    }
+    stopFinishPreviewPlayback();
+    ui.exportPreview.hidden = true;
+    ui.exportPreviewCanvas.hidden = false;
+    ui.exportPreviewCanvas.width = state.canvasWidth;
+    ui.exportPreviewCanvas.height = state.canvasHeight;
+    const previewContext = ui.exportPreviewCanvas.getContext('2d');
+    state.finishPreviewStartAt = performance.now();
+    const renderLoop = (now) => {
+      if (!state.finishOpen || !previewContext) {
+        stopFinishPreviewPlayback();
+        return;
+      }
+      renderScene(previewContext, {
+        includeSelection: false,
+        animationNow: now - state.finishPreviewStartAt,
+        playAnimations: true,
+        playOnce: false,
+      });
+      state.finishPreviewFrame = window.requestAnimationFrame(renderLoop);
+    };
+    state.finishPreviewFrame = window.requestAnimationFrame(renderLoop);
+  }
+
   function openFinishOverlay() {
     const exported = getExportData('png');
     state.exportDataUrl = exported.dataUrl;
@@ -1228,9 +1458,11 @@
     state.finishOpen = true;
     ui.saveBannerBtn.hidden = state.mode !== 'profile-banner';
     ui.saveBannerHint.hidden = state.mode !== 'profile-banner';
+    startFinishPreviewPlayback();
   }
 
   function closeFinishOverlay() {
+    stopFinishPreviewPlayback();
     ui.finishOverlay.hidden = true;
     state.finishOpen = false;
     ui.saveBannerBtn.hidden = true;
@@ -1320,12 +1552,16 @@
           baseHeight: height,
           scale: 100,
           groupId: '',
+          mimeType: String(file?.type || '').trim().toLowerCase(),
           imageEl: image,
+          animation: { type: 'none', duration: 0 },
         };
         state.objects.push(item);
         setSelection([item.id]);
         markDirty();
-        updateStatus('Image imported. Switch to Move or Select to place it.');
+        updateStatus(/gif/i.test(String(file?.type || ''))
+          ? 'GIF imported. It will animate in preview/profile playback while the object remains selected or saved.'
+          : 'Image imported. Switch to Move or Select to place it.');
       };
       image.src = src;
     };
@@ -1345,6 +1581,23 @@
     selectedImage.height = Math.round(selectedImage.baseHeight * (safeScale / 100));
     renderScene();
     markDirty();
+  }
+
+  function buildBannerScenePayload() {
+    return {
+      version: 1,
+      width: state.canvasWidth,
+      height: state.canvasHeight,
+      background: structuredClone(state.background),
+      objects: state.objects.map((item) => {
+        const safeObject = sanitizeObject(item);
+        if (!safeObject) return null;
+        if (safeObject.type === 'image') {
+          safeObject.imageEl = undefined;
+        }
+        return safeObject;
+      }).filter(Boolean),
+    };
   }
 
   function persistBannerLocally(entry) {
@@ -1391,6 +1644,9 @@
     window.dispatchEvent(new CustomEvent('playr-profiles-updated', {
       detail: { uid: account.uid },
     }));
+    window.dispatchEvent(new CustomEvent('playr-custom-banners-updated', {
+      detail: { uid: account.uid },
+    }));
     if (window.PlayrProgression?.importProfile) {
       try {
         window.PlayrProgression.importProfile(account, profiles[account.uid], { prefer: 'remote', emit: true });
@@ -1423,6 +1679,7 @@
   }
 
   async function saveCurrentAsBanner() {
+    if (state.savingBanner) return;
     if (state.mode !== 'profile-banner') {
       updateStatus('Switch to Profile banner mode before saving banner art.');
       return;
@@ -1432,24 +1689,28 @@
       updateStatus('Log in to save a custom banner.');
       return;
     }
-    const exportData = getExportData('webp');
-    const stamp = safeNow();
-    const entry = {
-      id: `custom-banner-${stamp}`,
-      label: `Custom banner ${new Date(stamp).toLocaleDateString()}`,
-      dataUrl: exportData.dataUrl,
-      width: state.canvasWidth,
-      height: state.canvasHeight,
-      createdAt: stamp,
-      updatedAt: stamp,
-    };
-    const result = persistBannerLocally(entry);
-    if (!result.ok) {
-      updateStatus(result.reason || 'That banner could not be saved.');
-      return;
-    }
+    state.savingBanner = true;
+    ui.saveBannerBtn.disabled = true;
     ui.saveOverlay.hidden = false;
     try {
+      const exportData = getExportData('webp');
+      const stamp = safeNow();
+      const entry = {
+        id: `custom-banner-${stamp}`,
+        label: `Custom banner ${new Date(stamp).toLocaleDateString()}`,
+        dataUrl: exportData.dataUrl,
+        width: state.canvasWidth,
+        height: state.canvasHeight,
+        scene: buildBannerScenePayload(),
+        animated: sceneHasAnimations(),
+        createdAt: stamp,
+        updatedAt: stamp,
+      };
+      const result = persistBannerLocally(entry);
+      if (!result?.ok) {
+        updateStatus(result?.reason || 'That banner could not be saved.');
+        return;
+      }
       await persistBannerToCloud();
       clearDirty();
       closeFinishOverlay();
@@ -1457,7 +1718,11 @@
       updateMeta();
       showToast('Saved to your banners!');
       updateStatus('Banner save complete. If Settings is already open, give it a moment or reopen it.');
+    } catch {
+      updateStatus('That banner could not be saved. Please try again.');
     } finally {
+      state.savingBanner = false;
+      ui.saveBannerBtn.disabled = false;
       ui.saveOverlay.hidden = true;
     }
   }
@@ -1620,15 +1885,17 @@
       removeBackgroundStop(button.getAttribute('data-remove-stop') || '');
     });
 
-    ui.importImageBtn.addEventListener('click', () => {
-      ui.imageImportInput.click();
-    });
+    if (ui.importImageBtn) {
+      ui.importImageBtn.addEventListener('click', () => {
+        ui.imageImportInput.click();
+      });
+    }
     ui.imageImportInput.addEventListener('change', () => {
       const file = ui.imageImportInput.files?.[0];
       ui.imageImportInput.value = '';
       if (!file) return;
-      if (!/^image\/(png|jpeg)$/i.test(file.type)) {
-        updateStatus('Only PNG and JPEG imports are supported right now.');
+      if (!/^image\/(png|jpeg|gif)$/i.test(file.type)) {
+        updateStatus('Only PNG, JPEG, and GIF imports are supported right now.');
         return;
       }
       createImportedImage(file);
@@ -1638,6 +1905,12 @@
     ui.selectedImageScaleInput.addEventListener('input', () => {
       updateSelectedImageScale(ui.selectedImageScaleInput.value);
     });
+    if (ui.applyObjectAnimationBtn) {
+      ui.applyObjectAnimationBtn.addEventListener('click', applyAnimationToSelection);
+    }
+    if (ui.clearObjectAnimationBtn) {
+      ui.clearObjectAnimationBtn.addEventListener('click', clearAnimationFromSelection);
+    }
 
     ui.clearBtn.addEventListener('click', clearScene);
     ui.finishBtn.addEventListener('click', () => {
@@ -1757,6 +2030,10 @@
     ui.backgroundStopsList = $('backgroundStopsList');
     ui.backgroundStopActions = $('backgroundStopActions');
     ui.addBackgroundStopBtn = $('addBackgroundStopBtn');
+    ui.objectAnimationSelect = $('objectAnimationSelect');
+    ui.applyObjectAnimationBtn = $('applyObjectAnimationBtn');
+    ui.clearObjectAnimationBtn = $('clearObjectAnimationBtn');
+    ui.animationSummary = $('animationSummary');
     ui.groupSelectionBtn = $('groupSelectionBtn');
     ui.ungroupSelectionBtn = $('ungroupSelectionBtn');
     ui.deleteSelectionBtn = $('deleteSelectionBtn');
@@ -1775,6 +2052,7 @@
     ui.finishOverlay = $('finishOverlay');
     ui.finishCloseBtn = $('finishCloseBtn');
     ui.saveOverlay = $('saveOverlay');
+    ui.exportPreviewCanvas = $('exportPreviewCanvas');
     ui.exportPreview = $('exportPreview');
     ui.downloadFormatSelect = $('downloadFormatSelect');
     ui.fileNameInput = $('fileNameInput');

@@ -376,6 +376,11 @@
       [uid]: nextEntries,
     };
     const ok = writeCustomBannerLibrary(nextLibrary);
+    if (ok) {
+      window.dispatchEvent(new CustomEvent('playr-custom-banners-updated', {
+        detail: { uid },
+      }));
+    }
     return ok
       ? { ok: true, entries: nextEntries }
       : { ok: false, reason: 'Banner storage is full. Delete an older custom banner and try again.' };
@@ -664,6 +669,8 @@
         dataUrl: String(entry.dataUrl || '').trim(),
         width: Math.max(1, Number(entry.width) || 0),
         height: Math.max(1, Number(entry.height) || 0),
+        animated: Boolean(entry.animated),
+        scene: normalizeBannerScene(entry.scene),
         createdAt: Math.max(0, Number(entry.createdAt) || 0),
         updatedAt: Math.max(0, Number(entry.updatedAt) || 0),
       } : null)
@@ -678,6 +685,8 @@
       value: String(banner.value || DEFAULT_PROFILE_BANNER).trim() || DEFAULT_PROFILE_BANNER,
       label: normalizeName(banner.label || 'Default banner'),
       customBannerId: String(banner.customBannerId || '').trim(),
+      animated: Boolean(banner.animated),
+      scene: normalizeBannerScene(banner.scene),
       updatedAt: Math.max(0, Number(banner.updatedAt) || 0),
     };
     merged.profileTheme = {
@@ -724,6 +733,8 @@
         dataUrl,
         width: Math.max(1, Number(entry.width) || 0),
         height: Math.max(1, Number(entry.height) || 0),
+        animated: Boolean(entry.animated),
+        scene: normalizeBannerScene(entry.scene),
         createdAt: Math.max(0, Number(entry.createdAt) || 0),
         updatedAt: Math.max(0, Number(entry.updatedAt) || 0),
       };
@@ -735,6 +746,97 @@
     return Array.from(mergedById.values())
       .sort((left, right) => Math.max(0, right.updatedAt || right.createdAt) - Math.max(0, left.updatedAt || left.createdAt))
       .slice(0, CUSTOM_PROFILE_BANNER_LIMIT);
+  }
+
+  function normalizeBannerScene(scene = null) {
+    if (!scene || typeof scene !== 'object') return null;
+    const width = Math.max(1, Number(scene.width) || 1500);
+    const height = Math.max(1, Number(scene.height) || 420);
+    const backgroundSource = scene.background && typeof scene.background === 'object' ? scene.background : {};
+    const background = {
+      mode: backgroundSource.mode === 'gradient' ? 'gradient' : 'solid',
+      color: normalizeHex(backgroundSource.color, '#ffffff'),
+      angle: Math.max(0, Math.min(360, Number(backgroundSource.angle) || 135)),
+      stops: Array.isArray(backgroundSource.stops)
+        ? backgroundSource.stops.map((stop, index) => ({
+          id: String(stop?.id || `bg-stop-${index + 1}`),
+          offset: clamp(Number(stop?.offset) || 0, 0, 1),
+          color: normalizeHex(stop?.color, '#ffffff'),
+        })).sort((left, right) => left.offset - right.offset)
+        : [],
+    };
+    const objects = Array.isArray(scene.objects)
+      ? scene.objects.map((item, index) => normalizeBannerSceneObject(item, index)).filter(Boolean).slice(0, 24)
+      : [];
+    return { version: 1, width, height, background, objects };
+  }
+
+  function normalizeBannerSceneObject(item, index = 0) {
+    if (!item || typeof item !== 'object') return null;
+    const safeType = item.type === 'image' ? 'image' : item.type === 'stroke' ? 'stroke' : '';
+    if (!safeType) return null;
+    if (safeType === 'stroke') {
+      const points = Array.isArray(item.points)
+        ? item.points.map((point) => ({
+          x: Number(point?.x) || 0,
+          y: Number(point?.y) || 0,
+        })).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y)).slice(0, 2000)
+        : [];
+      if (!points.length) return null;
+      return {
+        id: String(item.id || `stroke-${index}`),
+        type: 'stroke',
+        points,
+        size: Math.max(1, Math.min(80, Number(item.size) || 8)),
+        erase: Boolean(item.erase),
+        drawMode: item.drawMode === 'pixel' ? 'pixel' : 'freehand',
+        groupId: String(item.groupId || ''),
+        style: {
+          mode: item.style?.mode === 'gradient' ? 'gradient' : 'solid',
+          colorA: normalizeHex(item.style?.colorA, '#183a8f'),
+          colorB: normalizeHex(item.style?.colorB, '#7cf0c5'),
+          angle: Math.max(0, Math.min(360, Number(item.style?.angle) || 35)),
+          stops: Array.isArray(item.style?.stops)
+            ? item.style.stops.map((stop, stopIndex) => ({
+              id: String(stop?.id || `stroke-stop-${stopIndex + 1}`),
+              offset: clamp(Number(stop?.offset) || 0, 0, 1),
+              color: normalizeHex(stop?.color, '#183a8f'),
+            })).sort((left, right) => left.offset - right.offset).slice(0, 6)
+            : [],
+        },
+        animation: normalizeBannerSceneAnimation(item.animation, 'stroke'),
+      };
+    }
+    const src = String(item.src || '').trim();
+    if (!src.startsWith('data:image/')) return null;
+    return {
+      id: String(item.id || `image-${index}`),
+      type: 'image',
+      src,
+      x: Number(item.x) || 0,
+      y: Number(item.y) || 0,
+      width: Math.max(10, Number(item.width) || 120),
+      height: Math.max(10, Number(item.height) || 120),
+      baseWidth: Math.max(10, Number(item.baseWidth) || Number(item.width) || 120),
+      baseHeight: Math.max(10, Number(item.baseHeight) || Number(item.height) || 120),
+      scale: Math.max(20, Math.min(250, Number(item.scale) || 100)),
+      groupId: String(item.groupId || ''),
+      mimeType: String(item.mimeType || '').trim().toLowerCase(),
+      animation: normalizeBannerSceneAnimation(item.animation, 'image'),
+    };
+  }
+
+  function normalizeBannerSceneAnimation(animation = null, objectType = 'stroke') {
+    const type = String(animation?.type || 'none').trim().toLowerCase();
+    const allowed = new Set(['none', 'jump', 'shake', 'float', 'pulse', 'redraw']);
+    const safeType = allowed.has(type) ? type : 'none';
+    if (safeType === 'redraw' && objectType !== 'stroke') {
+      return { type: 'none', duration: 0 };
+    }
+    return {
+      type: safeType,
+      duration: safeType === 'none' ? 0 : Math.max(320, Math.min(2400, Number(animation?.duration) || 1200)),
+    };
   }
 
   function mergeProfileThemeState(existingTheme = {}, incomingTheme = {}) {
@@ -2192,6 +2294,8 @@
       dataUrl,
       width: Math.max(1, Number(bannerEntry?.width) || 0),
       height: Math.max(1, Number(bannerEntry?.height) || 0),
+      animated: Boolean(bannerEntry?.animated),
+      scene: normalizeBannerScene(bannerEntry?.scene),
       createdAt: Math.max(0, Number(bannerEntry?.createdAt) || stamp),
       updatedAt: stamp,
     };
@@ -2212,6 +2316,9 @@
     const saved = saveProfile(created.key, profile, created.profiles);
     emitProgressionChange(record, saved);
     window.dispatchEvent(new CustomEvent('playr-profiles-updated', {
+      detail: { uid: String(saved.uid || record.uid || '').trim() },
+    }));
+    window.dispatchEvent(new CustomEvent('playr-custom-banners-updated', {
       detail: { uid: String(saved.uid || record.uid || '').trim() },
     }));
     return { ok: true, banner: nextEntry, profile: saved };

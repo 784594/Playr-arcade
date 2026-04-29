@@ -42,23 +42,15 @@
         </svg>
 
         <div class="trolley" id="trolley" aria-hidden="true">
-          <div class="trolley-roof"></div>
-          <div class="trolley-body">
-            <span></span><span></span><span></span>
-          </div>
-          <div class="trolley-wheels"><i></i><i></i><i></i><i></i></div>
+          <div class="atlas-sprite trolley-sprite"></div>
         </div>
 
         <div class="lever-person" id="leverFigure" aria-hidden="true">
-          <div class="head"></div>
-          <div class="torso"></div>
-          <div class="arm arm-left"></div>
-          <div class="arm arm-right"></div>
-          <div class="leg leg-left"></div>
-          <div class="leg leg-right"></div>
-          <div class="lever-base"></div>
-          <button id="leverVisual" class="lever-stick" type="button" tabindex="-1" aria-hidden="true"></button>
+          <div class="atlas-sprite lever-operator-sprite"></div>
+          <button id="leverVisual" class="lever-stick-art atlas-sprite" type="button" tabindex="-1" aria-hidden="true"></button>
         </div>
+
+        <div class="atlas-sprite track-split-art" aria-hidden="true"></div>
 
         <div id="mainVictims" class="victims victims-main" aria-hidden="true"></div>
         <div id="divertVictims" class="victims victims-divert" aria-hidden="true"></div>
