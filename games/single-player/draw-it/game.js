@@ -1348,6 +1348,11 @@
   }
 
   function persistBannerLocally(entry) {
+    if (window.PlayrProgression?.saveCustomBanner) {
+      try {
+        return window.PlayrProgression.saveCustomBanner(entry, getCurrentAccount());
+      } catch {}
+    }
     const account = getCurrentAccount();
     if (!account?.uid) {
       return { ok: false, reason: 'Log in to save a custom banner.' };
@@ -1438,18 +1443,14 @@
       createdAt: stamp,
       updatedAt: stamp,
     };
-    const result = window.PlayrAuth?.saveCustomBanner
-      ? await window.PlayrAuth.saveCustomBanner(entry)
-      : persistBannerLocally(entry);
+    const result = persistBannerLocally(entry);
     if (!result.ok) {
       updateStatus(result.reason || 'That banner could not be saved.');
       return;
     }
     ui.saveOverlay.hidden = false;
     try {
-      if (!window.PlayrAuth?.saveCustomBanner) {
-        await persistBannerToCloud();
-      }
+      await persistBannerToCloud();
       clearDirty();
       closeFinishOverlay();
       state.lastSavedAt = safeNow();

@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-29-custom-banner-shared-save-path',
+      title: 'Custom banner save path repair',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-29T00:32:00-04:00',
+      summary: 'Draw It custom banners now save through the shared progression/profile layer that is actually loaded on game pages, so saved banners show up in Settings more reliably.',
+      details: [
+        'The custom-banner save action was moved into the shared progression/profile script used by game pages instead of depending on a hub-only account helper that Draw It did not load.',
+        'Draw It now writes banners through that shared local profile store first and then performs its cloud sync attempt on top, so the Settings banner list can pick them up consistently on the same browser session.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-29-dino-run-and-profile-layout-polish',
       title: 'Dino Run and profile layout polish',
       category: 'update',

@@ -9,6 +9,7 @@
   const OWNER_XP_RECOVERY_STORAGE_KEY = 'playrOwnerXpRecoveryV1';
   const OWNER_XP_RECOVERY_THRESHOLD = 1000000000;
   const MAX_XP = 999999999;
+  const CUSTOM_PROFILE_BANNER_LIMIT = 5;
   const DEFAULT_PROFILE_BANNER = 'linear-gradient(135deg, rgba(74, 128, 245, 0.92), rgba(124, 240, 197, 0.82))';
   const EXTRA_EQUIPPED_BADGE_LIMIT = 5;
   const ACTIVE_TICK_MS = 5000;
@@ -1954,6 +1955,55 @@
     return getProgressionSnapshot(record, saved);
   }
 
+  function saveCustomBanner(bannerEntry = {}, record = getCurrentRecord()) {
+    if (!record) {
+      return { ok: false, reason: 'Log in to save a custom banner.' };
+    }
+    const dataUrl = String(bannerEntry?.dataUrl || '').trim();
+    if (!dataUrl.startsWith('data:image/')) {
+      return { ok: false, reason: 'That banner image could not be saved.' };
+    }
+
+    const created = getOrCreateProfile(record);
+    if (!created?.key || !created.profile) {
+      return { ok: false, reason: 'That banner image could not be saved.' };
+    }
+
+    const profile = ensureProfileShape(created.profile, record);
+    const current = Array.isArray(profile?.profileTheme?.customBanners)
+      ? profile.profileTheme.customBanners.slice(0, CUSTOM_PROFILE_BANNER_LIMIT)
+      : [];
+    if (current.length >= CUSTOM_PROFILE_BANNER_LIMIT) {
+      return { ok: false, reason: `You can save up to ${CUSTOM_PROFILE_BANNER_LIMIT} custom banners. Delete one in settings first.` };
+    }
+
+    const stamp = Math.max(0, Number(bannerEntry?.updatedAt || bannerEntry?.createdAt) || Date.now());
+    const nextEntry = {
+      id: String(bannerEntry?.id || `custom-banner-${stamp}`).trim(),
+      label: normalizeName(bannerEntry?.label || 'Custom banner'),
+      dataUrl,
+      width: Math.max(1, Number(bannerEntry?.width) || 0),
+      height: Math.max(1, Number(bannerEntry?.height) || 0),
+      createdAt: Math.max(0, Number(bannerEntry?.createdAt) || stamp),
+      updatedAt: stamp,
+    };
+    if (!nextEntry.id) {
+      return { ok: false, reason: 'That banner image could not be saved.' };
+    }
+
+    profile.profileTheme = {
+      ...(profile.profileTheme && typeof profile.profileTheme === 'object' ? profile.profileTheme : {}),
+      customBanners: [...current, nextEntry],
+    };
+    markProgressionUpdated(profile);
+    const saved = saveProfile(created.key, profile, created.profiles);
+    emitProgressionChange(record, saved);
+    window.dispatchEvent(new CustomEvent('playr-profiles-updated', {
+      detail: { uid: String(saved.uid || record.uid || '').trim() },
+    }));
+    return { ok: true, banner: nextEntry, profile: saved };
+  }
+
   function addDistinctPlayDay(profile, dayKey) {
     const days = new Set(profile.progression.distinctDaysPlayed || []);
     if (dayKey) {
@@ -2402,6 +2452,9 @@
     formatBadgeMarkup,
     setEquippedBadges(badgeIds, record = getCurrentRecord()) {
       return setEquippedBadges(record, badgeIds);
+    },
+    saveCustomBanner(bannerEntry, record = getCurrentRecord()) {
+      return saveCustomBanner(bannerEntry, record);
     },
     exportProfile(record = getCurrentRecord()) {
       const profile = record ? getProfileForRecord(record) : null;
