@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-29-hextris-launch',
+      title: 'Hextris is live',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-29T01:38:00-04:00',
+      summary: 'Hextris now has a playable single-player survival mode with smooth falling blocks, fast eased hex rotation, quick-drop controls, and combo arc clears.',
+      details: [
+        'Use Left/Right or A/D to rotate the hex core, and hold Down or S to accelerate falling blocks while still keeping the rotation snap quick and smooth.',
+        'The old scaffold page was replaced with a full playable build, and the noindex tag was removed from the Hextris page now that it is no longer an incomplete placeholder.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-29-profile-banner-state-and-join-date-fix',
       title: 'Profile banner state and join-date fix',
       category: 'update',

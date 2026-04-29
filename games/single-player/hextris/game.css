@@ -1,0 +1,174 @@
+.hextris-page {
+  --hex-bg: linear-gradient(180deg, rgba(11, 21, 43, 0.98), rgba(6, 11, 24, 0.98));
+  --hex-panel: rgba(15, 24, 49, 0.92);
+  --hex-border: rgba(124, 240, 197, 0.18);
+  --hex-text-soft: rgba(221, 231, 255, 0.74);
+}
+
+.hextris-page .hero {
+  margin-bottom: 18px;
+}
+
+.hextris-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(280px, 360px);
+  gap: 18px;
+  align-items: start;
+}
+
+.hextris-stage-card,
+.hextris-sidebar,
+.hextris-card {
+  background: var(--hex-bg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
+}
+
+.hextris-stage-card {
+  padding: 18px;
+}
+
+.hextris-canvas-shell {
+  position: relative;
+  overflow: hidden;
+  border-radius: 28px;
+  border: 1px solid rgba(124, 240, 197, 0.12);
+  background:
+    radial-gradient(circle at 50% 42%, rgba(74, 128, 245, 0.16), transparent 28%),
+    radial-gradient(circle at 50% 58%, rgba(124, 240, 197, 0.12), transparent 36%),
+    linear-gradient(180deg, rgba(9, 17, 36, 0.96), rgba(5, 9, 20, 0.98));
+  min-height: min(78vw, 760px);
+}
+
+#hextrisCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+}
+
+.hextris-action-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  justify-content: center;
+}
+
+.hextris-sidebar {
+  display: grid;
+  gap: 14px;
+  padding: 0;
+  border-radius: 26px;
+}
+
+.hextris-card {
+  padding: 18px;
+  border-radius: 26px;
+}
+
+.hextris-card h2 {
+  margin: 0 0 14px;
+  font-size: 1.08rem;
+}
+
+.hextris-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.hextris-stat-grid p {
+  margin: 0;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hextris-stat-grid span,
+.hextris-list,
+.hextris-legend span:last-child {
+  color: var(--hex-text-soft);
+}
+
+.hextris-stat-grid span {
+  display: block;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.hextris-stat-grid strong {
+  font-size: 1.15rem;
+}
+
+.hextris-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 10px;
+  line-height: 1.5;
+}
+
+.hextris-legend {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: 10px 12px;
+  align-items: center;
+}
+
+.hextris-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  box-shadow: 0 0 14px currentColor;
+}
+
+.hextris-swatch-pink {
+  color: #ff6fcf;
+  background: #ff6fcf;
+}
+
+.hextris-swatch-blue {
+  color: #63b7ff;
+  background: #63b7ff;
+}
+
+.hextris-swatch-gold {
+  color: #ffd46e;
+  background: #ffd46e;
+}
+
+@media (max-width: 980px) {
+  .hextris-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .hextris-sidebar {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .hextris-stage-card {
+    padding: 12px;
+  }
+
+  .hextris-canvas-shell {
+    border-radius: 20px;
+  }
+
+  .hextris-card {
+    padding: 14px;
+    border-radius: 20px;
+  }
+
+  .hextris-stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hextris-action-row {
+    flex-direction: column;
+  }
+}
