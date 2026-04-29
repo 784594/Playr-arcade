@@ -1,6 +1,20 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-28-draw-it-banner-save-and-layout-tune',
+      title: 'Draw It banner-save and layout tune-up',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-28T21:45:00-04:00',
+      summary: 'Draw It now places the canvas closer to the canvas-size controls, moves background controls into the selection area, and shows a save-in-progress notice while custom banners are being stored.',
+      details: [
+        'The main editor flow now places the canvas between the size picker and the tools so the left workspace no longer leaves a large dead gap above the whiteboard.',
+        'Background controls were moved under the selection panel, and the extra gradient-only controls stay hidden unless Gradient is selected from the background dropdown.',
+        'Saving a profile-banner design now shows a Loading... this wont take long popup while the banner is written, and the save path also re-imports the updated profile locally so custom banners show up in account data more reliably.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-28-wordle-ui-and-reveal-fix',
       title: 'Wordle layout and reveal polish',
       category: 'update',

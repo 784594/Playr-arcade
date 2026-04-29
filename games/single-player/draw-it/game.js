@@ -1271,6 +1271,11 @@
       updatedAt: safeNow(),
     };
     writeJson(PROFILE_STORAGE_KEY, profiles);
+    if (window.PlayrProgression?.importProfile) {
+      try {
+        window.PlayrProgression.importProfile(account, profiles[account.uid], { prefer: 'remote', emit: true });
+      } catch {}
+    }
     return { ok: true, profile: profiles[account.uid] };
   }
 
@@ -1323,9 +1328,16 @@
       updateStatus(result.reason || 'That banner could not be saved.');
       return;
     }
-    await persistBannerToCloud();
-    closeFinishOverlay();
-    updateStatus('Saved to your banners!');
+    ui.saveOverlay.hidden = false;
+    try {
+      await persistBannerToCloud();
+      closeFinishOverlay();
+      state.lastSavedAt = safeNow();
+      updateMeta();
+      updateStatus('Saved to your banners!');
+    } finally {
+      ui.saveOverlay.hidden = true;
+    }
   }
 
   function handleCanvasPointerDown(event) {
@@ -1604,6 +1616,7 @@
     ui.recentList = $('recentList');
     ui.finishOverlay = $('finishOverlay');
     ui.finishCloseBtn = $('finishCloseBtn');
+    ui.saveOverlay = $('saveOverlay');
     ui.exportPreview = $('exportPreview');
     ui.downloadFormatSelect = $('downloadFormatSelect');
     ui.fileNameInput = $('fileNameInput');

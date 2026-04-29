@@ -54,6 +54,22 @@
             </div>
           </section>
 
+          <section class="panel draw-card draw-canvas-card">
+            <div class="draw-card-head">
+              <div>
+                <p class="eyebrow">Canvas</p>
+                <h3>Whiteboard</h3>
+              </div>
+              <button class="hint-chip" type="button" data-help-tip="The canvas grows automatically in freeform mode as you draw close to the lower or right edge.">?</button>
+            </div>
+            <div class="draw-stage-shell" id="drawStageShell">
+              <div class="draw-stage" id="drawStage">
+                <canvas id="drawCanvas" aria-label="Drawing board"></canvas>
+              </div>
+            </div>
+            <p class="draw-note" id="bannerModeNote" hidden>Banner mode reminder: if a saved custom banner is applied and later found to be offensive, the account can be banned.</p>
+          </section>
+
           <section class="panel draw-card draw-tools-card">
             <div class="draw-card-head">
               <div>
@@ -70,22 +86,6 @@
               <button class="action-btn" type="button" data-tool="fill" title="Apply the current background style">Fill</button>
               <button class="action-btn" type="button" data-tool="image" title="Import PNG or JPEG artwork">Import</button>
             </div>
-          </section>
-
-          <section class="panel draw-card draw-canvas-card">
-            <div class="draw-card-head">
-              <div>
-                <p class="eyebrow">Canvas</p>
-                <h3>Whiteboard</h3>
-              </div>
-              <button class="hint-chip" type="button" data-help-tip="The canvas grows automatically in freeform mode as you draw close to the lower or right edge.">?</button>
-            </div>
-            <div class="draw-stage-shell" id="drawStageShell">
-              <div class="draw-stage" id="drawStage">
-                <canvas id="drawCanvas" aria-label="Drawing board"></canvas>
-              </div>
-            </div>
-            <p class="draw-note" id="bannerModeNote" hidden>Banner mode reminder: if a saved custom banner is applied and later found to be offensive, the account can be banned.</p>
           </section>
 
           <section class="panel draw-card draw-settings-card">
@@ -105,29 +105,6 @@
               <p><span>Canvas size</span><strong id="sizeLabel">1600 x 900</strong></p>
               <p><span>Objects</span><strong id="strokeCountLabel">0</strong></p>
               <p><span>Last saved</span><strong id="lastSavedLabel">None yet</strong></p>
-            </div>
-            <div class="tool-stack compact-tool-stack">
-              <label>
-                Background mode
-                <select id="backgroundModeSelect">
-                  <option value="solid">Solid colour</option>
-                  <option value="gradient">Gradient</option>
-                </select>
-              </label>
-              <div class="two-colour-row">
-                <label>
-                  Base colour
-                  <input id="backgroundColorInput" type="color" value="#ffffff" />
-                </label>
-                <label id="backgroundAngleField">
-                  Angle
-                  <input id="backgroundAngleInput" type="range" min="0" max="360" value="135" />
-                </label>
-              </div>
-              <div class="gradient-stop-list" id="backgroundStopsList" hidden></div>
-              <div class="tool-inline-actions" id="backgroundStopActions" hidden>
-                <button id="addBackgroundStopBtn" class="action-btn" type="button">Add stop</button>
-              </div>
             </div>
           </section>
         </div>
@@ -220,6 +197,35 @@
                 Selected image scale
                 <input id="selectedImageScaleInput" type="range" min="20" max="250" value="100" />
               </label>
+              <section class="background-panel">
+                <div class="draw-card-head compact-draw-head">
+                  <div>
+                    <p class="eyebrow">Background</p>
+                    <h3>Canvas fill</h3>
+                  </div>
+                </div>
+                <div class="tool-stack compact-tool-stack">
+                  <label>
+                    Background mode
+                    <select id="backgroundModeSelect">
+                      <option value="solid">Solid colour</option>
+                      <option value="gradient">Gradient</option>
+                    </select>
+                  </label>
+                  <label>
+                    Base colour
+                    <input id="backgroundColorInput" type="color" value="#ffffff" />
+                  </label>
+                  <label id="backgroundAngleField">
+                    Angle
+                    <input id="backgroundAngleInput" type="range" min="0" max="360" value="135" />
+                  </label>
+                  <div class="gradient-stop-list" id="backgroundStopsList" hidden></div>
+                  <div class="tool-inline-actions" id="backgroundStopActions" hidden>
+                    <button id="addBackgroundStopBtn" class="action-btn" type="button">Add stop</button>
+                  </div>
+                </div>
+              </section>
               <div class="selection-action-grid">
                 <button id="groupSelectionBtn" class="action-btn" type="button" title="Bind selected items into one group">Group</button>
                 <button id="ungroupSelectionBtn" class="action-btn" type="button" title="Break the current group apart">Ungroup</button>
@@ -292,6 +298,13 @@
         <button id="unsavedStayBtn" class="action-btn" type="button">Keep drawing</button>
         <button id="unsavedLeaveBtn" class="action-btn action-btn-danger" type="button">Leave anyway</button>
       </div>
+    </section>
+  </div>
+
+  <div class="draw-save-overlay" id="saveOverlay" hidden>
+    <section class="panel draw-save-modal" role="status" aria-live="polite" aria-labelledby="saveOverlayTitle">
+      <h3 id="saveOverlayTitle">Loading... this wont take long</h3>
+      <p class="draw-note">Saving your custom banner to your account.</p>
     </section>
   </div>
 </body>
