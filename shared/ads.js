@@ -3,6 +3,7 @@
   const ADSENSE_SRC = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5070133200721707';
   const PLAYR_FAVICON_PATH = '/images/background-removed-background-removed.png';
   const PROFILE_STORAGE_KEY = 'playrProfiles';
+  const CUSTOM_BANNER_STORAGE_KEY = 'playrCustomBannersV1';
   const LEGACY_USER_STORAGE_KEY = 'playrCurrentUser';
   const PENDING_REFERRAL_STORAGE_KEY = 'playrPendingReferralCode';
   const TRUSTED_VIP_IDENTIFIERS = new Set(['owner@playr.io']);
@@ -294,6 +295,43 @@
     writeJsonStorage(PROFILE_STORAGE_KEY, profiles || {});
   }
 
+  function readCustomBannerLibrary() {
+    const library = readJsonStorage(CUSTOM_BANNER_STORAGE_KEY);
+    return library && typeof library === 'object' ? library : {};
+  }
+
+  function writeCustomBannerLibrary(library) {
+    return writeJsonStorage(CUSTOM_BANNER_STORAGE_KEY, library || {});
+  }
+
+  function getCustomBannerOwnerUid(record = null, profile = null) {
+    return String(record?.uid || profile?.uid || '').trim();
+  }
+
+  function getStoredCustomBanners(record = null, profile = null) {
+    const uid = getCustomBannerOwnerUid(record, profile);
+    if (!uid) return [];
+    const library = readCustomBannerLibrary();
+    return mergeCustomBannerEntries(Array.isArray(library[uid]) ? library[uid] : [], []);
+  }
+
+  function setStoredCustomBanners(entries = [], record = null, profile = null) {
+    const uid = getCustomBannerOwnerUid(record, profile);
+    if (!uid) {
+      return { ok: false, reason: 'Log in to save a custom banner.' };
+    }
+    const library = readCustomBannerLibrary();
+    const nextEntries = mergeCustomBannerEntries([], Array.isArray(entries) ? entries : []);
+    const nextLibrary = {
+      ...library,
+      [uid]: nextEntries,
+    };
+    const ok = writeCustomBannerLibrary(nextLibrary);
+    return ok
+      ? { ok: true, entries: nextEntries }
+      : { ok: false, reason: 'Banner storage is full. Delete an older custom banner and try again.' };
+  }
+
   function getCurrentDateKey() {
     const now = new Date();
     const year = now.getFullYear();
@@ -560,6 +598,8 @@
       } : null)
       .filter((entry) => entry && entry.id && entry.dataUrl)
       .slice(0, 5);
+    const storedCustomBanners = getStoredCustomBanners(record, merged);
+    const resolvedCustomBanners = mergeCustomBannerEntries(normalizedCustomBanners, storedCustomBanners);
     const safeBannerType = ['solid', 'gradient', 'vip-custom'].includes(String(banner.type || '').trim()) ? String(banner.type).trim() : 'gradient';
     const vipCustomBannerAllowed = merged.isVip || (Number(merged.progression.referral.vipExpiresAt) || 0) > Date.now();
     const safeBanner = {
@@ -579,7 +619,7 @@
             updatedAt: safeBanner.updatedAt,
           }
         : safeBanner,
-      customBanners: normalizedCustomBanners,
+      customBanners: resolvedCustomBanners,
     };
 
     if (isOwnerRecord(record || merged)) {
@@ -2033,9 +2073,14 @@
       return { ok: false, reason: 'That banner image could not be saved.' };
     }
 
+    const storedResult = setStoredCustomBanners([...current, nextEntry], record, profile);
+    if (!storedResult.ok) {
+      return storedResult;
+    }
+
     profile.profileTheme = {
       ...(profile.profileTheme && typeof profile.profileTheme === 'object' ? profile.profileTheme : {}),
-      customBanners: [...current, nextEntry],
+      customBanners: storedResult.entries,
     };
     markProgressionUpdated(profile);
     const saved = saveProfile(created.key, profile, created.profiles);
@@ -2497,6 +2542,12 @@
     },
     saveCustomBanner(bannerEntry, record = getCurrentRecord()) {
       return saveCustomBanner(bannerEntry, record);
+    },
+    getStoredCustomBanners(record = getCurrentRecord()) {
+      return getStoredCustomBanners(record);
+    },
+    replaceStoredCustomBanners(entries = [], record = getCurrentRecord()) {
+      return setStoredCustomBanners(entries, record);
     },
     exportProfile(record = getCurrentRecord()) {
       const profile = record ? getProfileForRecord(record) : null;

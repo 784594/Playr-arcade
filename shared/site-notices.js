@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-29-custom-banner-shared-library-fix',
+      title: 'Custom banner library fix',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-29T14:22:00-04:00',
+      summary: 'Custom banners now use a dedicated shared banner library instead of relying only on the heavier profile cache blob, which makes them much more likely to appear in Settings after a Draw It save.',
+      details: [
+        'Draw It and Settings now read and write the same dedicated local custom-banner store, so saved banner options no longer depend on a full profile blob update succeeding first.',
+        'The profile/theme export path also merges that shared banner library back into profile reads, so custom banner options can still appear in Settings even if the heavier profile cache lags behind.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-29-custom-banner-settings-sync-fix',
       title: 'Custom banners now stay in Settings',
       category: 'update',

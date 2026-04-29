@@ -642,10 +642,14 @@ function getDefaultProfileBanner() {
   return PROFILE_BANNER_PRESETS[0];
 }
 
-function getCustomProfileBanners(profile = {}) {
-  return Array.isArray(profile?.profileTheme?.customBanners)
-    ? profile.profileTheme.customBanners.slice(0, CUSTOM_PROFILE_BANNER_LIMIT)
+function getCustomProfileBanners(profile = {}, account = getCurrentAccount()) {
+  const localEntries = Array.isArray(profile?.profileTheme?.customBanners)
+    ? profile.profileTheme.customBanners
     : [];
+  const progressionEntries = window.PlayrProgression?.getStoredCustomBanners
+    ? window.PlayrProgression.getStoredCustomBanners(account || profile)
+    : [];
+  return mergeCustomBannerEntries(localEntries, progressionEntries);
 }
 
 function getEditableCurrentProfile(account = getCurrentAccount()) {
@@ -1589,6 +1593,17 @@ function applySelectedBannerPreset(presetId) {
 async function persistProfileThemeUpdate(account, nextTheme, successMessage = 'Profile banner updated.') {
   if (!account?.uid) return false;
   const profile = getEditableCurrentProfile(account);
+  if (Array.isArray(nextTheme?.customBanners) && window.PlayrProgression?.replaceStoredCustomBanners) {
+    const storeResult = window.PlayrProgression.replaceStoredCustomBanners(nextTheme.customBanners, account);
+    if (!storeResult?.ok) {
+      setSettingsStatus(storeResult?.reason || 'That banner image could not be saved.', 'danger');
+      return false;
+    }
+    nextTheme = {
+      ...nextTheme,
+      customBanners: Array.isArray(storeResult.entries) ? storeResult.entries : nextTheme.customBanners,
+    };
+  }
   profile.profileTheme = {
     ...(profile.profileTheme && typeof profile.profileTheme === 'object' ? profile.profileTheme : {}),
     ...nextTheme,
