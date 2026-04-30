@@ -370,7 +370,14 @@
     const uid = getCustomBannerOwnerUid(record, profile);
     if (!uid) return [];
     const library = readCustomBannerLibrary();
-    return mergeCustomBannerEntries(Array.isArray(library[uid]) ? library[uid] : [], []);
+    const normalizedEntries = mergeCustomBannerEntries(Array.isArray(library[uid]) ? library[uid] : [], []);
+    if (JSON.stringify(Array.isArray(library[uid]) ? library[uid] : []) !== JSON.stringify(normalizedEntries)) {
+      writeCustomBannerLibrary({
+        ...library,
+        [uid]: normalizedEntries,
+      });
+    }
+    return normalizedEntries;
   }
 
   function setStoredCustomBanners(entries = [], record = null, profile = null) {
@@ -2386,7 +2393,7 @@
       };
     } else {
       if (current.length >= CUSTOM_PROFILE_BANNER_LIMIT) {
-        return { ok: false, reason: `You can save up to ${CUSTOM_PROFILE_BANNER_LIMIT} custom banners. Delete one in settings first.` };
+        nextEntries = current.slice(0, CUSTOM_PROFILE_BANNER_LIMIT - 1);
       }
       nextEntries.push(nextEntry);
     }

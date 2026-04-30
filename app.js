@@ -2329,7 +2329,7 @@ async function saveNewCustomBanner({ label = 'Custom banner', dataUrl = '', widt
     };
   } else {
     if (current.length >= CUSTOM_PROFILE_BANNER_LIMIT) {
-      return { ok: false, reason: `You can save up to ${CUSTOM_PROFILE_BANNER_LIMIT} custom banners. Delete one in settings first.` };
+      nextCustomBanners.splice(CUSTOM_PROFILE_BANNER_LIMIT - 1);
     }
     nextCustomBanners.push(bannerEntry);
   }

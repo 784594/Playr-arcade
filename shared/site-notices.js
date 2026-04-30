@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-29-custom-banner-self-heal-and-slot-rotation',
+      title: 'Custom banner slot rotation and self-heal',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-29T17:05:00-04:00',
+      summary: 'Custom-banner storage now self-cleans duplicate or stale entries more aggressively, and new Draw It saves can replace the oldest saved banner instead of hard-failing at the five-banner cap.',
+      details: [
+        'The shared custom-banner library now normalizes and rewrites older malformed entry lists when they are read, which helps recover from earlier buggy save states.',
+        'When all five slots are already full, a new Draw It custom-banner save now rotates out the oldest saved banner instead of stopping the whole save flow, and the direct-apply path now falls back to a simpler local profile update if the shared helper path misbehaves.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-29-firestore-verified-shape-fix',
       title: 'Firestore profile sync fix',
       category: 'update',
