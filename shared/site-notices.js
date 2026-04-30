@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-29-firestore-verified-shape-fix',
+      title: 'Firestore profile sync fix',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-29T16:46:00-04:00',
+      summary: 'Profile sync rules now accept the same verified-account shape the live app has been writing, which fixes another source of silent profile-update failures around banner changes and account saves.',
+      details: [
+        'The Firestore user-profile rules now allow boolean verified flags in addition to the newer map-based shape, so older accounts with verified set to false do not block later profile updates.',
+        'That matters for banner saves and applies because those actions write through the same userProfiles document, so one invalid carried-forward field could reject the entire update even when the banner data itself was fine.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-29-custom-banner-save-apply-reliability-fix',
       title: 'Custom banner save/apply reliability fix',
       category: 'update',
