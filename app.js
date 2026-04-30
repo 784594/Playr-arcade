@@ -2304,9 +2304,6 @@ async function saveNewCustomBanner({ label = 'Custom banner', dataUrl = '', widt
   }
   const profile = getEditableCurrentProfile(account);
   const current = getCustomProfileBanners(profile);
-  if (current.length >= CUSTOM_PROFILE_BANNER_LIMIT) {
-    return { ok: false, reason: `You can save up to ${CUSTOM_PROFILE_BANNER_LIMIT} custom banners. Delete one in settings first.` };
-  }
   const stamp = Date.now();
   const bannerEntry = {
     id: `custom-banner-${stamp}`,
@@ -2319,8 +2316,25 @@ async function saveNewCustomBanner({ label = 'Custom banner', dataUrl = '', widt
     createdAt: stamp,
     updatedAt: stamp,
   };
+  const existingIndex = current.findIndex((entry) => entry.id === bannerEntry.id || entry.dataUrl === bannerEntry.dataUrl);
+  const nextCustomBanners = current.slice();
+  if (existingIndex >= 0) {
+    const existingEntry = nextCustomBanners[existingIndex];
+    nextCustomBanners[existingIndex] = {
+      ...existingEntry,
+      ...bannerEntry,
+      id: existingEntry.id || bannerEntry.id,
+      createdAt: normalizeTimestampToMs(existingEntry.createdAt) || bannerEntry.createdAt,
+      updatedAt: bannerEntry.updatedAt,
+    };
+  } else {
+    if (current.length >= CUSTOM_PROFILE_BANNER_LIMIT) {
+      return { ok: false, reason: `You can save up to ${CUSTOM_PROFILE_BANNER_LIMIT} custom banners. Delete one in settings first.` };
+    }
+    nextCustomBanners.push(bannerEntry);
+  }
   const saved = await persistProfileThemeUpdate(account, {
-    customBanners: [...current, bannerEntry],
+    customBanners: nextCustomBanners,
   }, 'Custom banner saved to your account.');
   if (!saved) {
     return { ok: false, reason: 'That banner image could not be saved.' };

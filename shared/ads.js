@@ -341,7 +341,16 @@
   }
 
   function writeProfiles(profiles) {
-    writeJsonStorage(PROFILE_STORAGE_KEY, profiles || {});
+    const safeProfiles = Object.fromEntries(
+      Object.entries(profiles || {}).map(([key, value]) => {
+        const profile = value && typeof value === 'object' ? value : {};
+        return [key, {
+          ...profile,
+          profileTheme: buildLeanProfileTheme(profile.profileTheme),
+        }];
+      }),
+    );
+    writeJsonStorage(PROFILE_STORAGE_KEY, safeProfiles);
   }
 
   function readCustomBannerLibrary() {
@@ -853,6 +862,14 @@
     };
   }
 
+  function buildLeanProfileTheme(theme = {}, options = {}) {
+    const mergedTheme = mergeProfileThemeState({}, theme);
+    return {
+      banner: mergedTheme.banner,
+      customBanners: options.includeCustomBanners === true ? mergedTheme.customBanners : [],
+    };
+  }
+
   function resolveProfileKey(record, profiles = readProfiles()) {
     if (!record) return null;
 
@@ -976,10 +993,69 @@
       activity: safeProfile.activity,
       moderation: safeProfile.moderation,
       staff: safeProfile.staff,
-      profileTheme: safeProfile.profileTheme,
+      profileTheme: buildLeanProfileTheme(safeProfile.profileTheme, { includeCustomBanners: true }),
       updatedAt: Math.max(0, Number(safeProfile.updatedAt) || 0),
       createdAt: Math.max(0, Number(safeProfile.createdAt) || 0),
     });
+  }
+
+  function applyProfileBanner(banner = {}, record = getCurrentRecord()) {
+    if (!record) {
+      return { ok: false, reason: 'Log in to apply a custom banner.' };
+    }
+    const created = getOrCreateProfile(record);
+    if (!created?.key || !created.profile) {
+      return { ok: false, reason: 'That banner could not be applied right now.' };
+    }
+
+    const profile = ensureProfileShape(created.profile, record);
+    const requestedType = String(banner?.type || '').trim();
+    const wantsVipCustom = requestedType === 'vip-custom';
+    if (wantsVipCustom && !isVipRecord(record) && !isOwnerRecord(record)) {
+      return { ok: false, reason: 'This is a VIP option only.' };
+    }
+
+    let resolvedValue = String(banner?.value || '').trim();
+    let resolvedLabel = normalizeName(banner?.label || 'Custom banner');
+    let resolvedCustomBannerId = String(banner?.customBannerId || '').trim();
+    let resolvedAnimated = Boolean(banner?.animated);
+    let resolvedScene = normalizeBannerScene(banner?.scene);
+    if (wantsVipCustom && (!resolvedValue || !resolvedValue.startsWith('data:image/'))) {
+      const matchedBanner = getStoredCustomBanners(record, profile).find((entry) => entry.id === resolvedCustomBannerId);
+      if (matchedBanner) {
+        resolvedValue = String(matchedBanner.dataUrl || '').trim();
+        resolvedLabel = normalizeName(matchedBanner.label || resolvedLabel);
+        resolvedCustomBannerId = matchedBanner.id;
+        resolvedAnimated = Boolean(matchedBanner.animated);
+        resolvedScene = normalizeBannerScene(matchedBanner.scene) || resolvedScene;
+      }
+    }
+
+    if (wantsVipCustom && !resolvedValue.startsWith('data:image/')) {
+      return { ok: false, reason: 'That banner could not be applied right now.' };
+    }
+
+    const nextBanner = {
+      type: wantsVipCustom ? 'vip-custom' : (requestedType === 'solid' ? 'solid' : 'gradient'),
+      value: wantsVipCustom ? resolvedValue : (resolvedValue || DEFAULT_PROFILE_BANNER),
+      label: resolvedLabel || 'Custom banner',
+      customBannerId: wantsVipCustom ? resolvedCustomBannerId : '',
+      animated: wantsVipCustom ? resolvedAnimated : false,
+      scene: wantsVipCustom ? resolvedScene : null,
+      updatedAt: Math.max(0, Number(banner?.updatedAt) || Date.now()),
+    };
+
+    profile.profileTheme = {
+      ...(profile.profileTheme && typeof profile.profileTheme === 'object' ? profile.profileTheme : {}),
+      banner: nextBanner,
+    };
+    markProgressionUpdated(profile);
+    const saved = saveProfile(created.key, profile, created.profiles);
+    emitProgressionChange(record, saved);
+    window.dispatchEvent(new CustomEvent('playr-profiles-updated', {
+      detail: { uid: String(saved.uid || record.uid || '').trim() },
+    }));
+    return { ok: true, profile: saved };
   }
 
   function markProgressionUpdated(profile, now = Date.now()) {
@@ -2280,13 +2356,6 @@
     }
 
     const profile = ensureProfileShape(created.profile, record);
-    const current = Array.isArray(profile?.profileTheme?.customBanners)
-      ? profile.profileTheme.customBanners.slice(0, CUSTOM_PROFILE_BANNER_LIMIT)
-      : [];
-    if (current.length >= CUSTOM_PROFILE_BANNER_LIMIT) {
-      return { ok: false, reason: `You can save up to ${CUSTOM_PROFILE_BANNER_LIMIT} custom banners. Delete one in settings first.` };
-    }
-
     const stamp = Math.max(0, Number(bannerEntry?.updatedAt || bannerEntry?.createdAt) || Date.now());
     const nextEntry = {
       id: String(bannerEntry?.id || `custom-banner-${stamp}`).trim(),
@@ -2303,7 +2372,26 @@
       return { ok: false, reason: 'That banner image could not be saved.' };
     }
 
-    const storedResult = setStoredCustomBanners([...current, nextEntry], record, profile);
+    const current = getStoredCustomBanners(record, profile);
+    const existingIndex = current.findIndex((entry) => entry.id === nextEntry.id || entry.dataUrl === nextEntry.dataUrl);
+    let nextEntries = current.slice();
+    if (existingIndex >= 0) {
+      const existingEntry = nextEntries[existingIndex];
+      nextEntries[existingIndex] = {
+        ...existingEntry,
+        ...nextEntry,
+        id: existingEntry.id || nextEntry.id,
+        createdAt: Math.max(0, Number(existingEntry.createdAt) || Number(nextEntry.createdAt) || stamp),
+        updatedAt: Math.max(0, Number(nextEntry.updatedAt) || stamp),
+      };
+    } else {
+      if (current.length >= CUSTOM_PROFILE_BANNER_LIMIT) {
+        return { ok: false, reason: `You can save up to ${CUSTOM_PROFILE_BANNER_LIMIT} custom banners. Delete one in settings first.` };
+      }
+      nextEntries.push(nextEntry);
+    }
+
+    const storedResult = setStoredCustomBanners(nextEntries, record, profile);
     if (!storedResult.ok) {
       return storedResult;
     }
@@ -2781,6 +2869,9 @@
     },
     replaceStoredCustomBanners(entries = [], record = getCurrentRecord()) {
       return setStoredCustomBanners(entries, record);
+    },
+    applyProfileBanner(banner = {}, record = getCurrentRecord()) {
+      return applyProfileBanner(banner, record);
     },
     getMailboxMessages(record = getCurrentRecord()) {
       const mailbox = readMailbox();

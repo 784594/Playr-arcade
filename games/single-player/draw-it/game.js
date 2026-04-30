@@ -3,7 +3,9 @@
   const DRAW_UNSAVED_KEY = 'playrDrawItDraftV2';
   const PROFILE_STORAGE_KEY = 'playrProfiles';
   const LEGACY_USER_STORAGE_KEY = 'playrCurrentUser';
+  const CUSTOM_BANNER_LIBRARY_KEY = 'playrCustomBannersV1';
   const CUSTOM_PROFILE_BANNER_LIMIT = 5;
+  const OWNER_VIP_IDENTIFIERS = new Set(['owner@playr.io']);
   const FIREBASE_CONFIG = {
     apiKey: 'AIzaSyAIpLxF3vwcLL_aez4db2HlxkftJBkbTRE',
     authDomain: 'playr3.firebaseapp.com',
@@ -131,6 +133,50 @@
     }
   }
 
+  function readCustomBannerLibrary() {
+    return readJson(CUSTOM_BANNER_LIBRARY_KEY, {}) || {};
+  }
+
+  function writeCustomBannerLibrary(library) {
+    return writeJson(CUSTOM_BANNER_LIBRARY_KEY, library || {});
+  }
+
+  function mergeCustomBannerEntries(existingEntries = [], incomingEntries = []) {
+    const mergedById = new Map();
+    [...existingEntries, ...incomingEntries].forEach((entry) => {
+      if (!entry || typeof entry !== 'object') return;
+      const id = String(entry.id || '').trim();
+      const dataUrl = String(entry.dataUrl || '').trim();
+      if (!id || !dataUrl.startsWith('data:image/')) return;
+      const normalized = {
+        id,
+        label: String(entry.label || 'Custom banner').trim().slice(0, 32) || 'Custom banner',
+        dataUrl,
+        width: Math.max(1, Number(entry.width) || 0),
+        height: Math.max(1, Number(entry.height) || 0),
+        animated: Boolean(entry.animated),
+        scene: entry.scene || null,
+        createdAt: Math.max(0, Number(entry.createdAt) || 0),
+        updatedAt: Math.max(0, Number(entry.updatedAt) || 0),
+      };
+      const previous = mergedById.get(id);
+      if (!previous || normalized.updatedAt >= previous.updatedAt) {
+        mergedById.set(id, normalized);
+      }
+    });
+    return Array.from(mergedById.values())
+      .sort((left, right) => Math.max(0, right.updatedAt || right.createdAt) - Math.max(0, left.updatedAt || left.createdAt))
+      .slice(0, CUSTOM_PROFILE_BANNER_LIMIT);
+  }
+
+  function buildLeanProfileTheme(theme = {}) {
+    const safeTheme = theme && typeof theme === 'object' ? theme : {};
+    return {
+      banner: safeTheme.banner && typeof safeTheme.banner === 'object' ? safeTheme.banner : null,
+      customBanners: [],
+    };
+  }
+
   function readProfiles() {
     return readJson(PROFILE_STORAGE_KEY, {}) || {};
   }
@@ -166,7 +212,14 @@
       displayName: String(stored.displayName || local.displayName || 'Player').slice(0, 24),
       identifier: String(stored.identifier || local.identifier || local.uid),
       identifierType: String(stored.identifierType || local.identifierType || 'uid'),
-      isVip: Boolean(stored.isVip || (Array.isArray(stored.roles) && stored.roles.includes('vip'))),
+      isVip: Boolean(
+        stored.isVip
+        || (Array.isArray(stored.roles) && stored.roles.includes('vip'))
+        || (
+          String(stored.identifierType || local.identifierType || '').trim().toLowerCase() === 'email'
+          && OWNER_VIP_IDENTIFIERS.has(String(stored.identifier || local.identifier || '').trim().toLowerCase())
+        )
+      ),
       referralCount: Math.max(0, Number(stored?.progression?.referral?.qualifiedCount) || 0),
       profileTheme: stored.profileTheme || null,
     };
@@ -1624,6 +1677,7 @@
       return { ok: false, reason: 'Log in to save a custom banner.' };
     }
     const profiles = readProfiles();
+    const bannerLibrary = readCustomBannerLibrary();
     const profile = profiles[account.uid] && typeof profiles[account.uid] === 'object'
       ? profiles[account.uid]
       : {
@@ -1635,22 +1689,36 @@
           updatedAt: safeNow(),
           profileTheme: {},
         };
-    const profileTheme = profile.profileTheme && typeof profile.profileTheme === 'object' ? profile.profileTheme : {};
-    const customBanners = Array.isArray(profileTheme.customBanners) ? profileTheme.customBanners.slice(0, CUSTOM_PROFILE_BANNER_LIMIT) : [];
-    if (customBanners.length >= CUSTOM_PROFILE_BANNER_LIMIT) {
-      return { ok: false, reason: `You can save up to ${CUSTOM_PROFILE_BANNER_LIMIT} custom banners. Delete one in settings first.` };
+    const currentEntries = mergeCustomBannerEntries(Array.isArray(bannerLibrary[account.uid]) ? bannerLibrary[account.uid] : [], []);
+    const existingIndex = currentEntries.findIndex((savedEntry) => savedEntry.id === entry.id || savedEntry.dataUrl === entry.dataUrl);
+    let nextEntries = currentEntries.slice();
+    if (existingIndex >= 0) {
+      const existingEntry = nextEntries[existingIndex];
+      nextEntries[existingIndex] = {
+        ...existingEntry,
+        ...entry,
+        id: existingEntry.id || entry.id,
+        createdAt: Math.max(0, Number(existingEntry.createdAt) || Number(entry.createdAt) || safeNow()),
+        updatedAt: Math.max(0, Number(entry.updatedAt) || safeNow()),
+      };
+    } else {
+      if (currentEntries.length >= CUSTOM_PROFILE_BANNER_LIMIT) {
+        return { ok: false, reason: `You can save up to ${CUSTOM_PROFILE_BANNER_LIMIT} custom banners. Delete one in settings first.` };
+      }
+      nextEntries.push(entry);
     }
-    customBanners.push(entry);
+    nextEntries = mergeCustomBannerEntries(nextEntries, []);
+    bannerLibrary[account.uid] = nextEntries;
+    if (!writeCustomBannerLibrary(bannerLibrary)) {
+      return { ok: false, reason: 'Banner storage is full. Delete an older custom banner and try again.' };
+    }
     profiles[account.uid] = {
       ...profile,
       uid: account.uid,
       displayName: account.displayName,
       identifier: account.identifier,
       identifierType: account.identifierType,
-      profileTheme: {
-        ...profileTheme,
-        customBanners,
-      },
+      profileTheme: buildLeanProfileTheme(profile.profileTheme),
       updatedAt: safeNow(),
     };
     writeJson(PROFILE_STORAGE_KEY, profiles);
@@ -1665,14 +1733,15 @@
         window.PlayrProgression.importProfile(account, profiles[account.uid], { prefer: 'remote', emit: true });
       } catch {}
     }
-    return { ok: true, profile: profiles[account.uid] };
+    return { ok: true, profile: profiles[account.uid], entries: nextEntries };
   }
 
   async function persistBannerToCloud() {
     const account = getCurrentAccount();
     if (!account?.uid || !state.firestore) return;
-    const profiles = readProfiles();
-    const profile = profiles[account.uid];
+    const profile = window.PlayrProgression?.exportProfile
+      ? window.PlayrProgression.exportProfile(account)
+      : readProfiles()[account.uid];
     if (!profile) return;
     const payload = {
       uid: account.uid,
@@ -1681,7 +1750,7 @@
       isAdmin: false,
       identifier: account.identifier,
       identifierType: account.identifierType,
-      profileTheme: profile.profileTheme || { customBanners: [] },
+      profileTheme: buildLeanProfileTheme(profile.profileTheme),
       updatedAt: safeNow(),
     };
     try {
@@ -1695,6 +1764,9 @@
     const account = getCurrentAccount();
     if (!account?.uid) {
       return { ok: false, reason: 'Log in to apply a custom banner.' };
+    }
+    if (!account.isVip) {
+      return { ok: false, reason: 'This is a VIP option only.' };
     }
     const safeEntry = entry && typeof entry === 'object' ? entry : null;
     if (!safeEntry?.dataUrl) {
@@ -1710,21 +1782,11 @@
       updatedAt: safeNow(),
     };
     try {
-      if (window.PlayrProgression?.exportProfile && window.PlayrProgression?.importProfile) {
-        const exported = window.PlayrProgression.exportProfile(account) || {};
-        const nextProfile = {
-          ...exported,
-          uid: account.uid,
-          displayName: account.displayName,
-          identifier: account.identifier,
-          identifierType: account.identifierType,
-          profileTheme: {
-            ...(exported.profileTheme && typeof exported.profileTheme === 'object' ? exported.profileTheme : {}),
-            banner: nextBanner,
-          },
-          updatedAt: safeNow(),
-        };
-        window.PlayrProgression.importProfile(account, nextProfile, { prefer: 'remote', emit: true });
+      if (window.PlayrProgression?.applyProfileBanner) {
+        const applied = window.PlayrProgression.applyProfileBanner(nextBanner, account);
+        if (!applied?.ok) {
+          return applied;
+        }
       } else {
         const profiles = readProfiles();
         const existing = profiles[account.uid] && typeof profiles[account.uid] === 'object' ? profiles[account.uid] : {};
@@ -1735,8 +1797,8 @@
           identifier: account.identifier,
           identifierType: account.identifierType,
           profileTheme: {
-            ...(existing.profileTheme && typeof existing.profileTheme === 'object' ? existing.profileTheme : {}),
             banner: nextBanner,
+            customBanners: [],
           },
           updatedAt: safeNow(),
         };
@@ -1794,7 +1856,10 @@
         return;
       }
       if (applyAfterSave) {
-        const applied = await persistAppliedBannerDirectly(entry);
+        const applied = await persistAppliedBannerDirectly({
+          ...entry,
+          id: entry.id,
+        });
         if (!applied?.ok) {
           const message = applied?.reason || 'Saved the banner, but could not apply it right now.';
           updateStatus(message);

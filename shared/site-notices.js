@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-29-custom-banner-save-apply-reliability-fix',
+      title: 'Custom banner save/apply reliability fix',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-29T16:30:00-04:00',
+      summary: 'Draw It and profile customization now use the lighter shared custom-banner library more consistently, which fixes several cases where banner saves or instant-apply actions could fail or burn extra save slots.',
+      details: [
+        'Gameplay-side profile writes now keep the heavy saved custom-banner list out of the main profile blob and rely on the dedicated shared banner library instead, which makes the banner flow less fragile.',
+        'Saving the same banner art again now refreshes the existing saved entry instead of always consuming another slot, and owner@playr.io is now recognized as VIP inside Draw It before apply checks run.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-29-draw-it-save-and-profile-settings-polish',
       title: 'Draw It save flow and profile settings polish',
       category: 'update',
