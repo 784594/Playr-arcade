@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-29-aim-training-gameplay-bugfix-pass',
+      title: 'Aim Training Arena gameplay bugfix pass',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-29T18:02:00-04:00',
+      summary: 'Aim Training Arena’s live drills now behave much more consistently, with a continuously updating timer, cleaner miss counting, and better wave/respawn handling across the active modes.',
+      details: [
+        'The run timer now tracks a dedicated remaining-time value during play instead of depending on a shakier derived display path, so it updates cleanly throughout the run.',
+        'Misses no longer double-count false starts in the live HUD or results, target clicks are guarded more safely against duplicate background-miss handling, and switching, decision, timing, and precision stat flows now resolve targets and respawns more reliably.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-29-aim-training-start-panel-fix',
       title: 'Aim Training Arena start panel fix',
       category: 'update',

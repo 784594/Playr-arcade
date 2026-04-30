@@ -273,6 +273,7 @@
     lastFrameAt: performance.now(),
     paused: false,
     pauseStartedAt: 0,
+    timeRemainingMs: 0,
     lastModeStat: 0,
     runStartedAt: 0,
     runEndsAt: 0,
@@ -285,6 +286,7 @@
     pendingWaveStartedAt: 0,
     lockedTargetId: null,
     trackingTeleportAt: 0,
+    lastTargetPointerAt: 0,
     currentTrackingKind: 'linear',
   };
 
@@ -783,9 +785,11 @@
     state.lastFrameAt = performance.now();
     state.runStartedAt = performance.now();
     state.runEndsAt = performance.now() + state.settings.duration * 1000;
+    state.timeRemainingMs = state.settings.duration * 1000;
     state.pendingWaveStartedAt = 0;
     state.lockedTargetId = null;
     state.trackingTeleportAt = 0;
+    state.lastTargetPointerAt = 0;
     dom.resultsPanel.hidden = true;
     syncRunControls();
     setRunState('Running');
@@ -812,6 +816,7 @@
     if (!state.running || state.paused) return;
     state.paused = true;
     state.pauseStartedAt = performance.now();
+    state.timeRemainingMs = Math.max(0, state.runEndsAt - state.pauseStartedAt);
     setRunState('Paused');
     dom.stageHint.textContent = 'Paused. Press Start Run to resume or Quit Run to end the session.';
     syncRunControls();
@@ -836,6 +841,7 @@
     state.lastFrameAt = resumeAt;
     state.paused = false;
     state.pauseStartedAt = 0;
+    state.timeRemainingMs = Math.max(0, state.runEndsAt - resumeAt);
     setRunState('Running');
     dom.stageHint.textContent = getModeDefinition().copy;
     syncRunControls();
@@ -853,6 +859,7 @@
     state.paused = false;
     state.pauseStartedAt = 0;
     state.runEndsAt = performance.now();
+    state.timeRemainingMs = 0;
     setRunState(announce);
     clearTargets();
     state.phase = 'idle';
@@ -896,7 +903,7 @@
       score: Math.round(state.score),
       accuracyPct: round(accuracyPct, 1),
       hits: state.hits,
-      misses: state.misses + state.falseStarts,
+      misses: state.misses,
       falseStarts: state.falseStarts,
       bestCombo: state.bestCombo,
       avgReactionMs: avgReactionMs ? round(avgReactionMs, 0) : null,
@@ -1020,7 +1027,7 @@
 
   function updateHUD() {
     const elapsedMs = state.running
-      ? Math.max(0, state.paused ? state.runEndsAt - state.pauseStartedAt : state.runEndsAt - performance.now())
+      ? Math.max(0, state.timeRemainingMs)
       : state.settings.duration * 1000;
     const accuracyPct = state.accuracySamples > 0 ? (state.totalAccuracy / state.accuracySamples) * 100 : 100;
     const modeDef = getModeDefinition();
@@ -1031,7 +1038,7 @@
     dom.comboValue.textContent = String(state.combo);
     dom.timeValue.textContent = `${Math.max(0, elapsedMs / 1000).toFixed(2)}s`;
     dom.hitsValue.textContent = String(state.hits);
-    dom.missesValue.textContent = String(state.misses + state.falseStarts);
+    dom.missesValue.textContent = String(state.misses);
     dom.streakValue.textContent = String(state.bestCombo);
     dom.reactionValue.textContent = summary.avgReactionMs !== null ? `${Math.round(summary.avgReactionMs)}ms` : '--';
   }
@@ -1128,10 +1135,8 @@
     const points = Math.round(base * accuracyMult * speedMult * comboMult * sizeBonus);
     state.score += points;
 
-    if (target.mode === 'precision' || target.mode === 'flick') {
-      if (target.mode === 'precision') {
-        state.microHits += accuracy >= 0.72 ? 1 : 0;
-      }
+    if (target.mode === 'precision' && accuracy >= 0.82) {
+      state.microHits += 1;
     }
 
     if (target.mode === 'reaction') {
@@ -1168,6 +1173,7 @@
 
   function handleTargetHit(target, event) {
     if (!state.running || state.paused || !target || target.mode !== state.mode) return;
+    state.lastTargetPointerAt = performance.now();
     const mode = state.mode;
     const accuracy = hitTarget(target, event);
     const reactionMs = performance.now() - target.bornAt;
@@ -1185,9 +1191,6 @@
     if (mode === 'flick' || mode === 'precision') {
       const speedFactor = clamp(1.45 - reactionMs / Math.max(250, target.expiresAt - target.bornAt), 0.45, 1.45);
       registerSuccess(target, accuracy, speedFactor, reactionMs);
-      if (mode === 'precision') {
-        state.microHits += accuracy >= 0.82 ? 1 : 0;
-      }
       spawnFlickTarget(mode);
       updateHUD();
       return;
@@ -1197,6 +1200,7 @@
       const waveTime = performance.now() - state.pendingWaveStartedAt;
       const speedFactor = clamp(1.45 - waveTime / Math.max(300, 2200 / state.settings.spawnSpeed), 0.4, 1.45);
       registerSuccess(target, accuracy, speedFactor, reactionMs);
+      removeTarget(target);
       const wave = state.activeTargets.filter((entry) => entry.mode === 'switching');
       if (wave.length === 0) {
         state.waveTimes.push(waveTime);
@@ -1215,13 +1219,13 @@
         state.decisionCorrect += 1;
         state.decisionNet += 1;
         registerSuccess(target, accuracy, speedFactor, reactionMs);
+        removeTarget(target);
       } else {
         state.decisionWrong += 1;
         state.decisionNet -= 1;
         registerMiss('decision trap');
         state.score = Math.max(0, state.score - 45);
-        target.el.classList.add('hit');
-        setTimeout(() => removeTarget(target), 120);
+        removeTarget(target);
       }
       if (state.activeTargets.filter((entry) => entry.mode === 'decision').length === 0) {
         state.waveTimes.push(performance.now() - state.pendingWaveStartedAt);
@@ -1246,8 +1250,11 @@
       } else {
         registerMiss('timing miss');
         state.score = Math.max(0, state.score - 12);
+        removeTarget(target);
+        spawnTimingTarget();
       }
       updateHUD();
+      return;
     }
   }
 
@@ -1396,11 +1403,14 @@
 
     if (state.running && !state.paused) {
       const timeLeft = state.runEndsAt - now;
+      state.timeRemainingMs = Math.max(0, timeLeft);
       if (timeLeft <= 0) {
         stopRun({ showResults: true, announce: 'Run complete' });
       } else {
         updateTargets(now, deltaMs);
       }
+    } else if (!state.running) {
+      state.timeRemainingMs = state.settings.duration * 1000;
     }
 
     updateHUD();
@@ -1409,6 +1419,7 @@
 
   function handleStagePointerDown(event) {
     if (!state.running || state.paused) return;
+    if (performance.now() - state.lastTargetPointerAt < 80) return;
     const clickedTarget = event.target.closest('.target');
     if (clickedTarget) return;
 
@@ -1460,6 +1471,8 @@
     state.phaseStartedAt = performance.now();
     state.runStartedAt = 0;
     state.runEndsAt = 0;
+    state.timeRemainingMs = state.settings.duration * 1000;
+    state.lastTargetPointerAt = 0;
     clearTargets();
     dom.resultsPanel.hidden = true;
     setRunState('Ready');
