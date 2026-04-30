@@ -117,6 +117,17 @@
           <div class="stage-glow"></div>
           <div id="arenaStage" class="arena-stage" tabindex="0" aria-label="Aim training stage">
             <div class="stage-grid"></div>
+            <section class="stage-start-panel" id="stageStartPanel" aria-live="polite">
+              <p class="eyebrow small">Aim Training Arena</p>
+              <h3 id="stageStartTitle">Reaction Time</h3>
+              <p class="stage-start-copy" id="stageStartCopy">
+                Wait for a target, then click instantly. False starts reset the rhythm.
+              </p>
+              <div class="stage-start-actions">
+                <button class="primary-btn" type="button" id="stageStartBtn">Start Run</button>
+                <button class="secondary-btn" type="button" id="stageReplayBtn">Instant Replay</button>
+              </div>
+            </section>
             <div class="stage-center-hint" id="stageHint">Choose a mode and press Start Run.</div>
             <div id="targetLayer" class="target-layer"></div>
           </div>

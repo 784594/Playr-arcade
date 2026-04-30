@@ -393,6 +393,45 @@ button {
   pointer-events: none;
 }
 
+.stage-start-panel {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  z-index: 3;
+  width: min(calc(100% - 40px), 460px);
+  padding: 24px 24px 22px;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: linear-gradient(180deg, rgba(8, 14, 22, 0.96), rgba(6, 10, 16, 0.93));
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.34);
+  text-align: center;
+  transform: translate(-50%, -50%);
+  backdrop-filter: blur(12px);
+}
+
+.stage-start-panel[hidden] {
+  display: none !important;
+}
+
+.stage-start-panel h3 {
+  margin: 8px 0 10px;
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+  letter-spacing: -0.04em;
+}
+
+.stage-start-copy {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.stage-start-actions {
+  margin-top: 18px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .target-layer {
   position: absolute;
   inset: 0;
@@ -706,13 +745,19 @@ input[type="range"] {
   .arena-stage {
     min-height: 440px;
   }
+
+  .stage-start-panel {
+    width: min(calc(100% - 24px), 460px);
+    padding: 20px 18px 18px;
+  }
 }
 
 @media (max-width: 560px) {
   .hero-actions,
   .results-actions,
   .topbar-actions,
-  .preset-row {
+  .preset-row,
+  .stage-start-actions {
     flex-direction: column;
   }
 

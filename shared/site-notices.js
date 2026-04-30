@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-04-29-aim-training-start-panel-fix',
+      title: 'Aim Training Arena start panel fix',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-04-29T17:24:00-04:00',
+      summary: 'Aim Training Arena now starts correctly again, and the main start/replay controls now sit in a centered in-stage panel so the first action is harder to miss.',
+      details: [
+        'The game boot flow no longer depends on a missing hero-best element, which fixes the broken start button path that could stop the script before the run controls were wired up.',
+        'The arena now opens with a centered start card inside the playfield that updates with the selected mode and offers Start Run plus Instant Replay in a more visible spot.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-29-custom-banner-self-heal-and-slot-rotation',
       title: 'Custom banner slot rotation and self-heal',
       category: 'update',

@@ -190,6 +190,11 @@
     settingsPanel: document.getElementById('settingsPanel'),
     settingsCloseBtn: document.getElementById('settingsCloseBtn'),
     quitBtn: document.getElementById('quitBtn'),
+    stageStartPanel: document.getElementById('stageStartPanel'),
+    stageStartBtn: document.getElementById('stageStartBtn'),
+    stageReplayBtn: document.getElementById('stageReplayBtn'),
+    stageStartTitle: document.getElementById('stageStartTitle'),
+    stageStartCopy: document.getElementById('stageStartCopy'),
     playAgainBtn: document.getElementById('playAgainBtn'),
     changeModeBtn: document.getElementById('changeModeBtn'),
     heroBest: document.getElementById('heroBest'),
@@ -438,6 +443,12 @@
     dom.startBtn.textContent = state.running && !state.paused ? 'Pause Run' : 'Start Run';
     dom.quitBtn.disabled = !state.running;
     dom.quitBtn.textContent = 'Quit Run';
+    if (dom.stageStartPanel) {
+      dom.stageStartPanel.hidden = state.running;
+    }
+    if (dom.stageStartBtn) {
+      dom.stageStartBtn.textContent = state.running && state.paused ? 'Resume Run' : 'Start Run';
+    }
   }
 
   function setMode(mode, { preserveSelection = false } = {}) {
@@ -447,8 +458,16 @@
     dom.modeTitle.textContent = modeDef.label;
     dom.modeCopy.textContent = modeDef.copy;
     dom.modeGroupLabel.textContent = modeDef.group;
-    dom.heroBest.textContent = String(getCurrentBest(mode));
+    if (dom.heroBest) {
+      dom.heroBest.textContent = String(getCurrentBest(mode));
+    }
     dom.stageHint.textContent = modeDef.copy;
+    if (dom.stageStartTitle) {
+      dom.stageStartTitle.textContent = modeDef.label;
+    }
+    if (dom.stageStartCopy) {
+      dom.stageStartCopy.textContent = modeDef.copy;
+    }
     saveLastMode(mode);
     renderBests();
 
@@ -970,7 +989,9 @@
     });
 
     dom.bestsList.innerHTML = entries.join('');
-    dom.heroBest.textContent = String(getCurrentBest());
+    if (dom.heroBest) {
+      dom.heroBest.textContent = String(getCurrentBest());
+    }
   }
 
   function renderBestDetail(mode, best) {
@@ -1476,7 +1497,7 @@
       });
     }
 
-    dom.startBtn.addEventListener('click', () => {
+    const handleStartToggle = () => {
       if (!state.running || state.ended) {
         startRun();
         return;
@@ -1486,14 +1507,24 @@
       } else {
         pauseRun();
       }
-    });
+    };
 
-    dom.replayBtn.addEventListener('click', () => {
+    dom.startBtn.addEventListener('click', handleStartToggle);
+    if (dom.stageStartBtn) {
+      dom.stageStartBtn.addEventListener('click', handleStartToggle);
+    }
+
+    const handleReplay = () => {
       if (state.running) {
         stopRun({ showResults: false, announce: 'Ready' });
       }
       startRun();
-    });
+    };
+
+    dom.replayBtn.addEventListener('click', handleReplay);
+    if (dom.stageReplayBtn) {
+      dom.stageReplayBtn.addEventListener('click', handleReplay);
+    }
 
     dom.quitBtn.addEventListener('click', () => {
       if (state.running) {
