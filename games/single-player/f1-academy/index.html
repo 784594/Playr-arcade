@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="F1 Academy is a motorsport-inspired cognitive training system for reaction, memory, awareness, decision-making, and consistency." />
+  <title>F1 Academy | PlayR</title>
+  <link rel="stylesheet" href="../../shared/game-shell.css" />
+  <link rel="stylesheet" href="game.css" />
+  <script src="/shared/ads.js"></script>
+  <script defer src="/shared/site-footer.js"></script>
+  <script defer src="game.js"></script>
+</head>
+<body class="academy-body">
+  <div class="academy-page" id="gameRoot" data-game-title="F1 Academy" data-metric="academy_score" data-direction="desc" data-scope="global">
+    <div class="top">
+      <a class="back-link" href="/">Back to hub</a>
+      <div class="board-meta">
+        <span class="tag">Type: single-player</span>
+        <span class="tag">Controls: Keyboard + mouse</span>
+        <span class="tag">Leaderboard: Composite performance</span>
+      </div>
+    </div>
+
+    <header class="academy-hero">
+      <div>
+        <p class="eyebrow">PlayR Performance Lab</p>
+        <h1>F1 Academy</h1>
+        <p class="hero-copy">
+          A professional-grade training console built around the mental demands of elite motorsport. You are not racing. You are sharpening the systems that racing depends on.
+        </p>
+      </div>
+      <div class="hero-strip" aria-label="Program identity">
+        <div class="hero-pill">
+          <span>Program type</span>
+          <strong>Cognitive training</strong>
+        </div>
+        <div class="hero-pill">
+          <span>Session flow</span>
+          <strong>Briefing -> execution -> analysis</strong>
+        </div>
+        <div class="hero-pill">
+          <span>Competitive focus</span>
+          <strong>Precision over grind</strong>
+        </div>
+      </div>
+    </header>
+
+    <main class="academy-grid">
+      <aside class="panel selector-panel">
+        <div class="panel-head">
+          <p class="eyebrow small">Module Selection</p>
+          <h2>Training programs</h2>
+        </div>
+
+        <div class="category-list" role="tablist" aria-label="F1 Academy programs">
+          <button class="category-btn active" type="button" data-category="reaction">
+            <strong>Reaction</strong>
+            <span>Signal response speed</span>
+          </button>
+          <button class="category-btn" type="button" data-category="memory">
+            <strong>Memory</strong>
+            <span>Track cognition and recall</span>
+          </button>
+          <button class="category-btn" type="button" data-category="awareness">
+            <strong>Awareness</strong>
+            <span>Parallel telemetry scanning</span>
+          </button>
+          <button class="category-btn" type="button" data-category="decision">
+            <strong>Decision</strong>
+            <span>Trade-offs under pressure</span>
+          </button>
+          <button class="category-btn" type="button" data-category="consistency">
+            <strong>Consistency</strong>
+            <span>Precision over extended load</span>
+          </button>
+        </div>
+
+        <div class="variant-shell">
+          <div class="section-row">
+            <h3>Program intensity</h3>
+            <span class="subtle-tag" id="leaderboardEligibilityTag">Baseline = training only</span>
+          </div>
+          <div class="variant-list" role="group" aria-label="Program intensity">
+            <button class="variant-btn active" type="button" data-variant="baseline">
+              <strong>Baseline</strong>
+              <span>Calibration drill</span>
+            </button>
+            <button class="variant-btn" type="button" data-variant="advanced">
+              <strong>Advanced</strong>
+              <span>Competitive threshold</span>
+            </button>
+            <button class="variant-btn" type="button" data-variant="evaluation">
+              <strong>Evaluation</strong>
+              <span>High-pressure validation</span>
+            </button>
+          </div>
+        </div>
+
+        <section class="briefing-card">
+          <div class="section-row">
+            <div>
+              <p class="eyebrow small">Briefing</p>
+              <h3 id="briefingTitle">Reaction Program</h3>
+            </div>
+            <span class="status-tag" id="briefingStatus">Ready</span>
+          </div>
+          <p class="briefing-copy" id="briefingCopy"></p>
+          <div class="briefing-grid">
+            <div>
+              <span>Primary metric</span>
+              <strong id="briefingMetric">Average reaction time</strong>
+            </div>
+            <div>
+              <span>Pressure factor</span>
+              <strong id="briefingPressure">Variable stimuli</strong>
+            </div>
+            <div>
+              <span>Leaderboard rule</span>
+              <strong id="briefingRule">Validated runs only</strong>
+            </div>
+            <div>
+              <span>Session length</span>
+              <strong id="briefingLength">~45 seconds</strong>
+            </div>
+          </div>
+          <div class="action-stack">
+            <button class="button primary" type="button" id="startBtn">Start Session</button>
+            <button class="button secondary" type="button" id="retryBtn">Retry Session</button>
+          </div>
+        </section>
+
+        <section class="notes-card">
+          <p class="eyebrow small">Program rules</p>
+          <ul class="rule-list" id="ruleList"></ul>
+        </section>
+      </aside>
+
+      <section class="panel stage-panel">
+        <div class="stage-top">
+          <div>
+            <p class="eyebrow small">Execution</p>
+            <h2 id="sessionTitle">Reaction Program / Baseline</h2>
+          </div>
+          <div class="stage-top-tags">
+            <span class="stage-tag" id="sessionStateTag">Standby</span>
+            <span class="stage-tag" id="sessionRangeTag">All-time board</span>
+          </div>
+        </div>
+
+        <div class="metric-strip" aria-label="Live session metrics">
+          <article class="metric-card">
+            <span id="metricLabel1">Average</span>
+            <strong id="metricValue1">--</strong>
+          </article>
+          <article class="metric-card">
+            <span id="metricLabel2">Accuracy</span>
+            <strong id="metricValue2">--</strong>
+          </article>
+          <article class="metric-card">
+            <span id="metricLabel3">Pressure</span>
+            <strong id="metricValue3">--</strong>
+          </article>
+          <article class="metric-card">
+            <span id="metricLabel4">Session</span>
+            <strong id="metricValue4">Ready</strong>
+          </article>
+        </div>
+
+        <div class="stage-shell">
+          <div class="stage-frame">
+            <div class="stage-overlay" id="stageOverlay">
+              <p class="eyebrow small">Program standby</p>
+              <h3 id="overlayTitle">Reaction Program</h3>
+              <p id="overlayCopy">Use the briefing panel to understand the drill, then launch the session when ready.</p>
+            </div>
+
+            <div class="stage-surface" id="stageSurface">
+              <div class="reaction-stage hidden" id="reactionStage">
+                <div class="reaction-signal" id="reactionSignal">ARMED</div>
+                <div class="response-grid" id="reactionResponses"></div>
+              </div>
+
+              <div class="memory-stage hidden" id="memoryStage">
+                <div class="sequence-ribbon" id="sequenceRibbon"></div>
+                <div class="memory-prompt" id="memoryPrompt">Sequence will appear here.</div>
+                <div class="memory-actions" id="memoryActions"></div>
+              </div>
+
+              <div class="awareness-stage hidden" id="awarenessStage">
+                <div class="telemetry-grid" id="telemetryGrid"></div>
+                <div class="awareness-actions">
+                  <button class="button secondary" type="button" data-awareness-action="ack">Acknowledge</button>
+                  <button class="button secondary" type="button" data-awareness-action="hold">Hold</button>
+                </div>
+              </div>
+
+              <div class="decision-stage hidden" id="decisionStage">
+                <div class="decision-card">
+                  <p class="decision-label" id="decisionLabel">Scenario</p>
+                  <h3 id="decisionQuestion">Scenario loads here.</h3>
+                  <p class="decision-copy" id="decisionCopy"></p>
+                </div>
+                <div class="decision-options" id="decisionOptions"></div>
+              </div>
+
+              <div class="consistency-stage hidden" id="consistencyStage">
+                <div class="sweep-lane">
+                  <div class="target-window" id="targetWindow"></div>
+                  <div class="sweep-marker" id="sweepMarker"></div>
+                </div>
+                <div class="consistency-hint">
+                  Press <kbd>Space</kbd> or click when the marker is inside the target window.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="feedback-bar">
+            <div>
+              <p class="eyebrow small">Immediate feedback</p>
+              <h3 id="feedbackTitle">Session ready</h3>
+            </div>
+            <p id="feedbackCopy">Choose a module, review the briefing, and begin the next evaluation.</p>
+          </div>
+        </div>
+
+        <section class="results-card" id="resultsCard">
+          <div class="section-row">
+            <div>
+              <p class="eyebrow small">Post-Session Analysis</p>
+              <h3 id="resultsTitle">No session completed yet</h3>
+            </div>
+            <span class="status-tag" id="resultsTrend">Waiting</span>
+          </div>
+          <div class="results-grid" id="resultsGrid"></div>
+          <p class="results-note" id="resultsNote">Performance breakdowns appear here after each module.</p>
+        </section>
+      </section>
+
+      <aside class="panel insight-panel">
+        <div class="panel-head compact">
+          <div>
+            <p class="eyebrow small">Performance Center</p>
+            <h2>Analysis + boards</h2>
+          </div>
+          <span class="subtle-tag" id="rangeSummaryTag">All-time</span>
+        </div>
+
+        <div class="range-switch" role="group" aria-label="Leaderboard range">
+          <button class="range-btn active" type="button" data-range="all">All-time</button>
+          <button class="range-btn" type="button" data-range="weekly">Weekly</button>
+          <button class="range-btn" type="button" data-range="daily">Daily</button>
+        </div>
+
+        <div class="board-switch" role="group" aria-label="Leaderboard board">
+          <button class="board-btn active" type="button" data-board="overall">Overall</button>
+          <button class="board-btn" type="button" data-board="reaction">Reaction</button>
+          <button class="board-btn" type="button" data-board="memory">Memory</button>
+          <button class="board-btn" type="button" data-board="awareness">Awareness</button>
+          <button class="board-btn" type="button" data-board="decision">Decision</button>
+          <button class="board-btn" type="button" data-board="consistency">Consistency</button>
+        </div>
+
+        <section class="snapshot-grid" aria-label="Performance snapshot">
+          <article class="snapshot-card">
+            <span>Composite</span>
+            <strong id="snapshotComposite">0</strong>
+          </article>
+          <article class="snapshot-card">
+            <span>Best validated</span>
+            <strong id="snapshotValidated">0</strong>
+          </article>
+          <article class="snapshot-card">
+            <span>Recent trend</span>
+            <strong id="snapshotTrend">Flat</strong>
+          </article>
+          <article class="snapshot-card">
+            <span>Focus area</span>
+            <strong id="snapshotFocus">Reaction</strong>
+          </article>
+        </section>
+
+        <section class="leaderboard-shell">
+          <div class="section-row">
+            <h3 id="leaderboardTitle">Overall board</h3>
+            <span class="subtle-tag" id="leaderboardMeta">Validated runs</span>
+          </div>
+          <div class="table-wrap">
+            <table class="board-table" aria-label="F1 Academy leaderboard">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Driver</th>
+                  <th id="boardPrimaryHeader">Score</th>
+                  <th id="boardSecondaryHeader">Support</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboardBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="history-card">
+          <div class="section-row">
+            <h3>Trend line</h3>
+            <span class="subtle-tag">Last 8 sessions</span>
+          </div>
+          <div class="trend-bars" id="trendBars"></div>
+          <p class="history-note" id="historyNote">Long-term feedback highlights whether your recent work is actually making you sharper.</p>
+        </section>
+      </aside>
+    </main>
+  </div>
+</body>
+</html>

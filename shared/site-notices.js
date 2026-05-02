@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-05-01-f1-academy-launch',
+      title: 'F1 Academy is live',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-05-01T23:59:30-04:00',
+      summary: 'F1 Academy adds a motorsport-inspired cognitive training system with structured reaction, memory, awareness, decision, and consistency programs instead of arcade racing.',
+      details: [
+        'The new title is framed as a professional performance program, not a driving sim. Each skill domain includes Baseline, Advanced, and Evaluation variants, with a briefing-execution-analysis loop, immediate feedback, and post-session metrics such as reaction time, recall quality, false positives, decision quality, and consistency variance.',
+        'Its competitive layer is built around validated runs only: baseline drills stay out of the boards, advanced and evaluation runs can feed daily, weekly, and all-time leaderboards, and the overall ranking is calculated from normalized domain bests so balanced players rank above one-skill specialists.',
+      ],
+    },
+    {
       id: 'site-notice-2026-05-01-aim-training-overhaul',
       title: 'Aim Training Arena overhaul',
       category: 'update',

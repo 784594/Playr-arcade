@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-04-20",
+  "updatedAt": "2026-05-01",
   "notes": "Global leaderboard metric and direction are game-specific by design.",
   "singlePlayer": [
     {
@@ -193,6 +193,12 @@
       "title": "Aim Training Arena",
       "controls": "Mouse",
       "leaderboard": { "scope": "global", "metric": "aim_score", "direction": "desc", "segments": ["reaction", "flick", "tracking", "precision", "switching", "advanced"] }
+    },
+    {
+      "slug": "f1-academy",
+      "title": "F1 Academy",
+      "controls": "Keyboard + mouse",
+      "leaderboard": { "scope": "global", "metric": "academy_score", "direction": "desc", "segments": ["overall", "reaction", "memory", "awareness", "decision", "consistency"] }
     },
     {
       "slug": "slide-puzzle",

@@ -27,6 +27,7 @@ const SINGLE_PLAYER_PLACEHOLDERS = [
   { id: 'hextris', name: 'Hextris', controls: 'Arrow keys' },
   { id: 'burrito-bison-clone', name: 'Burrito Bison Clone', controls: 'Mouse' },
   { id: 'aim-training-arena', name: 'Aim Training Arena', controls: 'Mouse' },
+  { id: 'f1-academy', name: 'F1 Academy', controls: 'Keyboard + mouse' },
   { id: 'typing-test', name: 'Typing Test', controls: 'Keyboard' },
   { id: 'slide-puzzle', name: 'Slide Puzzle', controls: 'Mouse' },
   { id: 'absurd-trolley-problem', name: 'The Absurd Trolley Problem!', controls: 'Mouse' },
@@ -102,6 +103,7 @@ const LEADERBOARD_SPECS = {
   'spend-bill-gates-money': { label: 'Spending speedrun', unit: 'time', metric: 'Fastest completion time', kind: 'time' },
   'memory-match': { label: 'Fastest matches', unit: 'time', metric: 'Fastest completion time', kind: 'time' },
   'aim-training-arena': { label: 'Aim discipline', unit: 'score', metric: 'Unified aim score', kind: 'score' },
+  'f1-academy': { label: 'Composite performance', unit: 'score', metric: 'Validated composite training score', kind: 'score' },
   '2048': { label: 'Tile champions', unit: 'tile', metric: 'Highest tile / fastest 2048', kind: 'tile' },
   'slide-puzzle': { label: 'Puzzle speedruns', unit: 'time', metric: 'Fastest solve time', kind: 'time' },
   'hextris': { label: 'Hex survival', unit: 'score', metric: 'Score / survival time', kind: 'score' },
@@ -146,6 +148,7 @@ const COMPLETED_SINGLE_PLAYER_IDS = new Set([
   'the-password-game',
   'tower-builder',
   'aim-training-arena',
+  'f1-academy',
   'wordle-inf',
 ]);
 
@@ -3673,6 +3676,21 @@ function normalizeLeaderboardRows(gameId, spec) {
           });
         });
     }
+  } else if (gameId === 'f1-academy') {
+    const boards = readJsonStorage('playr.f1Academy.leaderboards.v1', {});
+    const entries = Array.isArray(boards?.overall) ? boards.overall : [];
+    entries
+      .filter((entry) => entry && Number.isFinite(Number(entry.composite)))
+      .sort((a, b) => Number(b.composite) - Number(a.composite))
+      .slice(0, 100)
+      .forEach((entry, index) => {
+        rows.push({
+          rank: index + 1,
+          player: String(entry.player || currentName || 'Guest').slice(0, 24),
+          value: `${Number(entry.composite).toFixed(1)}`,
+          detail: String(entry.support || 'Composite training score').slice(0, 48),
+        });
+      });
   } else if (gameId === 'snake') {
     const scores = readJsonStorage('playr.snake.bestScores.v2', {});
     const entries = [
