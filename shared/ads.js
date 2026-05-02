@@ -438,17 +438,24 @@
     };
   }
 
+  // Rebalanced XP curve: progressive, less extreme, still hard for 999
   function getXpRequiredForLevel(level) {
     const safeLevel = Math.max(1, Math.floor(Number(level) || 1));
-    if (safeLevel >= 100) return 15000;
-    if (safeLevel === 50) return 8200;
-    if (safeLevel >= 51) return 8300 + ((safeLevel - 51) * 100);
-    if (safeLevel === 25) return 2700;
-    if (safeLevel >= 26) return 2920 + ((safeLevel - 26) * 220);
-    if (safeLevel === 10) return 900;
-    if (safeLevel >= 11) return 1020 + ((safeLevel - 11) * 120);
-    if (safeLevel >= 6) return 420 + ((safeLevel - 6) * 120);
-    return 80 + ((safeLevel - 1) * 40);
+    if (safeLevel >= 900) return 3500 + (safeLevel - 900) * 100; // 900-999: 3500 → 4400
+    if (safeLevel >= 800) return 3200 + (safeLevel - 800) * 30;  // 800-899: 3200 → 3490
+    if (safeLevel >= 700) return 2900 + (safeLevel - 700) * 30;  // 700-799: 2900 → 3190
+    if (safeLevel >= 600) return 2600 + (safeLevel - 600) * 30;  // 600-699: 2600 → 2890
+    if (safeLevel >= 500) return 2300 + (safeLevel - 500) * 30;  // 500-599: 2300 → 2590
+    if (safeLevel >= 400) return 2000 + (safeLevel - 400) * 30;  // 400-499: 2000 → 2290
+    if (safeLevel >= 300) return 1700 + (safeLevel - 300) * 30;  // 300-399: 1700 → 1990
+    if (safeLevel >= 200) return 1400 + (safeLevel - 200) * 30;  // 200-299: 1400 → 1690
+    if (safeLevel >= 100) return 1100 + (safeLevel - 100) * 30;  // 100-199: 1100 → 1390
+    if (safeLevel >= 75) return 900 + (safeLevel - 75) * 8;      // 75-99: 900 → 1092
+    if (safeLevel >= 50) return 700 + (safeLevel - 50) * 8;      // 50-74: 700 → 900
+    if (safeLevel >= 25) return 500 + (safeLevel - 25) * 8;      // 25-49: 500 → 700
+    if (safeLevel >= 10) return 300 + (safeLevel - 10) * 13;     // 10-24: 300 → 495
+    if (safeLevel >= 6) return 180 + (safeLevel - 6) * 30;       // 6-9: 180 → 270
+    return 80 + ((safeLevel - 1) * 25);                          // 1-5: 80, 105, 130, 155, 180
   }
 
   function getLevelThresholds(targetLevel = 100) {

@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-05-01-profile-shortcut-and-xp-curve-rebalance',
+      title: 'Profile shortcut and XP curve rebalance',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-05-01T21:35:00-04:00',
+      summary: 'The homepage topbar now includes a direct Profile shortcut, and the XP curve has been flattened so higher levels feel more reachable while still scaling upward over time.',
+      details: [
+        'Signed-in players can now open account settings from a dedicated Profile button in the main header instead of relying on less obvious entry points.',
+        'XP-per-level requirements now rise through a gentler progressive ramp, which makes long-term progression feel less punishing and puts Level 999 closer to a realistic grind target.',
+      ],
+    },
+    {
       id: 'site-notice-2026-04-29-aim-training-gameplay-bugfix-pass',
       title: 'Aim Training Arena gameplay bugfix pass',
       category: 'update',

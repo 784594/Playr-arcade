@@ -191,7 +191,29 @@ const firebaseApp = window.firebase?.apps?.length
 
 const firebaseAuth = firebaseApp && window.firebase?.auth ? window.firebase.auth() : null;
 const firebaseDb = firebaseApp && window.firebase?.firestore ? window.firebase.firestore() : null;
+
 const firebaseFunctions = firebaseApp && window.firebase?.functions ? window.firebase.functions() : null;
+
+// --- Profile/settings modal quick open ---
+document.addEventListener('DOMContentLoaded', () => {
+  const profileBtn = document.getElementById('profileBtn');
+  const settingsOverlay = document.getElementById('settingsOverlay');
+  if (profileBtn && settingsOverlay) {
+    profileBtn.addEventListener('click', () => {
+      settingsOverlay.hidden = false;
+      // Optionally focus the first input for accessibility
+      const firstInput = settingsOverlay.querySelector('input,button,select,textarea');
+      if (firstInput) firstInput.focus();
+    });
+  }
+  // Also close settings when clicking the close button
+  const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+  if (settingsCloseBtn && settingsOverlay) {
+    settingsCloseBtn.addEventListener('click', () => {
+      settingsOverlay.hidden = true;
+    });
+  }
+});
 
 if (firebaseDb) {
   try {
