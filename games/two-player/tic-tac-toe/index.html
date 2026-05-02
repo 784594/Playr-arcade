@@ -58,7 +58,7 @@
                 <button id="copyInviteBtn" class="action-btn secondary" type="button">Copy Invite Link</button>
                 <button id="startGameBtn" class="action-btn" type="button" hidden>Start Game</button>
                 <button id="adminToggleBtn" class="action-btn secondary" type="button" hidden>Show Admin</button>
-                <button id="ownerLobbyBoardBtn" class="action-btn secondary" type="button" hidden>Owner Lobby</button>
+                <button id="ownerLobbyBoardBtn" class="action-btn secondary" type="button" hidden>Admin Lobby</button>
               </div>
             </section>
           </div>
@@ -73,7 +73,7 @@
                 <button id="joinFlowBtn" class="action-btn" type="button">Join a Room</button>
               </div>
 
-              <button id="ownerLobbyBtn" class="action-btn secondary owner-lobby-trigger" type="button" hidden>Owner Lobby</button>
+              <button id="ownerLobbyBtn" class="action-btn secondary owner-lobby-trigger" type="button" hidden>Admin Lobby</button>
 
               <div id="joinFlow" class="gate-flow" hidden>
                 <div class="gate-row grow">
@@ -151,8 +151,8 @@
           <div class="owner-lobby-shell">
             <div class="owner-lobby-header">
               <div>
-                <p class="tag">Owner Dashboard</p>
-                <h3>Current Rooms</h3>
+                <p class="tag">Staff Dashboard</p>
+                <h3>All Multiplayer Rooms</h3>
               </div>
               <button id="closeOwnerLobbyBtn" class="action-btn secondary" type="button">Close</button>
             </div>
@@ -170,9 +170,10 @@
 
               <section class="owner-room-detail">
                 <h4 id="selectedRoomTitle">Select a room</h4>
-                <p id="selectedRoomMeta" class="hint">Pick a room to spectate and moderate.</p>
+                <p id="selectedRoomMeta" class="hint">Pick a room to inspect members, open the game page, or spectate if it is a Tic-Tac-Toe room.</p>
                 <div id="selectedRoomPlayers" class="owner-user-list"></div>
                 <div class="owner-room-buttons">
+                  <button id="openRoomBtn" class="action-btn" type="button" disabled>Open Room Page</button>
                   <button id="spectateRoomBtn" class="action-btn" type="button" disabled>Spectate Room</button>
                   <button id="joinRoomFromLobbyBtn" class="action-btn secondary" type="button" disabled>Join Room</button>
                 </div>

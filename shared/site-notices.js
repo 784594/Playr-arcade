@@ -1,6 +1,32 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-05-01-bug-fixes',
+      title: 'Bug fixes',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-05-01T23:08:00-04:00',
+      summary: 'Staff-lobby access now uses real account roles instead of display-name guesses, Tic-Tac-Toe room oversight can now inspect multiple multiplayer game collections, and a few new chess-state edge cases were fixed before launch.',
+      details: [
+        'The Tic-Tac-Toe admin lobby no longer trusts a spoofable Owner display name and instead checks the signed-in account role, while the staff room list now pulls current rooms across the supported multiplayer collections and opens the correct game page for each room.',
+        'Chopsticks now uses the newer top-mounted join-panel presentation instead of the older centered gate look, and the new Chess page had two launch-day state fixes applied during the bug pass: castling now requires the proper rook to still exist, and rematches no longer wipe the running room scoreline.',
+      ],
+    },
+    {
+      id: 'site-notice-2026-05-01-chess-multiplayer-launch',
+      title: 'Chess multiplayer is live',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-05-01T23:02:00-04:00',
+      summary: 'Chess now has a real 1v1 multiplayer room flow with live legal-move validation, promotion choices, SVG piece sprites, animated board feedback, move notation, rematches, and filtered room chat.',
+      details: [
+        'The old scaffold page was replaced with a real Firebase room match that supports standard chess movement rules, castling, en passant, promotion selection, check, checkmate, stalemate, captured-piece tracking, and a live move log.',
+        'The room UI now matches the newer multiplayer shell more closely with a proper create/join panel, side info rail, room chat, endgame overlay, and a staff-only admin lobby entry for inspecting live multiplayer rooms.',
+      ],
+    },
+    {
       id: 'site-notice-2026-05-01-profile-shortcut-and-xp-curve-rebalance',
       title: 'Profile shortcut and XP curve rebalance',
       category: 'update',

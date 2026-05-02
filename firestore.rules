@@ -305,6 +305,11 @@ service cloud.firestore {
         && roomId.matches('^chp-[a-z0-9]{6,16}$');
     }
 
+    function validChessRoomId(roomId) {
+      return roomId is string
+        && roomId.matches('^chs-[a-z0-9]{4,16}$');
+    }
+
     function validPresenceDoc() {
       return request.resource.data.keys().hasOnly(['uid', 'name', 'x', 'y', 'color', 'updatedAt', 'active'])
         && request.resource.data.uid is string
@@ -637,6 +642,37 @@ service cloud.firestore {
       ];
     }
 
+    function chessRoomFields() {
+      return [
+        'roomId',
+        'status',
+        'hostUid',
+        'hostName',
+        'guestUid',
+        'guestName',
+        'whiteUid',
+        'whiteName',
+        'blackUid',
+        'blackName',
+        'board',
+        'turn',
+        'winner',
+        'winnerReason',
+        'castling',
+        'enPassantIndex',
+        'halfmoveClock',
+        'fullmoveNumber',
+        'moveHistory',
+        'whiteWins',
+        'blackWins',
+        'draws',
+        'rematchVotes',
+        'lastMove',
+        'createdAt',
+        'updatedAt'
+      ];
+    }
+
     function validConnect4Board(board) {
       return board is list
         && board.size() == 42;
@@ -646,6 +682,48 @@ service cloud.firestore {
       return value is int
         && value >= 0
         && value <= 4;
+    }
+
+    function validChessBoard(board) {
+      return board is list
+        && board.size() == 64;
+    }
+
+    function validChessLastMove(value) {
+      return value == null
+        || (
+          value is map
+          && value.from is int
+          && value.to is int
+          && value.piece is string
+          && value.san is string
+        );
+    }
+
+    function validChessRoomShape() {
+      return request.resource.data.status is string
+        && request.resource.data.hostUid is string
+        && request.resource.data.hostName is string
+        && request.resource.data.guestUid is string
+        && request.resource.data.guestName is string
+        && request.resource.data.whiteUid is string
+        && request.resource.data.whiteName is string
+        && request.resource.data.blackUid is string
+        && request.resource.data.blackName is string
+        && validChessBoard(request.resource.data.board)
+        && request.resource.data.turn is string
+        && request.resource.data.winner is string
+        && request.resource.data.winnerReason is string
+        && request.resource.data.castling is string
+        && request.resource.data.enPassantIndex is int
+        && request.resource.data.halfmoveClock is int
+        && request.resource.data.fullmoveNumber is int
+        && request.resource.data.moveHistory is list
+        && request.resource.data.whiteWins is int
+        && request.resource.data.blackWins is int
+        && request.resource.data.draws is int
+        && request.resource.data.rematchVotes is map
+        && validChessLastMove(request.resource.data.lastMove);
     }
 
     function validChopsticksRoomShape() {
@@ -777,11 +855,44 @@ service cloud.firestore {
         && validChopsticksRoomShape();
     }
 
+    function validChessRoomCreate(roomId) {
+      return request.resource.data.keys().hasOnly(chessRoomFields())
+        && request.resource.data.roomId == roomId
+        && request.resource.data.status == 'waiting'
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.guestUid == ''
+        && request.resource.data.whiteUid == ''
+        && request.resource.data.whiteName == ''
+        && request.resource.data.blackUid == ''
+        && request.resource.data.blackName == ''
+        && request.resource.data.turn == 'w'
+        && request.resource.data.winner == ''
+        && request.resource.data.winnerReason == ''
+        && request.resource.data.castling == 'KQkq'
+        && request.resource.data.enPassantIndex == -1
+        && request.resource.data.halfmoveClock == 0
+        && request.resource.data.fullmoveNumber == 1
+        && request.resource.data.moveHistory.size() == 0
+        && request.resource.data.whiteWins == 0
+        && request.resource.data.blackWins == 0
+        && request.resource.data.draws == 0
+        && request.resource.data.rematchVotes is map
+        && validChessRoomShape();
+    }
+
     function chopsticksIsParticipant() {
       return resource.data.hostUid == request.auth.uid || resource.data.guestUid == request.auth.uid;
     }
 
+    function chessIsParticipant() {
+      return resource.data.hostUid == request.auth.uid || resource.data.guestUid == request.auth.uid;
+    }
+
     function chopsticksIsJoiner() {
+      return resource.data.guestUid == '' && request.resource.data.guestUid == request.auth.uid;
+    }
+
+    function chessIsJoiner() {
       return resource.data.guestUid == '' && request.resource.data.guestUid == request.auth.uid;
     }
 
@@ -833,6 +944,58 @@ service cloud.firestore {
           'status',
           'lastAction',
           'lastActionType',
+          'updatedAt'
+        ])
+        && resource.data.guestUid == ''
+        && request.resource.data.guestUid == request.auth.uid;
+    }
+
+    function validChessParticipantUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return request.resource.data.keys().hasOnly(chessRoomFields())
+        && request.resource.data.roomId == resource.data.roomId
+        && request.resource.data.hostUid == resource.data.hostUid
+        && request.resource.data.guestUid == resource.data.guestUid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && validChessRoomShape()
+        && changed.hasOnly([
+          'status',
+          'hostName',
+          'guestName',
+          'whiteUid',
+          'whiteName',
+          'blackUid',
+          'blackName',
+          'board',
+          'turn',
+          'winner',
+          'winnerReason',
+          'castling',
+          'enPassantIndex',
+          'halfmoveClock',
+          'fullmoveNumber',
+          'moveHistory',
+          'whiteWins',
+          'blackWins',
+          'draws',
+          'rematchVotes',
+          'lastMove',
+          'updatedAt'
+        ]);
+    }
+
+    function validChessJoinUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return request.resource.data.keys().hasOnly(chessRoomFields())
+        && request.resource.data.roomId == resource.data.roomId
+        && request.resource.data.hostUid == resource.data.hostUid
+        && request.resource.data.hostName == resource.data.hostName
+        && request.resource.data.createdAt == resource.data.createdAt
+        && validChessRoomShape()
+        && changed.hasOnly([
+          'guestUid',
+          'guestName',
+          'status',
           'updatedAt'
         ])
         && resource.data.guestUid == ''
@@ -1068,6 +1231,23 @@ service cloud.firestore {
       match /messages/{messageId} {
         allow read: if signedIn() && validChopsticksRoomId(roomId);
         allow create: if signedIn() && validChopsticksRoomId(roomId) && validConnect4Message();
+        allow update, delete: if false;
+      }
+    }
+
+    match /chessRooms/{roomId} {
+      allow read: if signedIn() && validChessRoomId(roomId);
+      allow create: if signedIn() && validChessRoomId(roomId) && validChessRoomCreate(roomId);
+      allow update: if signedIn() && validChessRoomId(roomId) && (
+        (isTrustedOwner() && request.resource.data.keys().hasOnly(chessRoomFields()))
+        || (chessIsParticipant() && validChessParticipantUpdate())
+        || (chessIsJoiner() && validChessJoinUpdate())
+      );
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if signedIn() && validChessRoomId(roomId);
+        allow create: if signedIn() && validChessRoomId(roomId) && validConnect4Message();
         allow update, delete: if false;
       }
     }

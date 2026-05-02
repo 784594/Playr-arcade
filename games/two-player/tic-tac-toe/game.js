@@ -31,6 +31,14 @@
 		'whore', 'porn', 'sex', 'nude', 'nsfw', 'xxx', 'cock', 'faggot', 'fag',
 		'nigga', 'nigger', 'retard', 'tranny',
 	];
+	const STAFF_ROOM_SOURCES = [
+		{ key: 'tic-tac-toe', label: 'Tic-Tac-Toe', collection: 'tttRooms', path: '/games/two-player/tic-tac-toe/' },
+		{ key: 'infinite-craft', label: 'Infinite Craft Multiplayer', collection: 'craftRooms', path: '/games/two-player/infinite-craft-multiplayer/' },
+		{ key: 'battleship', label: 'Battleship', collection: 'battleshipRooms', path: '/games/two-player/battleship/' },
+		{ key: 'connect-4', label: 'Connect 4', collection: 'connect4Rooms', path: '/games/two-player/connect-4/' },
+		{ key: 'chopsticks', label: 'Chopsticks', collection: 'chopsticksRooms', path: '/games/two-player/chopsticks/' },
+		{ key: 'chess', label: 'Chess', collection: 'chessRooms', path: '/games/two-player/chess/' },
+	];
 
 	const LEET_MAP = {
 		'0': 'o', '1': 'i', '2': 'z', '3': 'e', '4': 'a', '5': 's', '6': 'g',
@@ -119,6 +127,7 @@
 		selectedRoomTitle: document.getElementById('selectedRoomTitle'),
 		selectedRoomMeta: document.getElementById('selectedRoomMeta'),
 		selectedRoomPlayers: document.getElementById('selectedRoomPlayers'),
+		openRoomBtn: document.getElementById('openRoomBtn'),
 		spectateRoomBtn: document.getElementById('spectateRoomBtn'),
 		joinRoomFromLobbyBtn: document.getElementById('joinRoomFromLobbyBtn'),
 		selectedUserName: document.getElementById('selectedUserName'),
@@ -140,10 +149,6 @@
 		return String(name || '').trim().replace(/\s+/g, ' ').slice(0, 24);
 	}
 
-	function isOwnerName(name) {
-		return normalizeName(name).toLowerCase() === 'owner';
-	}
-
 	function getLocalLegacyDisplayName() {
 		try {
 			const raw = localStorage.getItem('playrCurrentUser');
@@ -158,8 +163,51 @@
 		return normalizeName(user?.displayName || getLocalLegacyDisplayName() || 'Player');
 	}
 
+	function getCurrentAuthUser() {
+		if (window.PlayrAuth && typeof window.PlayrAuth.getCurrentUser === 'function') {
+			return window.PlayrAuth.getCurrentUser();
+		}
+		return null;
+	}
+
+	function normalizeRoleName(role) {
+		return String(role || '').trim().toLowerCase();
+	}
+
+	function getRoleRank(roleName) {
+		const safeRole = normalizeRoleName(roleName);
+		if (safeRole === 'owner') return 4;
+		if (safeRole === 'admin') return 3;
+		if (safeRole === 'moderator') return 2;
+		if (safeRole === 'support') return 1;
+		return 0;
+	}
+
+	function isOwnerAccount(user = getCurrentAuthUser()) {
+		const identifier = String(user?.identifier || user?.email || '').trim().toLowerCase();
+		return identifier === 'owner@playr.io';
+	}
+
+	function getCurrentStaffRole() {
+		if (isOwnerAccount()) return 'owner';
+		const current = getCurrentAuthUser();
+		const roles = Array.isArray(current?.roles) ? current.roles.map(normalizeRoleName) : [];
+		if (roles.includes('admin')) return 'admin';
+		if (roles.includes('moderator')) return 'moderator';
+		if (roles.includes('support')) return 'support';
+		return '';
+	}
+
+	function canOpenStaffLobby() {
+		return getRoleRank(getCurrentStaffRole()) > 0;
+	}
+
+	function canUseRoomOverrides() {
+		return isOwnerAccount() || getCurrentStaffRole() === 'admin';
+	}
+
 	function isCurrentUserOwner() {
-		return isOwnerName(getDisplayName(state.user));
+		return isOwnerAccount();
 	}
 
 	function getModerationFor(room, uid) {
@@ -506,7 +554,7 @@
 			if (room.turn !== role) return false;
 			return !board[index];
 		};
-		const adminCanSelectCells = Boolean(state.adminPanelOpen && state.adminSelectingCell && isCurrentUserOwner());
+		const adminCanSelectCells = Boolean(state.adminPanelOpen && state.adminSelectingCell && canUseRoomOverrides());
 
 		els.board.innerHTML = board.map((mark, index) => {
 			const disabled = canPlay(index) || adminCanSelectCells ? '' : 'disabled';
@@ -519,20 +567,20 @@
 	function renderRoomMeta() {
 		const room = state.roomData || {};
 		const inRoom = Boolean(state.roomId);
-		if (els.roomGate) els.roomGate.hidden = inRoom || (isCurrentUserOwner() && (state.roomGateHidden || state.ownerLobbyOpen));
+		if (els.roomGate) els.roomGate.hidden = inRoom || (canOpenStaffLobby() && (state.roomGateHidden || state.ownerLobbyOpen));
 		if (els.boardInfo) els.boardInfo.hidden = !inRoom;
 		if (els.chatPanel) els.chatPanel.hidden = !inRoom;
 
-		const showAdmin = Boolean(inRoom && isCurrentUserOwner());
+		const showAdmin = Boolean(inRoom && canUseRoomOverrides());
 		if (els.adminToggleBtn) {
 			els.adminToggleBtn.hidden = !showAdmin;
 			els.adminToggleBtn.textContent = state.adminPanelOpen ? 'Hide Admin' : 'Show Admin';
 		}
 		if (els.ownerLobbyBtn) {
-			els.ownerLobbyBtn.hidden = !isCurrentUserOwner();
+			els.ownerLobbyBtn.hidden = !canOpenStaffLobby();
 		}
 		if (els.ownerLobbyBoardBtn) {
-			els.ownerLobbyBoardBtn.hidden = !isCurrentUserOwner();
+			els.ownerLobbyBoardBtn.hidden = !canOpenStaffLobby();
 		}
 		if (els.adminTools) els.adminTools.hidden = !showAdmin || !state.adminPanelOpen;
 		renderOwnerLobby();
@@ -667,11 +715,11 @@
 	}
 
 	function renderOwnerLobby() {
-		const canShow = Boolean(isCurrentUserOwner());
+		const canShow = Boolean(canOpenStaffLobby());
 		if (els.ownerLobbyBtn) {
 			document.body.classList.toggle('owner-lobby-open', state.ownerLobbyOpen && canShow);
 			els.ownerLobbyBtn.hidden = !canShow;
-			els.ownerLobbyBtn.textContent = state.ownerLobbyOpen ? 'Close Lobby' : 'Owner Lobby';
+			els.ownerLobbyBtn.textContent = state.ownerLobbyOpen ? 'Close Lobby' : 'Admin Lobby';
 		}
 		if (els.ownerLobbyPanel) {
 			els.ownerLobbyPanel.hidden = !canShow || !state.ownerLobbyOpen;
@@ -685,55 +733,55 @@
 		if (els.ownerRoomList) {
 			const rooms = Array.isArray(state.ownerRooms) ? state.ownerRooms : [];
 			els.ownerRoomList.innerHTML = rooms.length ? rooms.map((room) => {
-				const selected = room.roomId === state.selectedOwnerRoomId ? ' selected' : '';
+				const selected = room.key === state.selectedOwnerRoomId ? ' selected' : '';
 				return `
-					<button type="button" class="owner-room-card${selected}" data-owner-room-id="${room.roomId}">
-						<strong>${escapeHtml(room.roomId)}</strong>
-						<p>Status: ${escapeHtml(room.status || 'unknown')}</p>
-						<p>Players: ${escapeHtml(room.xName || 'Open')} / ${escapeHtml(room.oName || 'Open')}</p>
-						<p>Updated: ${escapeHtml(formatTime(room.updatedAt))}</p>
+					<button type="button" class="owner-room-card${selected}" data-owner-room-id="${room.key}">
+						<strong>${escapeHtml(room.label)}</strong>
+						<p>${escapeHtml(room.roomId)}</p>
+						<p>Status: ${escapeHtml(room.statusLabel || 'unknown')}</p>
+						<p>Players: ${room.participants.length}</p>
 					</button>
 				`;
 			}).join('') : '<p class="hint">No current rooms right now.</p>';
 		}
 
-		const selectedRoom = (state.ownerRooms || []).find((room) => room.roomId === state.selectedOwnerRoomId) || null;
+		const selectedRoom = (state.ownerRooms || []).find((room) => room.key === state.selectedOwnerRoomId) || null;
+		const selectedRoomIsTtt = selectedRoom?.gameKey === 'tic-tac-toe';
 		if (els.selectedRoomTitle) {
-			els.selectedRoomTitle.textContent = selectedRoom ? `Room ${selectedRoom.roomId}` : 'Select a room';
+			els.selectedRoomTitle.textContent = selectedRoom ? `${selectedRoom.label} • ${selectedRoom.roomId}` : 'Select a room';
 		}
 		if (els.selectedRoomMeta) {
 			els.selectedRoomMeta.textContent = selectedRoom
-				? `Status: ${selectedRoom.status || 'unknown'} | Turn: ${selectedRoom.turn || '--'} | Winner: ${selectedRoom.winner || 'none'}`
-				: 'Pick a room to spectate and moderate.';
+				? `${selectedRoom.statusLabel || 'unknown'} | Updated ${selectedRoom.updatedLabel || 'recently'}`
+				: 'Pick a room to inspect members, open the game page, or spectate if it is a Tic-Tac-Toe room.';
 		}
 
-		if (els.spectateRoomBtn) els.spectateRoomBtn.disabled = !selectedRoom;
-		if (els.joinRoomFromLobbyBtn) els.joinRoomFromLobbyBtn.disabled = !selectedRoom;
+		if (els.openRoomBtn) els.openRoomBtn.disabled = !selectedRoom;
+		if (els.spectateRoomBtn) els.spectateRoomBtn.disabled = !selectedRoomIsTtt;
+		if (els.joinRoomFromLobbyBtn) els.joinRoomFromLobbyBtn.disabled = !selectedRoomIsTtt;
 
 		if (els.selectedRoomPlayers) {
 			if (!selectedRoom) {
 				state.selectedOwnerUserId = '';
 				els.selectedRoomPlayers.innerHTML = '';
 			} else {
-				const players = [
-					{ uid: selectedRoom.xUid, name: selectedRoom.xName || 'X player', role: 'X' },
-					{ uid: selectedRoom.oUid, name: selectedRoom.oName || 'O player', role: 'O' },
-				].filter((player) => player.uid);
+				const players = Array.isArray(selectedRoom.participants) ? selectedRoom.participants : [];
 				els.selectedRoomPlayers.innerHTML = players.length ? players.map((player) => {
 					const selected = player.uid === state.selectedOwnerUserId ? ' selected' : '';
-					return `<button type="button" class="owner-user-chip${selected}" data-owner-user-id="${player.uid}">${escapeHtml(player.role)}: ${escapeHtml(player.name)}</button>`;
+					return `<button type="button" class="owner-user-chip${selected}" data-owner-user-id="${player.uid || ''}">${escapeHtml(player.role ? `${player.role}: ${player.name}` : player.name)}</button>`;
 				}).join('') : '<p class="hint">No players yet.</p>';
 			}
 		}
 
 		if (els.selectedUserName) {
 			const selectedUser = selectedRoom && state.selectedOwnerUserId
-				? [
-					{ uid: selectedRoom.xUid, name: selectedRoom.xName || 'X player' },
-					{ uid: selectedRoom.oUid, name: selectedRoom.oName || 'O player' },
-				].find((player) => player.uid === state.selectedOwnerUserId)
+				? (selectedRoom.participants || []).find((player) => player.uid === state.selectedOwnerUserId)
 				: null;
 			els.selectedUserName.textContent = selectedUser ? selectedUser.name : 'No user selected.';
+		}
+		const moderationPanel = document.querySelector('.owner-moderation-panel');
+		if (moderationPanel) {
+			moderationPanel.hidden = !selectedRoomIsTtt || !isCurrentUserOwner();
 		}
 	}
 
@@ -777,51 +825,104 @@
 	}
 
 	function unsubscribeOwnerLobby() {
-		if (typeof state.ownerLobbyUnsub === 'function') {
-			state.ownerLobbyUnsub();
-			state.ownerLobbyUnsub = null;
-		}
+		state.ownerLobbyUnsub = null;
 	}
 
-	function syncOwnerLobby() {
+	function extractStaffLobbyParticipants(source, room) {
+		if (source.key === 'tic-tac-toe') {
+			return [
+				{ uid: room.xUid, name: normalizeName(room.xName || 'X player'), role: room.xUid ? 'X' : 'Open' },
+				{ uid: room.oUid, name: normalizeName(room.oName || 'O player'), role: room.oUid ? 'O' : 'Open' },
+			].filter((player) => player.uid || player.role === 'Open');
+		}
+		if (source.key === 'infinite-craft') {
+			return Object.entries(room.participants || {}).map(([uid, participant]) => ({
+				uid,
+				name: normalizeName(participant?.name || 'Player'),
+				role: normalizeName(participant?.role || ''),
+			}));
+		}
+		if (source.key === 'battleship') {
+			return [
+				{ uid: room.hostUid, name: normalizeName(room.hostName || 'Host'), role: 'Host' },
+				{ uid: room.guestUid, name: normalizeName(room.guestName || 'Waiting'), role: room.guestUid ? 'Guest' : 'Open' },
+			].filter((player) => player.uid || player.role === 'Open');
+		}
+		if (source.key === 'connect-4') {
+			return [
+				{ uid: room.redUid, name: normalizeName(room.redName || 'Red'), role: 'Red' },
+				{ uid: room.yellowUid, name: normalizeName(room.yellowName || 'Waiting'), role: room.yellowUid ? 'Yellow' : 'Open' },
+			].filter((player) => player.uid || player.role === 'Open');
+		}
+		if (source.key === 'chopsticks') {
+			return [
+				{ uid: room.hostUid, name: normalizeName(room.hostName || 'Host'), role: 'Host' },
+				{ uid: room.guestUid, name: normalizeName(room.guestName || 'Waiting'), role: room.guestUid ? 'Guest' : 'Open' },
+			].filter((player) => player.uid || player.role === 'Open');
+		}
+		if (source.key === 'chess') {
+			return [
+				{ uid: room.whiteUid, name: normalizeName(room.whiteName || 'White'), role: room.whiteUid ? 'White' : 'Open' },
+				{ uid: room.blackUid, name: normalizeName(room.blackName || 'Waiting'), role: room.blackUid ? 'Black' : 'Open' },
+			].filter((player) => player.uid || player.role === 'Open');
+		}
+		return [];
+	}
+
+	async function syncOwnerLobby() {
 		unsubscribeOwnerLobby();
-		if (!db || !state.user || !isCurrentUserOwner()) {
+		if (!db || !state.user || !canOpenStaffLobby()) {
 			state.ownerRooms = [];
 			renderOwnerLobby();
 			return;
 		}
 
-		state.ownerLobbyUnsub = db.collection('tttRooms')
-			.orderBy('updatedAt', 'desc')
-			.limit(50)
-			.onSnapshot((snap) => {
+		try {
+			const sources = await Promise.all(STAFF_ROOM_SOURCES.map(async (source) => {
+				const snap = await db.collection(source.collection).orderBy('updatedAt', 'desc').limit(12).get();
 				const rooms = [];
 				const staleRoomDocIds = [];
 				const now = Date.now();
 				snap.forEach((doc) => {
 					const room = doc.data() || {};
 					const updatedAtMs = timestampToMs(room.updatedAt) || timestampToMs(room.createdAt);
-					if (updatedAtMs && (now - updatedAtMs > STALE_ROOM_MS)) {
+					if (source.key === 'tic-tac-toe' && updatedAtMs && (now - updatedAtMs > STALE_ROOM_MS)) {
 						staleRoomDocIds.push(doc.id);
 						return;
 					}
-					if (room.status === 'finished') return;
-					if (!room.roomId) room.roomId = doc.id;
-					rooms.push(room);
+					if (source.key === 'tic-tac-toe' && room.status === 'finished') return;
+					rooms.push({
+						key: `${source.key}:${doc.id}`,
+						gameKey: source.key,
+						label: source.label,
+						roomId: doc.id,
+						path: source.path,
+						statusLabel: String(room.status || room.phase || 'active'),
+						updatedAtLabel: formatTime(room.updatedAt || room.createdAt),
+						updatedLabel: formatTime(room.updatedAt || room.createdAt),
+						participants: extractStaffLobbyParticipants(source, room),
+						...room,
+					});
 				});
-				cleanupStaleRooms(staleRoomDocIds);
-				rooms.sort((a, b) => timestampToMs(b.updatedAt) - timestampToMs(a.updatedAt));
-				state.ownerRooms = rooms;
-				if (state.selectedOwnerRoomId && !rooms.some((room) => room.roomId === state.selectedOwnerRoomId)) {
-					state.selectedOwnerRoomId = rooms[0]?.roomId || '';
-					state.selectedOwnerUserId = '';
-				}
-				renderOwnerLobby();
-			}, (error) => {
-				if (els.ownerActionStatus) {
-					els.ownerActionStatus.textContent = `Could not load current rooms: ${error?.message || 'unknown error'}.`;
-				}
-			});
+				if (source.key === 'tic-tac-toe') cleanupStaleRooms(staleRoomDocIds);
+				return rooms;
+			}));
+			const rooms = sources.flat();
+			rooms.sort((a, b) => (timestampToMs(b.updatedAt) || timestampToMs(b.createdAt)) - (timestampToMs(a.updatedAt) || timestampToMs(a.createdAt)));
+			state.ownerRooms = rooms;
+			if (state.selectedOwnerRoomId && !rooms.some((room) => room.key === state.selectedOwnerRoomId)) {
+				state.selectedOwnerRoomId = rooms[0]?.key || '';
+				state.selectedOwnerUserId = '';
+			}
+			if (!state.selectedOwnerRoomId && rooms.length) {
+				state.selectedOwnerRoomId = rooms[0].key;
+			}
+			renderOwnerLobby();
+		} catch (error) {
+			if (els.ownerActionStatus) {
+				els.ownerActionStatus.textContent = `Could not load current rooms: ${error?.message || 'unknown error'}.`;
+			}
+		}
 	}
 
 	function renderAll() {
@@ -1261,7 +1362,7 @@
 	}
 
 	async function applyAdminOverride() {
-		if (!db || !state.user || !state.roomId || !isCurrentUserOwner()) return;
+		if (!db || !state.user || !state.roomId || !canUseRoomOverrides()) return;
 		if (!els.adminOverrideSelect) return;
 
 		const index = Number(state.adminSelectedCellIndex);
@@ -1418,7 +1519,7 @@
 				const index = Number(button.dataset.cellIndex);
 				if (!Number.isInteger(index)) return;
 
-				if (state.adminPanelOpen && state.adminSelectingCell && isCurrentUserOwner()) {
+				if (state.adminPanelOpen && state.adminSelectingCell && canUseRoomOverrides()) {
 					state.adminSelectedCellIndex = index;
 					state.adminSelectingCell = false;
 					if (els.adminStatus) els.adminStatus.textContent = `Selected cell ${index + 1}. Choose an action.`;
@@ -1507,6 +1608,9 @@
 
 		const toggleOwnerLobby = () => {
 			state.ownerLobbyOpen = !state.ownerLobbyOpen;
+			if (state.ownerLobbyOpen) {
+				void syncOwnerLobby();
+			}
 			renderOwnerLobby();
 		};
 
@@ -1534,7 +1638,7 @@
 
 		if (els.refreshRoomsBtn) {
 			els.refreshRoomsBtn.addEventListener('click', () => {
-				renderOwnerLobby();
+				void syncOwnerLobby();
 			});
 		}
 
@@ -1563,8 +1667,9 @@
 
 		if (els.spectateRoomBtn) {
 			els.spectateRoomBtn.addEventListener('click', () => {
-				if (!state.selectedOwnerRoomId) return;
-				void spectateRoom(state.selectedOwnerRoomId).catch((error) => {
+				const selectedRoom = (state.ownerRooms || []).find((room) => room.key === state.selectedOwnerRoomId);
+				if (!selectedRoom || selectedRoom.gameKey !== 'tic-tac-toe') return;
+				void spectateRoom(selectedRoom.roomId).catch((error) => {
 					if (els.ownerActionStatus) els.ownerActionStatus.textContent = `Could not spectate: ${error?.message || 'unknown error'}.`;
 				});
 			});
@@ -1572,10 +1677,21 @@
 
 		if (els.joinRoomFromLobbyBtn) {
 			els.joinRoomFromLobbyBtn.addEventListener('click', () => {
-				if (!state.selectedOwnerRoomId) return;
-				void joinRoom(state.selectedOwnerRoomId).catch((error) => {
+				const selectedRoom = (state.ownerRooms || []).find((room) => room.key === state.selectedOwnerRoomId);
+				if (!selectedRoom || selectedRoom.gameKey !== 'tic-tac-toe') return;
+				void joinRoom(selectedRoom.roomId).catch((error) => {
 					if (els.ownerActionStatus) els.ownerActionStatus.textContent = `Could not join: ${error?.message || 'unknown error'}.`;
 				});
+			});
+		}
+
+		if (els.openRoomBtn) {
+			els.openRoomBtn.addEventListener('click', () => {
+				const selectedRoom = (state.ownerRooms || []).find((room) => room.key === state.selectedOwnerRoomId);
+				if (!selectedRoom) return;
+				const url = new URL(selectedRoom.path, window.location.origin);
+				url.searchParams.set('room', selectedRoom.roomId);
+				window.location.href = url.toString();
 			});
 		}
 	}
