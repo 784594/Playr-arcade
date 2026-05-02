@@ -194,27 +194,6 @@ const firebaseDb = firebaseApp && window.firebase?.firestore ? window.firebase.f
 
 const firebaseFunctions = firebaseApp && window.firebase?.functions ? window.firebase.functions() : null;
 
-// --- Profile/settings modal quick open ---
-document.addEventListener('DOMContentLoaded', () => {
-  const profileBtn = document.getElementById('profileBtn');
-  const settingsOverlay = document.getElementById('settingsOverlay');
-  if (profileBtn && settingsOverlay) {
-    profileBtn.addEventListener('click', () => {
-      settingsOverlay.hidden = false;
-      // Optionally focus the first input for accessibility
-      const firstInput = settingsOverlay.querySelector('input,button,select,textarea');
-      if (firstInput) firstInput.focus();
-    });
-  }
-  // Also close settings when clicking the close button
-  const settingsCloseBtn = document.getElementById('settingsCloseBtn');
-  if (settingsCloseBtn && settingsOverlay) {
-    settingsCloseBtn.addEventListener('click', () => {
-      settingsOverlay.hidden = true;
-    });
-  }
-});
-
 if (firebaseDb) {
   try {
     firebaseDb.settings({
@@ -2102,6 +2081,7 @@ function ensureBannerSettingsCard() {
   card.innerHTML = `
     <h4>Profile customization settings are moved!</h4>
     <p class="settings-muted">Profile customization settings are moved! Now found when you look at your own profile</p>
+    <button class="button secondary" type="button" id="settingsProfileBtn">Open your profile</button>
   `;
   settingsGrid.appendChild(card);
   profileUi.settingsBannerCard = card;
@@ -7470,6 +7450,20 @@ function init() {
     const openCustomizationBtn = event.target.closest('[data-open-profile-customization="true"]');
     if (openCustomizationBtn) {
       openProfileCustomizationOverlay();
+      return;
+    }
+
+    if (event.target.closest('#settingsProfileBtn')) {
+      const currentAccount = getCurrentAccount();
+      if (!currentAccount?.uid) {
+        setSettingsStatus('Log in first to open your profile.', 'danger');
+        return;
+      }
+      closeSettingsOverlay();
+      void openProfilePanel({
+        uid: currentAccount.uid,
+        displayName: currentAccount.displayName || '',
+      });
       return;
     }
 

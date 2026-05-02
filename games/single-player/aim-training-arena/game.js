@@ -1,203 +1,58 @@
 (function () {
-  const LEADERBOARD_KEY = 'playr.aimTrainingArena.bests.v1';
-  const LAST_MODE_KEY = 'playr.aimTrainingArena.lastMode.v1';
-  const SESSION_KEY = 'playr.aimTrainingArena.session.v1';
+  const BESTS_KEY = 'playr.aimTrainingArena.bests.v2';
+  const LAST_MODE_KEY = 'playr.aimTrainingArena.lastMode.v2';
+  const HOLD_MS = 3000;
+  const REACTION_TIMEOUT_MS = 5000;
+  const SHOT_TIMEOUT_MS = 3000;
+  const TRACKING_DURATION_MS = 30000;
+  const PRECISION_DURATION_MS = 60000;
+  const TRACKING_DIRECTION_MIN_MS = 2000;
+  const TRACKING_DIRECTION_MAX_MS = 4200;
+  const REACTION_WAIT_MIN_MS = 5000;
+  const REACTION_WAIT_MAX_MS = 10000;
+  const FLICK_REPS = 5;
+  const REACTION_REPS = 5;
+  const TRACKING_RADIUS = 14;
+  const PRECISION_TARGET_COUNT = 5;
 
   const MODE_DEFS = {
     reaction: {
       label: 'Reaction Time',
       group: 'Reaction',
-      copy: 'Wait for the target, then click instantly. False starts reset the rhythm.',
-      modeStatLabel: 'Fastest average response across click-based reps.',
-      modeStatUnit: 'ms',
-      modeStatKey: 'avgReactionMs',
-      allowedClicks: true,
-      color: 'amber',
-      targetCount: 1,
-      targetLifeMs: 1400,
-      precisionBias: 0.7,
-      centerBias: 0.15,
+      copy: 'Wait through a random red hold, click on green instantly, and repeat for five reps to measure your average, fastest, and slowest reactions.',
     },
     flick: {
       label: 'Flick Shot',
       group: 'Flicking',
-      copy: 'One target at a time. Snap cleanly and move to the next instantly.',
-      modeStatLabel: 'Average time per target.',
-      modeStatUnit: 'ms',
-      modeStatKey: 'avgHitMs',
-      allowedClicks: true,
-      color: 'green',
-      targetCount: 1,
-      targetLifeMs: 1250,
-      precisionBias: 0.6,
-      centerBias: 0.3,
+      copy: 'Hold on the orange anchor for 3 seconds, then snap to a full-size 5-ring target. Repeat five times for reaction and accuracy.',
     },
-    precision: {
+    micro: {
       label: 'Micro Flick',
       group: 'Flicking',
-      copy: 'Small targets with tighter spacing. This trains the last adjustment, not the first snap.',
-      modeStatLabel: 'Precision hits inside the smallest aim window.',
-      modeStatUnit: '%',
-      modeStatKey: 'microAccuracyPct',
-      allowedClicks: true,
-      color: 'teal',
-      targetCount: 1,
-      targetLifeMs: 1150,
-      precisionBias: 0.95,
-      centerBias: 0.42,
-    },
-    switching: {
-      label: 'Target Switching',
-      group: 'Switching',
-      copy: 'Clear multiple targets fast. Prioritize the highlighted one when waves start to crowd.',
-      modeStatLabel: 'Average wave clear time.',
-      modeStatUnit: 's',
-      modeStatKey: 'avgWaveMs',
-      allowedClicks: true,
-      color: 'gold',
-      targetCount: 5,
-      targetLifeMs: 2200,
-      precisionBias: 0.7,
-      centerBias: 0.2,
+      copy: 'Same anchor-and-fire flow as Flick Shot, but the target is smaller and tighter with a 3-ring micro target.',
     },
     tracking: {
       label: 'Tracking',
       group: 'Tracking',
-      copy: 'Keep the cursor on the target while it moves smoothly across the arena.',
-      modeStatLabel: 'Percent of run spent on target.',
-      modeStatUnit: '%',
-      modeStatKey: 'trackingPct',
-      allowedClicks: false,
-      color: 'green',
-      targetCount: 1,
-      targetLifeMs: 0,
-      precisionBias: 1,
-      centerBias: 0.35,
+      copy: 'Choose an axis, hold the orange anchor for 3 seconds, then stay on the moving dot as it changes direction after at least 2 seconds.',
     },
     dynamic: {
       label: 'Dynamic Tracking',
       group: 'Tracking',
-      copy: 'Track the target, then react again when it teleports. Smooth control plus flick recovery.',
-      modeStatLabel: 'Teleports recovered during the run.',
-      modeStatUnit: 'hits',
-      modeStatKey: 'teleportsRecovered',
-      allowedClicks: false,
-      color: 'teal',
-      targetCount: 1,
-      targetLifeMs: 0,
-      precisionBias: 1,
-      centerBias: 0.35,
+      copy: 'Hold the anchor for 3 seconds, then track an orange dot that can move in any direction and switch paths after at least 2 seconds.',
     },
-    timing: {
-      label: 'Click Timing',
+    precision: {
+      label: 'Precision',
       group: 'Precision',
-      copy: 'The target pulses. Click only when it reaches the timing window, not just when it is visible.',
-      modeStatLabel: 'Perfect timing hits.',
-      modeStatUnit: '%',
-      modeStatKey: 'perfectTimingPct',
-      allowedClicks: true,
-      color: 'amber',
-      targetCount: 1,
-      targetLifeMs: 1700,
-      precisionBias: 0.85,
-      centerBias: 0.25,
-    },
-    decision: {
-      label: 'Decision Mode',
-      group: 'Advanced',
-      copy: 'Some targets pay points, some punish mistakes. Aim is only half the skill here.',
-      modeStatLabel: 'Correct picks minus traps.',
-      modeStatUnit: 'net',
-      modeStatKey: 'decisionNet',
-      allowedClicks: true,
-      color: 'red',
-      targetCount: 5,
-      targetLifeMs: 2000,
-      precisionBias: 0.75,
-      centerBias: 0.25,
+      copy: 'Clear a 60-second board with five small live targets. Each hit respawns immediately, and your result comes from targets shot plus click accuracy.',
     },
   };
-
-  const PRESETS = {
-    easy: { targetSize: 72, spawnSpeed: 0.85, movementSpeed: 0.8, duration: 30 },
-    standard: { targetSize: 54, spawnSpeed: 1, movementSpeed: 1, duration: 45 },
-    hard: { targetSize: 34, spawnSpeed: 1.3, movementSpeed: 1.35, duration: 60 },
-  };
-
-  const CHALLENGE_DEFS = [
-    {
-      mode: 'reaction',
-      title: 'False Start Discipline',
-      copy: 'Land a 90%+ accuracy run in Reaction Time and do not false-start more than once.',
-      metric: 'Accuracy',
-      target: '90%',
-    },
-    {
-      mode: 'flick',
-      title: 'Clean Snap',
-      copy: 'Clear Flick Shot with an average hit time under 260ms and at least a 10-hit streak.',
-      metric: 'Avg hit time',
-      target: '<260ms',
-    },
-    {
-      mode: 'precision',
-      title: 'Tiny Target Discipline',
-      copy: 'Beat Micro Flick with at least 80% accuracy while keeping the combo alive.',
-      metric: 'Accuracy',
-      target: '80%+',
-    },
-    {
-      mode: 'switching',
-      title: 'Wave Cleaner',
-      copy: 'Clear three switching waves without dropping your combo.',
-      metric: 'Waves',
-      target: '3',
-    },
-    {
-      mode: 'tracking',
-      title: 'Sticky Cursor',
-      copy: 'Keep the cursor on target for at least 70% of the run.',
-      metric: 'On-target',
-      target: '70%+',
-    },
-    {
-      mode: 'dynamic',
-      title: 'Recover Fast',
-      copy: 'Survive at least five teleports and reacquire each one quickly.',
-      metric: 'Teleports',
-      target: '5',
-    },
-    {
-      mode: 'timing',
-      title: 'Perfect Window',
-      copy: 'Hit the pulse window three times in a row without breaking the streak.',
-      metric: 'Perfects',
-      target: '3',
-    },
-    {
-      mode: 'decision',
-      title: 'Prioritize Correctly',
-      copy: 'Finish with a positive net decision score and fewer misses than correct hits.',
-      metric: 'Net score',
-      target: 'Positive',
-    },
-  ];
 
   const dom = {
     startBtn: document.getElementById('startBtn'),
     replayBtn: document.getElementById('replayBtn'),
-    settingsBtn: document.getElementById('settingsBtn'),
-    settingsPanel: document.getElementById('settingsPanel'),
-    settingsCloseBtn: document.getElementById('settingsCloseBtn'),
+    heroNote: document.getElementById('heroNote'),
     quitBtn: document.getElementById('quitBtn'),
-    stageStartPanel: document.getElementById('stageStartPanel'),
-    stageStartBtn: document.getElementById('stageStartBtn'),
-    stageReplayBtn: document.getElementById('stageReplayBtn'),
-    stageStartTitle: document.getElementById('stageStartTitle'),
-    stageStartCopy: document.getElementById('stageStartCopy'),
-    playAgainBtn: document.getElementById('playAgainBtn'),
-    changeModeBtn: document.getElementById('changeModeBtn'),
-    heroBest: document.getElementById('heroBest'),
     modeGroupLabel: document.getElementById('modeGroupLabel'),
     modeCopy: document.getElementById('modeCopy'),
     modeTitle: document.getElementById('modeTitle'),
@@ -205,124 +60,62 @@
     stageHint: document.getElementById('stageHint'),
     arenaStage: document.getElementById('arenaStage'),
     targetLayer: document.getElementById('targetLayer'),
-    scoreValue: document.getElementById('scoreValue'),
-    accuracyValue: document.getElementById('accuracyValue'),
-    comboValue: document.getElementById('comboValue'),
-    timeValue: document.getElementById('timeValue'),
-    hitsValue: document.getElementById('hitsValue'),
-    missesValue: document.getElementById('missesValue'),
-    streakValue: document.getElementById('streakValue'),
-    reactionValue: document.getElementById('reactionValue'),
+    stageStartPanel: document.getElementById('stageStartPanel'),
+    stageStartBtn: document.getElementById('stageStartBtn'),
+    stageReplayBtn: document.getElementById('stageReplayBtn'),
+    stageStartTitle: document.getElementById('stageStartTitle'),
+    stageStartCopy: document.getElementById('stageStartCopy'),
+    axisPanel: document.getElementById('axisPanel'),
+    hudLabel1: document.getElementById('hudLabel1'),
+    hudLabel2: document.getElementById('hudLabel2'),
+    hudLabel3: document.getElementById('hudLabel3'),
+    hudLabel4: document.getElementById('hudLabel4'),
+    hudValue1: document.getElementById('hudValue1'),
+    hudValue2: document.getElementById('hudValue2'),
+    hudValue3: document.getElementById('hudValue3'),
+    hudValue4: document.getElementById('hudValue4'),
     resultsPanel: document.getElementById('resultsPanel'),
+    resultsGrid: document.getElementById('resultsGrid'),
     resultTier: document.getElementById('resultTier'),
-    resultScore: document.getElementById('resultScore'),
-    resultReaction: document.getElementById('resultReaction'),
-    resultAccuracy: document.getElementById('resultAccuracy'),
-    resultStreak: document.getElementById('resultStreak'),
     resultDetails: document.getElementById('resultDetails'),
-    targetSizeInput: document.getElementById('targetSizeInput'),
-    spawnSpeedInput: document.getElementById('spawnSpeedInput'),
-    movementSpeedInput: document.getElementById('movementSpeedInput'),
-    durationInput: document.getElementById('durationInput'),
-    targetSizeValue: document.getElementById('targetSizeValue'),
-    spawnSpeedValue: document.getElementById('spawnSpeedValue'),
-    movementSpeedValue: document.getElementById('movementSpeedValue'),
-    durationValue: document.getElementById('durationValue'),
+    playAgainBtn: document.getElementById('playAgainBtn'),
+    changeModeBtn: document.getElementById('changeModeBtn'),
+    sessionStats: document.getElementById('sessionStats'),
     bestsList: document.getElementById('bestsList'),
-    challengeTitle: document.getElementById('challengeTitle'),
-    challengeCopy: document.getElementById('challengeCopy'),
-    challengeMeta: document.getElementById('challengeMeta'),
-    challengeBadge: document.getElementById('challengeBadge'),
   };
 
   if (!dom.arenaStage || !dom.targetLayer) return;
 
   const modeButtons = Array.from(document.querySelectorAll('[data-mode]'));
-  const presetButtons = Array.from(document.querySelectorAll('[data-preset]'));
+  const axisButtons = Array.from(document.querySelectorAll('[data-axis]'));
 
   const state = {
     mode: loadLastMode() || 'reaction',
     running: false,
-    ended: false,
-    score: 0,
-    combo: 0,
-    bestCombo: 0,
-    hits: 0,
-    misses: 0,
-    falseStarts: 0,
-    totalAccuracy: 0,
-    accuracySamples: 0,
-    reactionTimes: [],
-    trackingOnTime: 0,
-    trackingTotalTime: 0,
-    decisionNet: 0,
-    decisionCorrect: 0,
-    decisionWrong: 0,
-    perfectTiming: 0,
-    timingAttempts: 0,
-    waveTimes: [],
-    microHits: 0,
-    teleportsRecovered: 0,
-    activeTargets: [],
-    stage: { width: 0, height: 0 },
-    targetId: 0,
-    phase: 'idle',
-    phaseEndsAt: 0,
-    phaseStartedAt: 0,
-    nextSpawnAt: 0,
-    lastFrameAt: performance.now(),
-    paused: false,
-    pauseStartedAt: 0,
-    timeRemainingMs: 0,
-    lastModeStat: 0,
-    runStartedAt: 0,
-    runEndsAt: 0,
+    showAxisPicker: false,
+    selectedAxis: 'horizontal',
     pointer: { x: 0, y: 0, inside: false },
+    activeElements: [],
+    timeoutIds: [],
+    rafId: 0,
+    loopLastAt: 0,
+    stageRect: { width: 0, height: 0 },
+    phase: 'idle',
     bests: loadBests(),
-    challenge: buildDailyChallenge(),
-    settings: loadSettings(),
-    audio: null,
-    summary: null,
-    pendingWaveStartedAt: 0,
-    lockedTargetId: null,
-    trackingTeleportAt: 0,
-    lastTargetPointerAt: 0,
-    currentTrackingKind: 'linear',
+    stats: null,
+    trackingTarget: null,
+    trackingDirectionAt: 0,
+    anchorHeldAt: 0,
+    currentTarget: null,
+    targetTimeoutAt: 0,
+    pendingSummary: null,
   };
-
-  function clamp(value, min, max) {
-    return Math.min(max, Math.max(min, value));
-  }
-
-  function round(value, digits = 0) {
-    const factor = 10 ** digits;
-    return Math.round(value * factor) / factor;
-  }
-
-  function randomBetween(min, max) {
-    return min + Math.random() * (max - min);
-  }
-
-  function randomInt(min, max) {
-    return Math.floor(randomBetween(min, max + 1));
-  }
-
-  function formatMs(value) {
-    if (!Number.isFinite(value) || value <= 0) return '--';
-    return `${Math.round(value)}ms`;
-  }
-
-  function formatPercent(value) {
-    if (!Number.isFinite(value)) return '0%';
-    return `${round(value, 1)}%`;
-  }
 
   function loadJson(key, fallback) {
     try {
       const raw = localStorage.getItem(key);
       if (!raw) return fallback;
-      const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === 'object' ? parsed : fallback;
+      return JSON.parse(raw);
     } catch {
       return fallback;
     }
@@ -332,36 +125,13 @@
     try {
       localStorage.setItem(key, JSON.stringify(value));
     } catch {
-      // Ignore storage quota issues.
+      // Ignore storage errors.
     }
-  }
-
-  function loadSettings() {
-    const stored = loadJson(SESSION_KEY, null);
-    if (stored && typeof stored === 'object') {
-      return {
-        targetSize: clamp(Number(stored.targetSize) || 54, 18, 120),
-        spawnSpeed: clamp(Number(stored.spawnSpeed) || 1, 0.7, 2),
-        movementSpeed: clamp(Number(stored.movementSpeed) || 1, 0.5, 3),
-        duration: clamp(Number(stored.duration) || 45, 30, 60),
-      };
-    }
-
-    const preset = PRESETS.standard;
-    return { ...preset };
-  }
-
-  function persistSettings() {
-    saveJson(SESSION_KEY, state.settings);
   }
 
   function loadBests() {
-    const stored = loadJson(LEADERBOARD_KEY, {});
+    const stored = loadJson(BESTS_KEY, {});
     return stored && typeof stored === 'object' ? stored : {};
-  }
-
-  function saveBests() {
-    saveJson(LEADERBOARD_KEY, state.bests);
   }
 
   function loadLastMode() {
@@ -377,7 +147,7 @@
     try {
       localStorage.setItem(LAST_MODE_KEY, mode);
     } catch {
-      // Ignore storage failures.
+      // Ignore storage errors.
     }
   }
 
@@ -385,1247 +155,990 @@
     return MODE_DEFS[mode] || MODE_DEFS.reaction;
   }
 
-  function getCurrentBest(mode = state.mode) {
-    const record = state.bests[mode];
-    return record && typeof record.bestScore === 'number' ? record.bestScore : 0;
+  function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
   }
 
-  function buildDailyChallenge() {
-    const today = new Date();
-    const key = `${today.getUTCFullYear()}-${today.getUTCMonth() + 1}-${today.getUTCDate()}`;
-    let hash = 0;
-    for (let index = 0; index < key.length; index += 1) {
-      hash = (hash * 31 + key.charCodeAt(index)) >>> 0;
-    }
-    const challenge = CHALLENGE_DEFS[hash % CHALLENGE_DEFS.length];
-    return {
-      ...challenge,
-      seed: hash,
-      dateLabel: today.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-    };
+  function round(value, digits = 1) {
+    const factor = 10 ** digits;
+    return Math.round(value * factor) / factor;
   }
 
-  function createAudio() {
-    if (state.audio || !window.AudioContext) return;
-    try {
-      state.audio = new window.AudioContext();
-    } catch {
-      state.audio = null;
-    }
+  function randomBetween(min, max) {
+    return min + Math.random() * (max - min);
   }
 
-  function playTone({ frequency, duration, gain = 0.045, type = 'sine' }) {
-    if (!state.audio) return;
-    try {
-      const context = state.audio;
-      if (context.state === 'suspended') {
-        context.resume().catch(() => {});
-      }
-      const oscillator = context.createOscillator();
-      const masterGain = context.createGain();
-      oscillator.type = type;
-      oscillator.frequency.value = frequency;
-      masterGain.gain.value = gain;
-      oscillator.connect(masterGain);
-      masterGain.connect(context.destination);
-      oscillator.start();
-      oscillator.stop(context.currentTime + duration);
-      oscillator.frequency.exponentialRampToValueAtTime(Math.max(30, frequency * 0.72), context.currentTime + duration);
-      masterGain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + duration);
-    } catch {
-      // Ignore audio failures.
-    }
+  function randomInt(min, max) {
+    return Math.floor(randomBetween(min, max + 1));
   }
 
-  function setRunState(message) {
-    dom.runState.textContent = message;
+  function average(values) {
+    if (!values.length) return 0;
+    return values.reduce((sum, value) => sum + value, 0) / values.length;
   }
 
-  function syncRunControls() {
-    dom.startBtn.textContent = state.running && !state.paused ? 'Pause Run' : 'Start Run';
-    dom.quitBtn.disabled = !state.running;
-    dom.quitBtn.textContent = 'Quit Run';
-    if (dom.stageStartPanel) {
-      dom.stageStartPanel.hidden = state.running;
-    }
-    if (dom.stageStartBtn) {
-      dom.stageStartBtn.textContent = state.running && state.paused ? 'Resume Run' : 'Start Run';
-    }
+  function formatMs(value) {
+    if (!Number.isFinite(value)) return '--';
+    return `${Math.round(value)}ms`;
   }
 
-  function setMode(mode, { preserveSelection = false } = {}) {
-    if (!MODE_DEFS[mode]) return;
-    state.mode = mode;
-    const modeDef = getModeDefinition(mode);
-    dom.modeTitle.textContent = modeDef.label;
-    dom.modeCopy.textContent = modeDef.copy;
-    dom.modeGroupLabel.textContent = modeDef.group;
-    if (dom.heroBest) {
-      dom.heroBest.textContent = String(getCurrentBest(mode));
-    }
-    dom.stageHint.textContent = modeDef.copy;
-    if (dom.stageStartTitle) {
-      dom.stageStartTitle.textContent = modeDef.label;
-    }
-    if (dom.stageStartCopy) {
-      dom.stageStartCopy.textContent = modeDef.copy;
-    }
-    saveLastMode(mode);
-    renderBests();
+  function formatSecondsMs(value) {
+    if (!Number.isFinite(value)) return '--';
+    return `${round(value / 1000, 2)}s`;
+  }
 
-    if (!preserveSelection) {
-      modeButtons.forEach((button) => {
-        button.classList.toggle('active', button.dataset.mode === mode);
-      });
+  function formatPercent(value) {
+    if (!Number.isFinite(value)) return '0%';
+    return `${round(value, 1)}%`;
+  }
+
+  function setRunState(text) {
+    if (dom.runState) dom.runState.textContent = text;
+  }
+
+  function setHint(text, { muted = false } = {}) {
+    if (!dom.stageHint) return;
+    dom.stageHint.textContent = text;
+    dom.stageHint.classList.toggle('is-hidden', !text);
+    dom.stageHint.style.color = muted ? '#a4b4cc' : '#eff6ff';
+  }
+
+  function clearTimeouts() {
+    state.timeoutIds.forEach((id) => window.clearTimeout(id));
+    state.timeoutIds = [];
+  }
+
+  function scheduleTimeout(callback, delay) {
+    const id = window.setTimeout(() => {
+      state.timeoutIds = state.timeoutIds.filter((entry) => entry !== id);
+      callback();
+    }, delay);
+    state.timeoutIds.push(id);
+    return id;
+  }
+
+  function cancelAnimationLoop() {
+    if (state.rafId) {
+      cancelAnimationFrame(state.rafId);
+      state.rafId = 0;
     }
   }
 
-  function setPreset(presetName) {
-    const preset = PRESETS[presetName];
-    if (!preset) return;
-    state.settings = { ...preset };
-    syncSettingsUI();
-    persistSettings();
-    presetButtons.forEach((button) => {
-      button.classList.toggle('active', button.dataset.preset === presetName);
-    });
+  function clearStageModeClasses() {
+    dom.arenaStage.classList.remove('mode-reaction', 'mode-tracking', 'mode-dynamic', 'is-green');
   }
 
-  function syncSettingsUI() {
-    dom.targetSizeInput.value = String(state.settings.targetSize);
-    dom.spawnSpeedInput.value = String(state.settings.spawnSpeed);
-    dom.movementSpeedInput.value = String(state.settings.movementSpeed);
-    dom.durationInput.value = String(state.settings.duration);
-    dom.targetSizeValue.textContent = `${Math.round(state.settings.targetSize)}px`;
-    dom.spawnSpeedValue.textContent = `${Number(state.settings.spawnSpeed).toFixed(2)}x`;
-    dom.movementSpeedValue.textContent = `${Number(state.settings.movementSpeed).toFixed(2)}x`;
-    dom.durationValue.textContent = `${Math.round(state.settings.duration)}s`;
+  function destroyActiveElements() {
+    state.activeElements.forEach((element) => element.remove());
+    state.activeElements = [];
+    state.currentTarget = null;
+    state.trackingTarget = null;
   }
 
-  function updateSetting(key, value) {
-    state.settings[key] = value;
-    persistSettings();
-    syncSettingsUI();
+  function addStageElement(element) {
+    state.activeElements.push(element);
+    dom.targetLayer.appendChild(element);
+    return element;
+  }
+
+  function setElementPosition(element, x, y) {
+    element.style.left = `${x}px`;
+    element.style.top = `${y}px`;
   }
 
   function measureStage() {
     const rect = dom.arenaStage.getBoundingClientRect();
-    state.stage.width = Math.max(320, Math.floor(rect.width));
-    state.stage.height = Math.max(320, Math.floor(rect.height));
-    state.activeTargets.forEach((target) => positionTarget(target));
+    state.stageRect.width = Math.max(320, rect.width);
+    state.stageRect.height = Math.max(320, rect.height);
   }
 
-  function positionTarget(target) {
-    if (!target || !target.el) return;
-    target.el.style.left = `${target.x}px`;
-    target.el.style.top = `${target.y}px`;
-    target.el.style.width = `${target.size}px`;
-    target.el.style.height = `${target.size}px`;
-    target.el.style.opacity = target.visible ? '1' : '0';
-    target.el.style.transform = `translate(-50%, -50%) scale(${target.scale || 1})`;
-    target.el.dataset.mode = state.mode;
+  function randomStagePoint(margin = 50) {
+    const safeX = randomBetween(margin, Math.max(margin + 1, state.stageRect.width - margin));
+    const safeY = randomBetween(margin, Math.max(margin + 1, state.stageRect.height - margin));
+    return { x: safeX, y: safeY };
   }
 
-  function clearTargets() {
-    state.activeTargets.forEach((target) => target.el.remove());
-    state.activeTargets = [];
-    state.lockedTargetId = null;
-  }
-
-  function createTargetElement(target) {
+  function buildTargetIcon(size, micro = false) {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = `target ${target.type}`;
-    button.innerHTML = `<span>${target.label}</span>`;
-    button.addEventListener('pointerdown', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      createAudio();
-      handleTargetHit(target, event);
-    });
+    button.className = `target-icon${micro ? ' micro' : ''}`;
+    button.style.setProperty('--target-size', `${size}px`);
     return button;
   }
 
-  function addTarget(target) {
-    target.el = createTargetElement(target);
-    state.targetLayer.appendChild(target.el);
-    state.activeTargets.push(target);
-    positionTarget(target);
-    return target;
+  function buildAnchorDot(className = 'anchor-dot') {
+    const dot = document.createElement('div');
+    dot.className = className;
+    setElementPosition(dot, state.stageRect.width / 2, state.stageRect.height / 2);
+    return dot;
   }
 
-  function removeTarget(target) {
-    const index = state.activeTargets.findIndex((entry) => entry.id === target.id);
-    if (index >= 0) {
-      const [removed] = state.activeTargets.splice(index, 1);
-      removed.el.remove();
-    }
+  function buildReactionOverlay(text) {
+    const overlay = document.createElement('div');
+    overlay.className = 'reaction-overlay';
+    overlay.textContent = text;
+    return overlay;
   }
 
-  function getStagePadding() {
-    return Math.max(16, Math.min(state.stage.width, state.stage.height) * 0.04);
+  function buildPrecisionTarget() {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'precision-target';
+    return button;
   }
 
-  function randomStagePoint(margin = getStagePadding()) {
+  function pointerDistanceFrom(x, y) {
+    return Math.hypot(state.pointer.x - x, state.pointer.y - y);
+  }
+
+  function stageClickPosition(event) {
+    const rect = dom.arenaStage.getBoundingClientRect();
     return {
-      x: randomBetween(margin, Math.max(margin + 1, state.stage.width - margin)),
-      y: randomBetween(margin, Math.max(margin + 1, state.stage.height - margin)),
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
     };
   }
 
-  function centerWeightedPoint(weight = 0.3) {
-    const centerX = state.stage.width / 2;
-    const centerY = state.stage.height / 2;
-    const spreadX = state.stage.width * weight * 0.5;
-    const spreadY = state.stage.height * weight * 0.5;
+  function hideModeDescriptionForRun(hidden) {
+    if (!dom.modeCopy) return;
+    dom.modeCopy.classList.toggle('is-hidden', hidden);
+  }
+
+  function syncRunControls() {
+    const running = state.running;
+    if (dom.quitBtn) dom.quitBtn.disabled = !running;
+    if (dom.startBtn) dom.startBtn.disabled = running;
+    if (dom.replayBtn) dom.replayBtn.disabled = running;
+    if (dom.stageStartBtn) dom.stageStartBtn.disabled = running;
+    if (dom.stageReplayBtn) dom.stageReplayBtn.disabled = running;
+    modeButtons.forEach((button) => {
+      button.disabled = running;
+    });
+    if (dom.stageStartPanel) dom.stageStartPanel.hidden = running || state.showAxisPicker;
+    if (dom.axisPanel) dom.axisPanel.hidden = !state.showAxisPicker;
+  }
+
+  function makeEmptyStats() {
     return {
-      x: clamp(centerX + randomBetween(-spreadX, spreadX), getStagePadding(), state.stage.width - getStagePadding()),
-      y: clamp(centerY + randomBetween(-spreadY, spreadY), getStagePadding(), state.stage.height - getStagePadding()),
+      mode: state.mode,
+      startedAt: performance.now(),
+      phaseStartedAt: performance.now(),
+      rep: 0,
+      reactions: [],
+      accuracies: [],
+      hits: 0,
+      misses: 0,
+      clicks: 0,
+      falseStarts: 0,
+      timeouts: 0,
+      onTargetMs: 0,
+      trackingTotalMs: 0,
+      directionChanges: 0,
+      targetsShot: 0,
+      trackingAxis: state.selectedAxis,
+      phaseEndsAt: 0,
+      holdProgress: 0,
+      greenAt: 0,
+      endAt: 0,
+      runScore: 0,
+      currentDirectionLabel: '--',
     };
   }
 
-  function buildTarget(mode, index = 0) {
-    const modeDef = getModeDefinition(mode);
-    const baseSize = clamp(state.settings.targetSize, 18, 120);
-    const smaller = Math.max(16, Math.round(baseSize * modeDef.precisionBias));
-    const size = mode === 'precision' ? smaller : mode === 'switching' ? Math.round(baseSize * 0.8) : mode === 'decision' ? Math.round(baseSize * 0.92) : baseSize;
-    const point = modeDef.centerBias > 0.2 ? centerWeightedPoint(modeDef.centerBias) : randomStagePoint();
-    const label = mode === 'decision' ? (index % 2 === 0 ? '+10' : '-8') : mode === 'timing' ? 'Wait' : mode === 'switching' && index === 0 ? '1' : mode === 'tracking' || mode === 'dynamic' ? 'Track' : '';
-    const positive = mode !== 'decision' ? true : index % 2 === 0;
-    const priority = mode === 'switching' ? index === 0 : false;
-    const type = positive ? 'good' : 'bad';
-
-    return {
-      id: ++state.targetId,
-      mode,
-      index,
-      x: point.x,
-      y: point.y,
-      size,
-      label,
-      type,
-      priority,
-      positive,
-      value: positive ? 10 : -8,
-      bornAt: performance.now(),
-      expiresAt: 0,
-      reactionStart: performance.now(),
-      scale: 1,
-      visible: true,
-      vx: 0,
-      vy: 0,
-      pulseSeed: Math.random() * Math.PI * 2,
-      hitRadius: size / 2,
-      phaseOffset: Math.random() * Math.PI * 2,
-      movePhase: Math.random() * Math.PI * 2,
-      teleportAt: 0,
-      locked: false,
-      el: null,
-    };
+  function setMode(mode) {
+    if (!MODE_DEFS[mode]) return;
+    state.mode = mode;
+    saveLastMode(mode);
+    const definition = getModeDefinition(mode);
+    dom.modeGroupLabel.textContent = definition.group;
+    dom.modeTitle.textContent = definition.label;
+    dom.modeCopy.textContent = definition.copy;
+    dom.stageStartTitle.textContent = definition.label;
+    dom.stageStartCopy.textContent = definition.copy;
+    dom.heroNote.textContent = 'Pick a mode, then start when you are ready.';
+    hideModeDescriptionForRun(false);
+    modeButtons.forEach((button) => {
+      button.classList.toggle('active', button.dataset.mode === mode);
+    });
+    resetIdleView();
+    renderBests();
   }
 
-  function placeReactionTarget() {
-    clearTargets();
-    const target = buildTarget('reaction', 0);
-    target.expiresAt = performance.now() + Math.max(700, 2000 / state.settings.spawnSpeed);
-    target.size = Math.round(clamp(state.settings.targetSize, 18, 120));
-    target.label = 'Go';
-    addTarget(target);
-    state.phase = 'active';
-    state.phaseStartedAt = performance.now();
-    state.lockedTargetId = target.id;
-    dom.stageHint.textContent = 'Click as soon as the target appears.';
-  }
-
-  function queueReactionSpawn() {
-    const delay = randomBetween(900, 3000) / state.settings.spawnSpeed;
-    state.phase = 'waiting';
-    state.phaseStartedAt = performance.now();
-    state.phaseEndsAt = performance.now() + delay;
-    clearTargets();
-    dom.stageHint.textContent = 'Hold steady. The target will appear after a random delay.';
-  }
-
-  function spawnFlickTarget(mode) {
-    clearTargets();
-    const target = buildTarget(mode, 0);
-    const windowSize = mode === 'precision' ? 0.42 : mode === 'flick' ? 0.6 : 0.5;
-    const point = mode === 'precision' ? centerWeightedPoint(windowSize) : randomStagePoint();
-    target.x = point.x;
-    target.y = point.y;
-    target.size = mode === 'precision'
-      ? Math.max(16, Math.round(state.settings.targetSize * 0.55))
-      : Math.round(state.settings.targetSize * (mode === 'flick' ? 0.95 : 1));
-    target.expiresAt = performance.now() + Math.max(550, 1800 / state.settings.spawnSpeed);
-    target.label = mode === 'precision' ? 'Tiny' : 'Snap';
-    target.moveMode = 'none';
-    addTarget(target);
-    state.phase = 'active';
-    state.phaseStartedAt = performance.now();
-    state.lockedTargetId = target.id;
-    dom.stageHint.textContent = mode === 'precision'
-      ? 'Tiny targets spawn near the middle of the stage.'
-      : 'Click the target, then keep the rhythm going.';
-  }
-
-  function spawnSwitchWave() {
-    clearTargets();
-    const waveSize = clamp(3 + Math.floor(state.settings.spawnSpeed * 2), 3, 6);
-    state.phase = 'active';
-    state.phaseStartedAt = performance.now();
-    state.pendingWaveStartedAt = performance.now();
-    for (let index = 0; index < waveSize; index += 1) {
-      const target = buildTarget('switching', index);
-      const point = randomStagePoint();
-      target.x = point.x;
-      target.y = point.y;
-      target.size = Math.max(28, Math.round(state.settings.targetSize * 0.8));
-      target.label = String(index + 1);
-      target.priority = index === 0;
-      target.expiresAt = performance.now() + Math.max(700, 2400 / state.settings.spawnSpeed) + index * 120;
-      addTarget(target);
-    }
-    dom.stageHint.textContent = 'Clear every target on screen as fast as possible.';
-  }
-
-  function spawnDecisionWave() {
-    clearTargets();
-    const count = clamp(4 + Math.floor(state.settings.spawnSpeed * 1.5), 4, 6);
-    state.phase = 'active';
-    state.phaseStartedAt = performance.now();
-    state.pendingWaveStartedAt = performance.now();
-    for (let index = 0; index < count; index += 1) {
-      const target = buildTarget('decision', index);
-      const point = index % 2 === 0 ? randomStagePoint() : centerWeightedPoint(0.52);
-      target.x = point.x;
-      target.y = point.y;
-      target.size = Math.max(30, Math.round(state.settings.targetSize * 0.88));
-      target.priority = index === 0;
-      target.label = target.positive ? '+10' : '-8';
-      target.expiresAt = performance.now() + Math.max(800, 2600 / state.settings.spawnSpeed) + index * 150;
-      addTarget(target);
-    }
-    dom.stageHint.textContent = 'Prioritize points, ignore the traps, and do not waste clicks.';
-  }
-
-  function spawnTrackingTarget(kind = 'tracking') {
-    clearTargets();
-    const target = buildTarget(kind, 0);
-    const point = centerWeightedPoint(kind === 'dynamic' ? 0.45 : 0.55);
-    target.x = point.x;
-    target.y = point.y;
-    target.size = Math.max(36, Math.round(state.settings.targetSize * 0.92));
-    target.label = 'Track';
-    target.moveMode = kind;
-    target.expiresAt = 0;
-    target.vx = (Math.random() > 0.5 ? 1 : -1) * randomBetween(0.5, 1.1) * state.settings.movementSpeed * (kind === 'dynamic' ? 1.5 : 1);
-    target.vy = (Math.random() > 0.5 ? 1 : -1) * randomBetween(0.45, 1.0) * state.settings.movementSpeed * (kind === 'dynamic' ? 1.4 : 1);
-    target.scale = 1;
-    target.teleportAt = performance.now() + randomBetween(1200, 2400) / Math.max(0.75, state.settings.spawnSpeed);
-    addTarget(target);
-    state.phase = 'active';
-    state.phaseStartedAt = performance.now();
-    state.lockedTargetId = target.id;
-    state.currentTrackingKind = kind === 'dynamic' ? 'dynamic' : 'linear';
-    state.trackingTeleportAt = 0;
-    dom.stageHint.textContent = kind === 'dynamic'
-      ? 'Keep tracking when the target teleports. Reacquire quickly.'
-      : 'Keep the cursor on the moving target for as long as possible.';
-  }
-
-  function spawnTimingTarget() {
-    clearTargets();
-    const target = buildTarget('timing', 0);
-    const point = centerWeightedPoint(0.42);
-    target.x = point.x;
-    target.y = point.y;
-    target.size = Math.max(42, Math.round(state.settings.targetSize * 0.95));
-    target.label = 'Pulse';
-    target.scale = 0.72;
-    target.pulseSeed = Math.random() * Math.PI * 2;
-    target.expiresAt = performance.now() + Math.max(1000, 2400 / state.settings.spawnSpeed);
-    addTarget(target);
-    state.phase = 'active';
-    state.phaseStartedAt = performance.now();
-    state.lockedTargetId = target.id;
-    dom.stageHint.textContent = 'Click only when the pulse is inside the timing window.';
+  function resetIdleView() {
+    clearTimeouts();
+    cancelAnimationLoop();
+    clearStageModeClasses();
+    destroyActiveElements();
+    state.running = false;
+    state.showAxisPicker = false;
+    state.phase = 'idle';
+    state.stats = null;
+    state.pendingSummary = null;
+    dom.resultsPanel.hidden = true;
+    setRunState('Ready');
+    setHint('Choose a mode and press Start Run.', { muted: true });
+    syncRunControls();
+    renderHud();
+    renderSessionStats();
   }
 
   function startRun() {
-    createAudio();
-    measureStage();
-    clearTargets();
-    state.running = true;
-    state.ended = false;
-    state.paused = false;
-    state.pauseStartedAt = 0;
-    state.score = 0;
-    state.combo = 0;
-    state.bestCombo = 0;
-    state.hits = 0;
-    state.misses = 0;
-    state.falseStarts = 0;
-    state.totalAccuracy = 0;
-    state.accuracySamples = 0;
-    state.reactionTimes = [];
-    state.trackingOnTime = 0;
-    state.trackingTotalTime = 0;
-    state.decisionNet = 0;
-    state.decisionCorrect = 0;
-    state.decisionWrong = 0;
-    state.perfectTiming = 0;
-    state.timingAttempts = 0;
-    state.waveTimes = [];
-    state.microHits = 0;
-    state.teleportsRecovered = 0;
-    state.phase = 'idle';
-    state.phaseEndsAt = 0;
-    state.phaseStartedAt = performance.now();
-    state.nextSpawnAt = 0;
-    state.lastFrameAt = performance.now();
-    state.runStartedAt = performance.now();
-    state.runEndsAt = performance.now() + state.settings.duration * 1000;
-    state.timeRemainingMs = state.settings.duration * 1000;
-    state.pendingWaveStartedAt = 0;
-    state.lockedTargetId = null;
-    state.trackingTeleportAt = 0;
-    state.lastTargetPointerAt = 0;
-    dom.resultsPanel.hidden = true;
-    syncRunControls();
-    setRunState('Running');
-    dom.stageHint.textContent = getModeDefinition().copy;
-    dom.arenaStage.focus({ preventScroll: true });
-    if (state.mode === 'reaction') {
-      queueReactionSpawn();
-    } else if (state.mode === 'flick' || state.mode === 'precision') {
-      spawnFlickTarget(state.mode);
-    } else if (state.mode === 'switching') {
-      spawnSwitchWave();
-    } else if (state.mode === 'tracking' || state.mode === 'dynamic') {
-      spawnTrackingTarget(state.mode);
-    } else if (state.mode === 'timing') {
-      spawnTimingTarget();
-    } else if (state.mode === 'decision') {
-      spawnDecisionWave();
+    if (state.mode === 'tracking' && !state.selectedAxis) {
+      state.selectedAxis = 'horizontal';
     }
-    updateHUD();
-    renderBests();
-  }
-
-  function pauseRun() {
-    if (!state.running || state.paused) return;
-    state.paused = true;
-    state.pauseStartedAt = performance.now();
-    state.timeRemainingMs = Math.max(0, state.runEndsAt - state.pauseStartedAt);
-    setRunState('Paused');
-    dom.stageHint.textContent = 'Paused. Press Start Run to resume or Quit Run to end the session.';
+    clearTimeouts();
+    cancelAnimationLoop();
+    destroyActiveElements();
+    clearStageModeClasses();
+    dom.resultsPanel.hidden = true;
+    state.running = true;
+    state.showAxisPicker = false;
+    state.stats = makeEmptyStats();
+    hideModeDescriptionForRun(true);
     syncRunControls();
-  }
 
-  function resumeRun() {
-    if (!state.running || !state.paused) return;
-    const resumeAt = performance.now();
-    const pausedFor = resumeAt - state.pauseStartedAt;
-    state.runStartedAt += pausedFor;
-    state.runEndsAt += pausedFor;
-    if (state.phaseStartedAt) state.phaseStartedAt += pausedFor;
-    if (state.phaseEndsAt) state.phaseEndsAt += pausedFor;
-    if (state.nextSpawnAt) state.nextSpawnAt += pausedFor;
-    if (state.pendingWaveStartedAt) state.pendingWaveStartedAt += pausedFor;
-    if (state.trackingTeleportAt) state.trackingTeleportAt += pausedFor;
-    state.activeTargets.forEach((target) => {
-      target.bornAt += pausedFor;
-      if (target.expiresAt) target.expiresAt += pausedFor;
-      if (target.teleportAt) target.teleportAt += pausedFor;
-    });
-    state.lastFrameAt = resumeAt;
-    state.paused = false;
-    state.pauseStartedAt = 0;
-    state.timeRemainingMs = Math.max(0, state.runEndsAt - resumeAt);
-    setRunState('Running');
-    dom.stageHint.textContent = getModeDefinition().copy;
-    syncRunControls();
-  }
-
-  function stopRun({ showResults = true, announce = 'Ready' } = {}) {
-    if (!state.running && !state.ended) {
-      setRunState(announce);
-      syncRunControls();
+    if (state.mode === 'reaction') {
+      startReactionRun();
       return;
     }
-
-    state.running = false;
-    state.ended = true;
-    state.paused = false;
-    state.pauseStartedAt = 0;
-    state.runEndsAt = performance.now();
-    state.timeRemainingMs = 0;
-    setRunState(announce);
-    clearTargets();
-    state.phase = 'idle';
-    state.lockedTargetId = null;
-    syncRunControls();
-    if (showResults) {
-      finalizeRun();
+    if (state.mode === 'flick' || state.mode === 'micro') {
+      startFlickRun();
+      return;
+    }
+    if (state.mode === 'tracking') {
+      state.showAxisPicker = true;
+      syncRunControls();
+      setRunState('Axis select');
+      setHint('Choose a lane for tracking before the run starts.', { muted: false });
+      return;
+    }
+    if (state.mode === 'dynamic') {
+      startTrackingRun(true);
+      return;
+    }
+    if (state.mode === 'precision') {
+      startPrecisionRun();
     }
   }
 
-  function finalizeRun() {
+  function finishRun() {
+    state.running = false;
+    state.showAxisPicker = false;
+    clearTimeouts();
+    cancelAnimationLoop();
     const summary = buildSummary();
-    state.summary = summary;
+    state.pendingSummary = summary;
     updateBests(summary);
-    renderResults(summary);
-    renderBests();
-    saveBests();
+    renderSummary(summary);
+    hideModeDescriptionForRun(false);
+    syncRunControls();
+    setRunState('Complete');
+    setHint('Run complete. Replay or browse another mode.', { muted: true });
   }
 
   function buildSummary() {
-    const elapsedMs = Math.max(1, performance.now() - state.runStartedAt);
-    const accuracyPct = state.accuracySamples > 0 ? (state.totalAccuracy / state.accuracySamples) * 100 : 100;
-    const avgReactionMs = state.reactionTimes.length
-      ? state.reactionTimes.reduce((sum, value) => sum + value, 0) / state.reactionTimes.length
-      : null;
-    const avgWaveMs = state.waveTimes.length
-      ? state.waveTimes.reduce((sum, value) => sum + value, 0) / state.waveTimes.length
-      : null;
-
-    const modeDef = getModeDefinition();
-    const modeValue = getModeStatValue(modeDef, {
-      accuracyPct,
-      avgReactionMs,
-      avgWaveMs,
-      elapsedMs,
-    });
-
+    const stats = state.stats || makeEmptyStats();
+    const validReactions = stats.reactions.filter((value) => Number.isFinite(value));
+    const avgReaction = validReactions.length ? average(validReactions) : null;
+    const bestReaction = validReactions.length ? Math.min(...validReactions) : null;
+    const worstReaction = validReactions.length ? Math.max(...validReactions) : null;
+    const accuracyPct = stats.clicks > 0
+      ? (stats.hits / stats.clicks) * 100
+      : stats.accuracies.length
+        ? average(stats.accuracies) * 100
+        : 0;
+    const onTargetPct = stats.trackingTotalMs > 0 ? (stats.onTargetMs / stats.trackingTotalMs) * 100 : 0;
+    let score = 0;
+    if (stats.mode === 'reaction') {
+      score = avgReaction ? Math.max(0, Math.round(1100 - avgReaction)) : 0;
+    } else if (stats.mode === 'flick' || stats.mode === 'micro') {
+      score = Math.round((accuracyPct * 8) + Math.max(0, 1200 - (avgReaction || 1200)));
+    } else if (stats.mode === 'tracking' || stats.mode === 'dynamic') {
+      score = Math.round(stats.onTargetMs + (onTargetPct * 30));
+    } else if (stats.mode === 'precision') {
+      score = Math.round((stats.targetsShot * 100) + (accuracyPct * 10));
+    }
     return {
-      mode: state.mode,
-      label: modeDef.label,
-      score: Math.round(state.score),
-      accuracyPct: round(accuracyPct, 1),
-      hits: state.hits,
-      misses: state.misses,
-      falseStarts: state.falseStarts,
-      bestCombo: state.bestCombo,
-      avgReactionMs: avgReactionMs ? round(avgReactionMs, 0) : null,
-      avgWaveMs: avgWaveMs ? round(avgWaveMs, 0) : null,
-      trackingPct: elapsedMs > 0 ? round((state.trackingOnTime / elapsedMs) * 100, 1) : 0,
-      decisionNet: state.decisionNet,
-      decisionCorrect: state.decisionCorrect,
-      decisionWrong: state.decisionWrong,
-      perfectTimingPct: state.timingAttempts > 0 ? round((state.perfectTiming / state.timingAttempts) * 100, 1) : 0,
-      microAccuracyPct: state.hits > 0 ? round((state.microHits / state.hits) * 100, 1) : 0,
-      teleportsRecovered: state.teleportsRecovered,
-      modeValue,
+      mode: stats.mode,
+      label: getModeDefinition(stats.mode).label,
+      avgReaction,
+      bestReaction,
+      worstReaction,
+      accuracyPct,
+      onTargetPct,
+      hits: stats.hits,
+      misses: stats.misses,
+      clicks: stats.clicks,
+      falseStarts: stats.falseStarts,
+      timeouts: stats.timeouts,
+      targetsShot: stats.targetsShot,
+      onTargetMs: stats.onTargetMs,
+      directionChanges: stats.directionChanges,
+      axis: stats.trackingAxis,
+      score,
     };
   }
 
-  function getModeStatValue(modeDef, summary) {
-    switch (modeDef.modeStatKey) {
-      case 'avgReactionMs':
-        return summary.avgReactionMs;
-      case 'avgHitMs':
-        return summary.avgReactionMs;
-      case 'microAccuracyPct':
-        return summary.microAccuracyPct;
-      case 'avgWaveMs':
-        return summary.avgWaveMs;
-      case 'trackingPct':
-        return summary.trackingPct;
-      case 'teleportsRecovered':
-        return summary.teleportsRecovered;
-      case 'perfectTimingPct':
-        return summary.perfectTimingPct;
-      case 'decisionNet':
-        return summary.decisionNet;
-      default:
-        return null;
+  function summaryTier(summary) {
+    if (summary.mode === 'reaction') {
+      if ((summary.avgReaction || 99999) <= 220) return 'Elite';
+      if ((summary.avgReaction || 99999) <= 280) return 'Strong';
+      if ((summary.avgReaction || 99999) <= 360) return 'Solid';
+      return 'Warm-up';
     }
-  }
-
-  function updateBests(summary) {
-    const current = state.bests[summary.mode] || {};
-    const next = { ...current };
-
-    if (!Number.isFinite(next.bestScore) || summary.score > next.bestScore) {
-      next.bestScore = summary.score;
+    if (summary.mode === 'flick' || summary.mode === 'micro') {
+      if (summary.accuracyPct >= 90 && (summary.avgReaction || 99999) <= 450) return 'Elite';
+      if (summary.accuracyPct >= 82) return 'Strong';
+      if (summary.accuracyPct >= 70) return 'Solid';
+      return 'Warm-up';
     }
-    if (!Number.isFinite(next.bestAccuracy) || summary.accuracyPct > next.bestAccuracy) {
-      next.bestAccuracy = summary.accuracyPct;
+    if (summary.mode === 'tracking' || summary.mode === 'dynamic') {
+      if (summary.onTargetPct >= 82) return 'Elite';
+      if (summary.onTargetPct >= 68) return 'Strong';
+      if (summary.onTargetPct >= 52) return 'Solid';
+      return 'Warm-up';
     }
-    if (!Number.isFinite(next.bestCombo) || summary.bestCombo > next.bestCombo) {
-      next.bestCombo = summary.bestCombo;
-    }
-    if (summary.avgReactionMs !== null && (!Number.isFinite(next.bestReaction) || summary.avgReactionMs < next.bestReaction)) {
-      next.bestReaction = summary.avgReactionMs;
-    }
-    if (summary.avgWaveMs !== null && (!Number.isFinite(next.bestWave) || summary.avgWaveMs < next.bestWave)) {
-      next.bestWave = summary.avgWaveMs;
-    }
-    if (!Number.isFinite(next.bestTracking) || summary.trackingPct > next.bestTracking) {
-      next.bestTracking = summary.trackingPct;
-    }
-    if (!Number.isFinite(next.bestDecision) || summary.decisionNet > next.bestDecision) {
-      next.bestDecision = summary.decisionNet;
-    }
-    if (!Number.isFinite(next.bestTiming) || summary.perfectTimingPct > next.bestTiming) {
-      next.bestTiming = summary.perfectTimingPct;
-    }
-    if (!Number.isFinite(next.bestTeleports) || summary.teleportsRecovered > next.bestTeleports) {
-      next.bestTeleports = summary.teleportsRecovered;
-    }
-
-    next.updatedAt = new Date().toISOString();
-    state.bests[summary.mode] = next;
-  }
-
-  function renderBests() {
-    const entries = Object.entries(MODE_DEFS).map(([mode, definition]) => {
-      const best = state.bests[mode] || {};
-      const score = Number.isFinite(best.bestScore) ? best.bestScore : 0;
-      return `
-        <div class="bests-item">
-          <div>
-            <span class="bests-label">${definition.label}</span>
-            <strong>${score}</strong>
-          </div>
-          <div style="text-align:right; color: var(--muted); font-size: 0.88rem;">
-            ${renderBestDetail(mode, best)}
-          </div>
-        </div>
-      `;
-    });
-
-    dom.bestsList.innerHTML = entries.join('');
-    if (dom.heroBest) {
-      dom.heroBest.textContent = String(getCurrentBest());
-    }
-  }
-
-  function renderBestDetail(mode, best) {
-    const definition = getModeDefinition(mode);
-    const primary = definition.modeStatKey;
-    if (primary === 'trackingPct') {
-      return `${Number.isFinite(best.bestTracking) ? `${round(best.bestTracking, 1)}%` : '--'}`;
-    }
-    if (primary === 'decisionNet') {
-      return `${Number.isFinite(best.bestDecision) ? best.bestDecision : '--'}`;
-    }
-    if (primary === 'perfectTimingPct') {
-      return `${Number.isFinite(best.bestTiming) ? `${round(best.bestTiming, 1)}%` : '--'}`;
-    }
-    if (primary === 'teleportsRecovered') {
-      return `${Number.isFinite(best.bestTeleports) ? best.bestTeleports : '--'}`;
-    }
-    if (primary === 'avgReactionMs' || primary === 'avgHitMs') {
-      return `${Number.isFinite(best.bestReaction) ? `${Math.round(best.bestReaction)}ms` : '--'}`;
-    }
-    if (primary === 'avgWaveMs') {
-      return `${Number.isFinite(best.bestWave) ? `${Math.round(best.bestWave)}ms` : '--'}`;
-    }
-    return `Accuracy ${Number.isFinite(best.bestAccuracy) ? `${round(best.bestAccuracy, 1)}%` : '--'}`;
-  }
-
-  function updateHUD() {
-    const elapsedMs = state.running
-      ? Math.max(0, state.timeRemainingMs)
-      : state.settings.duration * 1000;
-    const accuracyPct = state.accuracySamples > 0 ? (state.totalAccuracy / state.accuracySamples) * 100 : 100;
-    const modeDef = getModeDefinition();
-    const summary = buildSummary();
-
-    dom.scoreValue.textContent = String(Math.round(state.score));
-    dom.accuracyValue.textContent = formatPercent(accuracyPct);
-    dom.comboValue.textContent = String(state.combo);
-    dom.timeValue.textContent = `${Math.max(0, elapsedMs / 1000).toFixed(2)}s`;
-    dom.hitsValue.textContent = String(state.hits);
-    dom.missesValue.textContent = String(state.misses);
-    dom.streakValue.textContent = String(state.bestCombo);
-    dom.reactionValue.textContent = summary.avgReactionMs !== null ? `${Math.round(summary.avgReactionMs)}ms` : '--';
-  }
-
-  function formatModeStat(modeDef, summary) {
-    const value = getModeStatValue(modeDef, summary);
-    switch (modeDef.modeStatKey) {
-      case 'avgReactionMs':
-      case 'avgHitMs':
-      case 'avgWaveMs':
-        return value === null ? '--' : `${Math.round(value)}ms`;
-      case 'trackingPct':
-      case 'microAccuracyPct':
-      case 'perfectTimingPct':
-        return value === null ? '--' : `${round(value, 1)}%`;
-      case 'teleportsRecovered':
-      case 'decisionNet':
-        return value === null ? '--' : String(value);
-      default:
-        return '--';
-    }
-  }
-
-  function renderResults(summary) {
-    const tier = classifyScore(summary);
-    dom.resultsPanel.hidden = false;
-    dom.resultTier.textContent = `Tier: ${tier}`;
-    dom.resultScore.textContent = String(summary.score);
-    dom.resultReaction.textContent = summary.avgReactionMs !== null ? `${Math.round(summary.avgReactionMs)}ms` : '--';
-    dom.resultAccuracy.textContent = `${summary.accuracyPct.toFixed(1)}%`;
-    dom.resultStreak.textContent = String(summary.bestCombo);
-
-    const details = [
-      { label: 'Mode', value: summary.label },
-      { label: 'Hits', value: String(summary.hits) },
-      { label: 'Misses', value: String(summary.misses) },
-      { label: 'False starts', value: String(summary.falseStarts) },
-      { label: 'Mode stat', value: formatResultStat(summary) },
-    ];
-
-    dom.resultDetails.innerHTML = details
-      .map((entry) => `
-        <div class="result-detail">
-          <span>${entry.label}</span>
-          <strong>${entry.value}</strong>
-        </div>
-      `)
-      .join('');
-  }
-
-  function formatResultStat(summary) {
-    const modeDef = getModeDefinition(summary.mode);
-    const value = getModeStatValue(modeDef, summary);
-    if (value === null || typeof value === 'undefined') return '--';
-    if (modeDef.modeStatUnit === 'ms') return `${Math.round(value)}ms`;
-    if (modeDef.modeStatUnit === '%') return `${round(value, 1)}%`;
-    if (modeDef.modeStatUnit === 'hits') return String(value);
-    if (modeDef.modeStatUnit === 'net') return String(value);
-    return String(value);
-  }
-
-  function classifyScore(summary) {
-    if (summary.score >= 1600) return 'Insane';
-    if (summary.score >= 1100) return 'Elite';
-    if (summary.score >= 700) return 'Strong';
-    if (summary.score >= 350) return 'Solid';
+    if (summary.targetsShot >= 65 && summary.accuracyPct >= 80) return 'Elite';
+    if (summary.targetsShot >= 48) return 'Strong';
+    if (summary.targetsShot >= 30) return 'Solid';
     return 'Warm-up';
   }
 
-  function hitTarget(target, event) {
-    const rect = target.el.getBoundingClientRect();
+  function renderSummary(summary) {
+    dom.resultsPanel.hidden = false;
+    dom.resultTier.textContent = `Tier: ${summaryTier(summary)}`;
+    const cards = [];
+    const details = [];
+
+    if (summary.mode === 'reaction') {
+      cards.push(['Average', formatMs(summary.avgReaction)], ['Best', formatMs(summary.bestReaction)], ['Worst', formatMs(summary.worstReaction)], ['False starts', String(summary.falseStarts)]);
+      details.push(['Timeouts', String(summary.timeouts)], ['Score', String(summary.score)]);
+    } else if (summary.mode === 'flick' || summary.mode === 'micro') {
+      cards.push(['Accuracy', formatPercent(summary.accuracyPct)], ['Average', formatMs(summary.avgReaction)], ['Best', formatMs(summary.bestReaction)], ['Worst', formatMs(summary.worstReaction)]);
+      details.push(['Hits', String(summary.hits)], ['Clicks', String(summary.clicks)], ['Timeouts', String(summary.timeouts)], ['Score', String(summary.score)]);
+    } else if (summary.mode === 'tracking' || summary.mode === 'dynamic') {
+      cards.push(['On target', formatSecondsMs(summary.onTargetMs)], ['Percent', formatPercent(summary.onTargetPct)], ['Direction changes', String(summary.directionChanges)], ['Score', String(summary.score)]);
+      details.push(['Axis', summary.mode === 'tracking' ? (summary.axis || 'horizontal') : 'Free movement']);
+    } else if (summary.mode === 'precision') {
+      cards.push(['Targets shot', String(summary.targetsShot)], ['Accuracy', formatPercent(summary.accuracyPct)], ['Clicks', String(summary.clicks)], ['Score', String(summary.score)]);
+      details.push(['Misses', String(summary.misses)]);
+    }
+
+    dom.resultsGrid.innerHTML = cards.map(([label, value]) => `
+      <article class="result-card">
+        <span>${label}</span>
+        <strong>${value}</strong>
+      </article>
+    `).join('');
+
+    dom.resultDetails.innerHTML = details.map(([label, value]) => `
+      <div class="result-detail">
+        <span>${label}</span>
+        <strong>${value}</strong>
+      </div>
+    `).join('');
+  }
+
+  function getBestRecordText(record) {
+    if (!record) return '--';
+    return record.text || '--';
+  }
+
+  function updateBests(summary) {
+    const current = state.bests[summary.mode] || null;
+    let shouldReplace = false;
+    let text = '--';
+
+    if (summary.mode === 'reaction') {
+      shouldReplace = !current || ((summary.avgReaction || Infinity) < (current.primaryValue || Infinity));
+      text = summary.avgReaction ? `Avg ${formatMs(summary.avgReaction)}` : '--';
+    } else if (summary.mode === 'flick' || summary.mode === 'micro') {
+      shouldReplace = !current || summary.score > (current.primaryValue || 0);
+      text = `${formatPercent(summary.accuracyPct)} • Avg ${formatMs(summary.avgReaction)}`;
+    } else if (summary.mode === 'tracking' || summary.mode === 'dynamic') {
+      shouldReplace = !current || summary.onTargetMs > (current.primaryValue || 0);
+      text = `${formatPercent(summary.onTargetPct)} • ${formatSecondsMs(summary.onTargetMs)}`;
+    } else if (summary.mode === 'precision') {
+      shouldReplace = !current || summary.targetsShot > (current.primaryValue || 0);
+      text = `${summary.targetsShot} shots • ${formatPercent(summary.accuracyPct)}`;
+    }
+
+    if (shouldReplace) {
+      state.bests[summary.mode] = {
+        primaryValue: summary.mode === 'reaction' ? (summary.avgReaction || Infinity) : (summary.mode === 'precision' ? summary.targetsShot : summary.mode === 'tracking' || summary.mode === 'dynamic' ? summary.onTargetMs : summary.score),
+        text,
+      };
+      saveJson(BESTS_KEY, state.bests);
+    }
+    renderBests();
+  }
+
+  function renderBests() {
+    dom.bestsList.innerHTML = Object.keys(MODE_DEFS).map((mode) => `
+      <div class="bests-item">
+        <span>${getModeDefinition(mode).label}</span>
+        <strong>${getBestRecordText(state.bests[mode])}</strong>
+      </div>
+    `).join('');
+  }
+
+  function renderHud() {
+    const stats = state.stats;
+    if (!stats) {
+      dom.hudLabel1.textContent = 'Average';
+      dom.hudLabel2.textContent = 'Best';
+      dom.hudLabel3.textContent = 'Worst';
+      dom.hudLabel4.textContent = 'Rep';
+      dom.hudValue1.textContent = '--';
+      dom.hudValue2.textContent = '--';
+      dom.hudValue3.textContent = '--';
+      dom.hudValue4.textContent = '0 / 5';
+      return;
+    }
+
+    const reactions = stats.reactions.filter((value) => Number.isFinite(value));
+    const avgReaction = reactions.length ? average(reactions) : null;
+    const bestReaction = reactions.length ? Math.min(...reactions) : null;
+    const worstReaction = reactions.length ? Math.max(...reactions) : null;
+
+    if (stats.mode === 'reaction') {
+      dom.hudLabel1.textContent = 'Average';
+      dom.hudLabel2.textContent = 'Best';
+      dom.hudLabel3.textContent = 'Worst';
+      dom.hudLabel4.textContent = 'Rep';
+      dom.hudValue1.textContent = formatMs(avgReaction);
+      dom.hudValue2.textContent = formatMs(bestReaction);
+      dom.hudValue3.textContent = formatMs(worstReaction);
+      dom.hudValue4.textContent = `${stats.rep} / ${REACTION_REPS}`;
+      return;
+    }
+
+    if (stats.mode === 'flick' || stats.mode === 'micro') {
+      const accuracyPct = stats.accuracies.length ? average(stats.accuracies) * 100 : 0;
+      dom.hudLabel1.textContent = 'Accuracy';
+      dom.hudLabel2.textContent = 'Average';
+      dom.hudLabel3.textContent = 'Best';
+      dom.hudLabel4.textContent = 'Worst';
+      dom.hudValue1.textContent = formatPercent(accuracyPct);
+      dom.hudValue2.textContent = formatMs(avgReaction);
+      dom.hudValue3.textContent = formatMs(bestReaction);
+      dom.hudValue4.textContent = formatMs(worstReaction);
+      return;
+    }
+
+    if (stats.mode === 'tracking' || stats.mode === 'dynamic') {
+      const pct = stats.trackingTotalMs > 0 ? (stats.onTargetMs / stats.trackingTotalMs) * 100 : 0;
+      const timeLeft = Math.max(0, stats.endAt - performance.now());
+      dom.hudLabel1.textContent = 'On Target';
+      dom.hudLabel2.textContent = 'Percent';
+      dom.hudLabel3.textContent = 'Direction';
+      dom.hudLabel4.textContent = 'Time Left';
+      dom.hudValue1.textContent = formatSecondsMs(stats.onTargetMs);
+      dom.hudValue2.textContent = formatPercent(pct);
+      dom.hudValue3.textContent = stats.currentDirectionLabel || '--';
+      dom.hudValue4.textContent = `${round(timeLeft / 1000, 1)}s`;
+      return;
+    }
+
+    if (stats.mode === 'precision') {
+      const accuracyPct = stats.clicks > 0 ? (stats.hits / stats.clicks) * 100 : 100;
+      const timeLeft = Math.max(0, stats.endAt - performance.now());
+      dom.hudLabel1.textContent = 'Targets';
+      dom.hudLabel2.textContent = 'Accuracy';
+      dom.hudLabel3.textContent = 'Clicks';
+      dom.hudLabel4.textContent = 'Time Left';
+      dom.hudValue1.textContent = String(stats.targetsShot);
+      dom.hudValue2.textContent = formatPercent(accuracyPct);
+      dom.hudValue3.textContent = String(stats.clicks);
+      dom.hudValue4.textContent = `${round(timeLeft / 1000, 1)}s`;
+    }
+  }
+
+  function renderSessionStats() {
+    const stats = state.stats;
+    if (!stats) {
+      dom.sessionStats.innerHTML = `
+        <div class="session-row"><span>Status</span><strong>Idle</strong></div>
+        <div class="session-row"><span>Mode</span><strong>${getModeDefinition().label}</strong></div>
+      `;
+      return;
+    }
+
+    const rows = [];
+    if (stats.mode === 'reaction') {
+      rows.push(['Valid reps', `${stats.reactions.filter((value) => Number.isFinite(value)).length} / ${REACTION_REPS}`]);
+      rows.push(['False starts', String(stats.falseStarts)]);
+      rows.push(['Timeouts', String(stats.timeouts)]);
+      rows.push(['Phase', state.phase]);
+    } else if (stats.mode === 'flick' || stats.mode === 'micro') {
+      rows.push(['Reps', `${stats.rep} / ${FLICK_REPS}`]);
+      rows.push(['Hits', String(stats.hits)]);
+      rows.push(['Clicks', String(stats.clicks)]);
+      rows.push(['Timeouts', String(stats.timeouts)]);
+    } else if (stats.mode === 'tracking' || stats.mode === 'dynamic') {
+      rows.push(['Axis', stats.mode === 'tracking' ? (stats.trackingAxis || 'horizontal') : 'Free movement']);
+      rows.push(['On target', formatSecondsMs(stats.onTargetMs)]);
+      rows.push(['Direction changes', String(stats.directionChanges)]);
+      rows.push(['Phase', state.phase]);
+    } else if (stats.mode === 'precision') {
+      rows.push(['Targets shot', String(stats.targetsShot)]);
+      rows.push(['Hits', String(stats.hits)]);
+      rows.push(['Clicks', String(stats.clicks)]);
+      rows.push(['Misses', String(stats.misses)]);
+    }
+
+    dom.sessionStats.innerHTML = rows.map(([label, value]) => `
+      <div class="session-row">
+        <span>${label}</span>
+        <strong>${value}</strong>
+      </div>
+    `).join('');
+  }
+
+  function startReactionRun() {
+    clearTimeouts();
+    state.phase = 'reaction-wait';
+    clearStageModeClasses();
+    dom.arenaStage.classList.add('mode-reaction');
+    state.stats.rep = 0;
+    setRunState('Red hold');
+    queueReactionRep(true);
+  }
+
+  function queueReactionRep(isFirst = false) {
+    clearTimeouts();
+    destroyActiveElements();
+    clearStageModeClasses();
+    dom.arenaStage.classList.add('mode-reaction');
+    state.phase = 'reaction-wait';
+    state.stats.phaseStartedAt = performance.now();
+    const overlay = addStageElement(buildReactionOverlay('WAIT'));
+    state.currentTarget = overlay;
+    setRunState(`Red hold ${state.stats.rep + 1}/${REACTION_REPS}`);
+    setHint('Wait through the red hold. Clicking early restarts the rep.', { muted: false });
+    renderHud();
+    renderSessionStats();
+    const delay = randomBetween(REACTION_WAIT_MIN_MS, REACTION_WAIT_MAX_MS);
+    state.stats.phaseEndsAt = performance.now() + delay;
+    scheduleTimeout(() => {
+      if (!state.running || state.mode !== 'reaction') return;
+      startReactionGreen();
+    }, delay);
+  }
+
+  function startReactionGreen() {
+    clearTimeouts();
+    clearStageModeClasses();
+    dom.arenaStage.classList.add('mode-reaction', 'is-green');
+    state.phase = 'reaction-green';
+    state.stats.greenAt = performance.now();
+    if (state.currentTarget) state.currentTarget.textContent = 'CLICK';
+    setRunState(`Green ${state.stats.rep + 1}/${REACTION_REPS}`);
+    setHint('Click as soon as the panel turns green.', { muted: false });
+    renderSessionStats();
+    scheduleTimeout(() => {
+      if (!state.running || state.phase !== 'reaction-green') return;
+      state.stats.timeouts += 1;
+      state.stats.rep += 1;
+      setHint('Timed out. Moving to the next rep.', { muted: false });
+      if (state.stats.rep >= REACTION_REPS) {
+        finishRun();
+      } else {
+        scheduleTimeout(() => queueReactionRep(), 350);
+      }
+    }, REACTION_TIMEOUT_MS);
+  }
+
+  function recordReactionClick() {
+    if (!state.running || state.phase !== 'reaction-green') return;
+    clearTimeouts();
+    const reaction = performance.now() - state.stats.greenAt;
+    state.stats.reactions.push(reaction);
+    state.stats.rep += 1;
+    setRunState(`Rep ${state.stats.rep}/${REACTION_REPS}`);
+    setHint(`Reaction recorded: ${formatMs(reaction)}.`, { muted: false });
+    if (state.currentTarget) {
+      state.currentTarget.textContent = 'GOOD';
+      state.currentTarget.classList.add('target-hit');
+    }
+    renderHud();
+    renderSessionStats();
+    if (state.stats.rep >= REACTION_REPS) {
+      scheduleTimeout(() => finishRun(), 200);
+    } else {
+      scheduleTimeout(() => queueReactionRep(), 350);
+    }
+  }
+
+  function handleReactionFalseStart() {
+    if (!state.running || state.phase !== 'reaction-wait') return;
+    clearTimeouts();
+    state.stats.falseStarts += 1;
+    setHint('Too early. Restarting the rep.', { muted: false });
+    queueReactionRep();
+  }
+
+  function startFlickRun() {
+    state.stats.rep = 0;
+    startAnchorHoldPhase();
+  }
+
+  function startAnchorHoldPhase() {
+    destroyActiveElements();
+    state.phase = 'anchor-hold';
+    state.anchorHeldAt = 0;
+    const anchor = addStageElement(buildAnchorDot());
+    state.currentTarget = anchor;
+    setRunState(state.mode === 'tracking' || state.mode === 'dynamic' ? 'Anchor hold' : `Hold ${state.stats.rep + 1}/${FLICK_REPS}`);
+    setHint('Hold your cursor on the orange dot for 3 seconds to begin.', { muted: false });
+    renderHud();
+    renderSessionStats();
+    startLoop();
+  }
+
+  function beginShotRep() {
+    destroyActiveElements();
+    state.phase = 'shot-active';
+    const size = state.mode === 'micro' ? 42 : 76;
+    const target = buildTargetIcon(size, state.mode === 'micro');
+    const point = randomStagePoint(size);
+    setElementPosition(target, point.x, point.y);
+    addStageElement(target);
+    state.currentTarget = target;
+    state.stats.phaseStartedAt = performance.now();
+    state.targetTimeoutAt = performance.now() + SHOT_TIMEOUT_MS;
+    setRunState(`Target ${state.stats.rep + 1}/${FLICK_REPS}`);
+    setHint('Snap to the target before the timeout.', { muted: false });
+    renderHud();
+    renderSessionStats();
+  }
+
+  function handleShotHit(event) {
+    if (!state.running || state.phase !== 'shot-active' || !state.currentTarget) return;
+    const rect = state.currentTarget.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
     const distance = Math.hypot(event.clientX - centerX, event.clientY - centerY);
-    const radius = rect.width / 2;
-    const accuracy = clamp(1 - distance / Math.max(1, radius), 0, 1);
-    return accuracy;
-  }
-
-  function registerSuccess(target, accuracy, speedFactor, reactionMs) {
-    state.hits += 1;
-    state.combo += 1;
-    state.bestCombo = Math.max(state.bestCombo, state.combo);
-    state.totalAccuracy += accuracy;
-    state.accuracySamples += 1;
-    state.reactionTimes.push(reactionMs);
-
-    const modeDef = getModeDefinition();
-    const base = modeDef === MODE_DEFS.decision ? 110 : modeDef === MODE_DEFS.precision ? 130 : modeDef === MODE_DEFS.timing ? 120 : 100;
-    const sizeBonus = clamp(120 / Math.max(18, target.size), 0.7, 1.8);
-    const accuracyMult = 0.55 + accuracy * 0.45;
-    const speedMult = 0.7 + clamp(speedFactor, 0, 1.5) * 0.6;
-    const comboMult = 1 + Math.min(1.5, state.combo * 0.08);
-    const points = Math.round(base * accuracyMult * speedMult * comboMult * sizeBonus);
-    state.score += points;
-
-    if (target.mode === 'precision' && accuracy >= 0.82) {
-      state.microHits += 1;
-    }
-
-    if (target.mode === 'reaction') {
-      playTone({ frequency: 740, duration: 0.08, gain: 0.055, type: 'triangle' });
-    } else if (target.mode === 'decision' && target.positive) {
-      playTone({ frequency: 690, duration: 0.08, gain: 0.05, type: 'square' });
+    const accuracy = clamp(1 - distance / Math.max(1, rect.width / 2), 0, 1);
+    const reaction = performance.now() - state.stats.phaseStartedAt;
+    state.stats.clicks += 1;
+    state.stats.hits += 1;
+    state.stats.reactions.push(reaction);
+    state.stats.accuracies.push(accuracy);
+    state.stats.rep += 1;
+    state.currentTarget.classList.add('target-hit');
+    setHint(`Hit: ${formatMs(reaction)} • ${formatPercent(accuracy * 100)} accuracy.`, { muted: false });
+    renderHud();
+    renderSessionStats();
+    if (state.stats.rep >= FLICK_REPS) {
+      scheduleTimeout(() => finishRun(), 200);
     } else {
-      playTone({ frequency: 620, duration: 0.08, gain: 0.05, type: 'sine' });
+      scheduleTimeout(() => startAnchorHoldPhase(), 240);
     }
-
-    flashStage('stage-hit-flash');
-    target.el.classList.add('hit');
-    setTimeout(() => {
-      removeTarget(target);
-    }, 120);
   }
 
-  function registerMiss(reason = 'miss') {
-    state.misses += 1;
-    state.combo = 0;
-    state.score = Math.max(0, state.score - 18);
-    flashStage('stage-shake');
-    playTone({ frequency: reason === 'false-start' ? 180 : 240, duration: 0.1, gain: 0.04, type: 'sawtooth' });
+  function handleShotTimeout() {
+    if (!state.running || state.phase !== 'shot-active') return;
+    state.stats.timeouts += 1;
+    state.stats.misses += 1;
+    state.stats.accuracies.push(0);
+    state.stats.rep += 1;
+    setHint('Target timed out. Resetting to the anchor.', { muted: false });
+    renderHud();
+    renderSessionStats();
+    if (state.stats.rep >= FLICK_REPS) {
+      finishRun();
+    } else {
+      startAnchorHoldPhase();
+    }
   }
 
-  function flashStage(className) {
-    dom.arenaStage.classList.remove('stage-hit-flash', 'stage-shake');
-    void dom.arenaStage.offsetWidth;
-    dom.arenaStage.classList.add(className);
-    window.setTimeout(() => {
-      dom.arenaStage.classList.remove(className);
-    }, 220);
+  function startTrackingRun(isDynamic) {
+    state.mode = isDynamic ? 'dynamic' : 'tracking';
+    state.stats.trackingAxis = isDynamic ? 'dynamic' : state.selectedAxis;
+    startAnchorHoldPhase();
   }
 
-  function handleTargetHit(target, event) {
-    if (!state.running || state.paused || !target || target.mode !== state.mode) return;
-    state.lastTargetPointerAt = performance.now();
-    const mode = state.mode;
-    const accuracy = hitTarget(target, event);
-    const reactionMs = performance.now() - target.bornAt;
+  function beginTrackingMovement() {
+    destroyActiveElements();
+    state.phase = 'tracking-active';
+    clearStageModeClasses();
+    dom.arenaStage.classList.add(state.mode === 'dynamic' ? 'mode-dynamic' : 'mode-tracking');
+    const dot = buildAnchorDot('tracking-dot');
+    addStageElement(dot);
+    state.trackingTarget = {
+      el: dot,
+      x: state.stageRect.width / 2,
+      y: state.stageRect.height / 2,
+      vx: 0,
+      vy: 0,
+    };
+    state.stats.endAt = performance.now() + TRACKING_DURATION_MS;
+    state.loopLastAt = performance.now();
+    state.stats.currentDirectionLabel = '--';
+    randomizeTrackingDirection(true);
+    setRunState('Tracking live');
+    setHint('Keep your cursor on the moving orange dot.', { muted: false });
+    startLoop();
+  }
 
-    if (mode === 'reaction') {
-      const speedFactor = clamp(1.45 - reactionMs / Math.max(240, 1500 / state.settings.spawnSpeed), 0.35, 1.45);
-      registerSuccess(target, accuracy, speedFactor, reactionMs);
-      state.stageTargetCleared = true;
-      state.lastModeStat = reactionMs;
-      queueReactionSpawn();
-      updateHUD();
-      return;
-    }
-
-    if (mode === 'flick' || mode === 'precision') {
-      const speedFactor = clamp(1.45 - reactionMs / Math.max(250, target.expiresAt - target.bornAt), 0.45, 1.45);
-      registerSuccess(target, accuracy, speedFactor, reactionMs);
-      spawnFlickTarget(mode);
-      updateHUD();
-      return;
-    }
-
-    if (mode === 'switching') {
-      const waveTime = performance.now() - state.pendingWaveStartedAt;
-      const speedFactor = clamp(1.45 - waveTime / Math.max(300, 2200 / state.settings.spawnSpeed), 0.4, 1.45);
-      registerSuccess(target, accuracy, speedFactor, reactionMs);
-      removeTarget(target);
-      const wave = state.activeTargets.filter((entry) => entry.mode === 'switching');
-      if (wave.length === 0) {
-        state.waveTimes.push(waveTime);
-        state.score += 60 + Math.round(Math.max(0, 1500 - waveTime) / 8);
-        setTimeout(() => {
-          if (state.running && state.mode === 'switching') spawnSwitchWave();
-        }, 220);
-      }
-      updateHUD();
-      return;
-    }
-
-    if (mode === 'decision') {
-      const speedFactor = clamp(1.35 - reactionMs / Math.max(350, 2200 / state.settings.spawnSpeed), 0.35, 1.35);
-      if (target.positive) {
-        state.decisionCorrect += 1;
-        state.decisionNet += 1;
-        registerSuccess(target, accuracy, speedFactor, reactionMs);
-        removeTarget(target);
+  function randomizeTrackingDirection(initial = false) {
+    if (!state.trackingTarget || !state.stats) return;
+    const speed = state.mode === 'dynamic' ? 250 : 230;
+    if (state.mode === 'tracking') {
+      const sign = Math.random() < 0.5 ? -1 : 1;
+      if (state.stats.trackingAxis === 'vertical') {
+        state.trackingTarget.vx = 0;
+        state.trackingTarget.vy = sign * speed;
+        state.stats.currentDirectionLabel = sign > 0 ? 'Down' : 'Up';
       } else {
-        state.decisionWrong += 1;
-        state.decisionNet -= 1;
-        registerMiss('decision trap');
-        state.score = Math.max(0, state.score - 45);
-        removeTarget(target);
-      }
-      if (state.activeTargets.filter((entry) => entry.mode === 'decision').length === 0) {
-        state.waveTimes.push(performance.now() - state.pendingWaveStartedAt);
-        setTimeout(() => {
-          if (state.running && state.mode === 'decision') spawnDecisionWave();
-        }, 200);
-      }
-      updateHUD();
-      return;
-    }
-
-    if (mode === 'timing') {
-      state.timingAttempts += 1;
-      const cycle = 1600 / Math.max(0.75, state.settings.spawnSpeed);
-      const timeIntoCycle = (performance.now() - target.bornAt) % cycle;
-      const normalized = Math.abs(timeIntoCycle / cycle - 0.5) * 2;
-      const perfect = normalized < 0.16;
-      if (perfect) {
-        state.perfectTiming += 1;
-        registerSuccess(target, 1 - normalized, clamp(1.3 - normalized, 0.5, 1.3), reactionMs);
-        spawnTimingTarget();
-      } else {
-        registerMiss('timing miss');
-        state.score = Math.max(0, state.score - 12);
-        removeTarget(target);
-        spawnTimingTarget();
-      }
-      updateHUD();
-      return;
-    }
-  }
-
-  function handleFalseStart() {
-    if (!state.running || state.paused || state.mode !== 'reaction') return;
-    state.falseStarts += 1;
-    registerMiss('false-start');
-    queueReactionSpawn();
-    updateHUD();
-  }
-
-  function updateTrackingTarget(target, deltaMs, now) {
-    const baseSpeed = state.settings.movementSpeed * (target.mode === 'dynamic' ? 1.6 : 1);
-    const speed = baseSpeed * (deltaMs / 16.67);
-    if (target.mode === 'dynamic') {
-      if (now >= target.teleportAt) {
-        const point = centerWeightedPoint(0.55);
-        target.x = point.x;
-        target.y = point.y;
-        target.teleportAt = now + randomBetween(1150, 2400) / Math.max(0.8, state.settings.spawnSpeed);
-        target.el.classList.add('teleporting');
-        window.setTimeout(() => target.el.classList.remove('teleporting'), 180);
-        state.teleportsRecovered += 0;
-        state.trackingTeleportAt = now;
-      }
-    }
-
-    target.x += target.vx * speed;
-    target.y += target.vy * speed;
-
-    const margin = getStagePadding() + target.size / 2;
-    if (target.x < margin || target.x > state.stage.width - margin) {
-      target.vx *= -1;
-      target.x = clamp(target.x, margin, state.stage.width - margin);
-    }
-    if (target.y < margin || target.y > state.stage.height - margin) {
-      target.vy *= -1;
-      target.y = clamp(target.y, margin, state.stage.height - margin);
-    }
-
-    target.scale = 1 + Math.sin((now + target.pulseSeed) / 260) * 0.02;
-    positionTarget(target);
-  }
-
-  function updateTimingTarget(target, now) {
-    const cycle = 1600 / Math.max(0.75, state.settings.spawnSpeed);
-    const progress = ((now - target.bornAt) % cycle) / cycle;
-    const pulse = 0.62 + Math.sin((progress * Math.PI * 2) - Math.PI / 2) * 0.44;
-    target.scale = pulse;
-    target.el.style.setProperty('--pulse', String(pulse));
-    positionTarget(target);
-  }
-
-  function updateTrackingScore(deltaMs, now) {
-    const target = state.activeTargets.find((entry) => entry.mode === 'tracking' || entry.mode === 'dynamic');
-    if (!target) return;
-
-    const dx = state.pointer.x - target.x;
-    const dy = state.pointer.y - target.y;
-    const distance = Math.hypot(dx, dy);
-    const radius = target.size / 2;
-    const onTarget = distance <= radius;
-
-    state.trackingTotalTime += deltaMs;
-    if (onTarget) {
-      state.trackingOnTime += deltaMs;
-      state.combo += 1;
-      state.bestCombo = Math.max(state.bestCombo, state.combo);
-      const closeness = clamp(1 - distance / Math.max(1, radius), 0, 1);
-      const points = deltaMs * 0.22 * (0.7 + closeness * 0.3) * (1 + Math.min(1.4, state.combo * 0.012));
-      state.score += points;
-      if (state.mode === 'dynamic' && state.trackingTeleportAt && now - state.trackingTeleportAt < 450) {
-        state.teleportsRecovered += 1;
-        state.trackingTeleportAt = 0;
-      }
-      if (Math.floor(state.trackingOnTime / 260) > Math.floor((state.trackingOnTime - deltaMs) / 260)) {
-        state.accuracySamples += 1;
-        state.totalAccuracy += closeness;
+        state.trackingTarget.vx = sign * speed;
+        state.trackingTarget.vy = 0;
+        state.stats.currentDirectionLabel = sign > 0 ? 'Right' : 'Left';
       }
     } else {
-      state.combo = 0;
+      const angle = randomBetween(0, Math.PI * 2);
+      state.trackingTarget.vx = Math.cos(angle) * speed;
+      state.trackingTarget.vy = Math.sin(angle) * speed;
+      state.stats.currentDirectionLabel = `${Math.round((angle * 180) / Math.PI)}°`;
     }
+    if (!initial) {
+      state.stats.directionChanges += 1;
+    }
+    state.trackingDirectionAt = performance.now() + randomBetween(TRACKING_DIRECTION_MIN_MS, TRACKING_DIRECTION_MAX_MS);
   }
 
-  function updateTargets(now, deltaMs) {
-    if (!state.running) return;
-
-    const mode = state.mode;
-    if (mode === 'reaction') {
-      if (state.phase === 'waiting' && now >= state.phaseEndsAt) {
-        placeReactionTarget();
-      }
-      const target = state.activeTargets[0];
-      if (target && now >= target.expiresAt) {
-        registerMiss('reaction timeout');
-        queueReactionSpawn();
-      }
+  function startPrecisionRun() {
+    state.phase = 'precision-active';
+    state.stats.endAt = performance.now() + PRECISION_DURATION_MS;
+    setRunState('Precision live');
+    setHint('Click the small targets. Hits respawn instantly for 60 seconds.', { muted: false });
+    for (let index = 0; index < PRECISION_TARGET_COUNT; index += 1) {
+      spawnPrecisionTarget();
     }
-
-    if (mode === 'flick' || mode === 'precision') {
-      const target = state.activeTargets[0];
-      if (target && now >= target.expiresAt) {
-        registerMiss('target expired');
-        spawnFlickTarget(mode);
-      }
-    }
-
-    if (mode === 'switching' || mode === 'decision') {
-      const expiredTargets = state.activeTargets.filter((target) => now >= target.expiresAt);
-      expiredTargets.forEach((target) => {
-        removeTarget(target);
-        registerMiss(mode === 'decision' ? 'wrong priority' : 'expired target');
-      });
-      if (!state.activeTargets.length) {
-        const waveDuration = now - state.pendingWaveStartedAt;
-        state.waveTimes.push(waveDuration);
-        if (mode === 'switching') {
-          spawnSwitchWave();
-        } else {
-          spawnDecisionWave();
-        }
-      }
-    }
-
-    if (mode === 'tracking' || mode === 'dynamic') {
-      const target = state.activeTargets[0];
-      if (target) updateTrackingTarget(target, deltaMs, now);
-      updateTrackingScore(deltaMs, now);
-    }
-
-    if (mode === 'timing') {
-      const target = state.activeTargets[0];
-      if (target) {
-        updateTimingTarget(target, now);
-        if (now >= target.expiresAt) {
-          registerMiss('timing timeout');
-          spawnTimingTarget();
-        }
-      }
-    }
+    startLoop();
   }
 
-  function tick(now) {
-    const deltaMs = now - state.lastFrameAt;
-    state.lastFrameAt = now;
+  function spawnPrecisionTarget() {
+    const point = randomStagePoint(40);
+    const target = buildPrecisionTarget();
+    setElementPosition(target, point.x, point.y);
+    addStageElement(target);
+  }
 
-    if (state.running && !state.paused) {
-      const timeLeft = state.runEndsAt - now;
-      state.timeRemainingMs = Math.max(0, timeLeft);
-      if (timeLeft <= 0) {
-        stopRun({ showResults: true, announce: 'Run complete' });
+  function handlePrecisionTargetHit(target) {
+    if (!state.running || state.phase !== 'precision-active') return;
+    state.stats.hits += 1;
+    state.stats.clicks += 1;
+    state.stats.targetsShot += 1;
+    target.classList.add('target-hit');
+    const index = state.activeElements.indexOf(target);
+    if (index >= 0) state.activeElements.splice(index, 1);
+    target.remove();
+    spawnPrecisionTarget();
+    renderHud();
+    renderSessionStats();
+  }
+
+  function updateAnchorHold(now) {
+    if (!state.currentTarget) return;
+    const centerX = state.stageRect.width / 2;
+    const centerY = state.stageRect.height / 2;
+    const within = state.pointer.inside && pointerDistanceFrom(centerX, centerY) <= TRACKING_RADIUS + 4;
+    state.currentTarget.classList.toggle('is-held', within);
+    if (!within) {
+      state.anchorHeldAt = 0;
+      state.stats.holdProgress = 0;
+      setHint('Hold your cursor on the orange dot for 3 seconds to begin.', { muted: false });
+      return;
+    }
+    if (!state.anchorHeldAt) {
+      state.anchorHeldAt = now;
+    }
+    state.stats.holdProgress = clamp(now - state.anchorHeldAt, 0, HOLD_MS);
+    const remaining = Math.max(0, HOLD_MS - state.stats.holdProgress);
+    setHint(`Hold steady... ${round(remaining / 1000, 1)}s left.`, { muted: false });
+    if (now - state.anchorHeldAt >= HOLD_MS) {
+      if (state.mode === 'flick' || state.mode === 'micro') {
+        beginShotRep();
       } else {
-        updateTargets(now, deltaMs);
+        beginTrackingMovement();
       }
-    } else if (!state.running) {
-      state.timeRemainingMs = state.settings.duration * 1000;
+    }
+  }
+
+  function updateTracking(now, deltaMs) {
+    if (!state.trackingTarget || !state.stats) return;
+    if (now >= state.trackingDirectionAt) {
+      randomizeTrackingDirection();
+    }
+    const deltaSeconds = deltaMs / 1000;
+    state.trackingTarget.x += state.trackingTarget.vx * deltaSeconds;
+    state.trackingTarget.y += state.trackingTarget.vy * deltaSeconds;
+    const margin = TRACKING_RADIUS + 8;
+    if (state.trackingTarget.x < margin || state.trackingTarget.x > state.stageRect.width - margin) {
+      state.trackingTarget.vx *= -1;
+      state.trackingTarget.x = clamp(state.trackingTarget.x, margin, state.stageRect.width - margin);
+    }
+    if (state.trackingTarget.y < margin || state.trackingTarget.y > state.stageRect.height - margin) {
+      state.trackingTarget.vy *= -1;
+      state.trackingTarget.y = clamp(state.trackingTarget.y, margin, state.stageRect.height - margin);
+    }
+    setElementPosition(state.trackingTarget.el, state.trackingTarget.x, state.trackingTarget.y);
+    state.stats.trackingTotalMs += deltaMs;
+    if (state.pointer.inside && pointerDistanceFrom(state.trackingTarget.x, state.trackingTarget.y) <= TRACKING_RADIUS + 2) {
+      state.stats.onTargetMs += deltaMs;
+    }
+    if (now >= state.stats.endAt) {
+      finishRun();
+    }
+  }
+
+  function updateLoop(now) {
+    if (!state.running) {
+      cancelAnimationLoop();
+      return;
+    }
+    if (!state.loopLastAt) {
+      state.loopLastAt = now;
+    }
+    const deltaMs = now - state.loopLastAt;
+    state.loopLastAt = now;
+
+    if (state.phase === 'anchor-hold') {
+      updateAnchorHold(now);
+    } else if (state.phase === 'shot-active' && now >= state.targetTimeoutAt) {
+      handleShotTimeout();
+    } else if (state.phase === 'tracking-active') {
+      updateTracking(now, deltaMs);
+    } else if (state.phase === 'precision-active' && now >= state.stats.endAt) {
+      finishRun();
+      return;
     }
 
-    updateHUD();
-    requestAnimationFrame(tick);
+    renderHud();
+    renderSessionStats();
+    state.rafId = requestAnimationFrame(updateLoop);
+  }
+
+  function startLoop() {
+    cancelAnimationLoop();
+    state.loopLastAt = 0;
+    state.rafId = requestAnimationFrame(updateLoop);
   }
 
   function handleStagePointerDown(event) {
-    if (!state.running || state.paused) return;
-    if (performance.now() - state.lastTargetPointerAt < 80) return;
-    const clickedTarget = event.target.closest('.target');
-    if (clickedTarget) return;
+    if (!state.running) return;
 
     if (state.mode === 'reaction') {
-      handleFalseStart();
+      if (state.phase === 'reaction-wait') {
+        handleReactionFalseStart();
+      } else if (state.phase === 'reaction-green') {
+        recordReactionClick();
+      }
       return;
     }
 
-    if (state.mode === 'flick' || state.mode === 'precision' || state.mode === 'switching' || state.mode === 'timing' || state.mode === 'decision') {
-      registerMiss('empty click');
-      updateHUD();
+    if (state.phase === 'shot-active' && (state.mode === 'flick' || state.mode === 'micro')) {
+      const target = event.target.closest('.target-icon');
+      if (target) {
+        handleShotHit(event);
+        return;
+      }
+      state.stats.clicks += 1;
+      state.stats.misses += 1;
+      renderHud();
+      renderSessionStats();
       return;
+    }
+
+    if (state.phase === 'precision-active') {
+      const target = event.target.closest('.precision-target');
+      if (target) {
+        handlePrecisionTargetHit(target);
+      } else {
+        state.stats.clicks += 1;
+        state.stats.misses += 1;
+        renderHud();
+        renderSessionStats();
+      }
     }
   }
 
   function updatePointer(event) {
-    const rect = dom.arenaStage.getBoundingClientRect();
-    state.pointer.x = event.clientX - rect.left;
-    state.pointer.y = event.clientY - rect.top;
-    state.pointer.inside = state.pointer.x >= 0 && state.pointer.y >= 0 && state.pointer.x <= rect.width && state.pointer.y <= rect.height;
-  }
-
-  function resetRun() {
-    state.running = false;
-    state.ended = false;
-    state.paused = false;
-    state.pauseStartedAt = 0;
-    state.score = 0;
-    state.combo = 0;
-    state.bestCombo = 0;
-    state.hits = 0;
-    state.misses = 0;
-    state.falseStarts = 0;
-    state.totalAccuracy = 0;
-    state.accuracySamples = 0;
-    state.reactionTimes = [];
-    state.trackingOnTime = 0;
-    state.trackingTotalTime = 0;
-    state.decisionNet = 0;
-    state.decisionCorrect = 0;
-    state.decisionWrong = 0;
-    state.perfectTiming = 0;
-    state.timingAttempts = 0;
-    state.waveTimes = [];
-    state.microHits = 0;
-    state.teleportsRecovered = 0;
-    state.phase = 'idle';
-    state.phaseEndsAt = 0;
-    state.phaseStartedAt = performance.now();
-    state.runStartedAt = 0;
-    state.runEndsAt = 0;
-    state.timeRemainingMs = state.settings.duration * 1000;
-    state.lastTargetPointerAt = 0;
-    clearTargets();
-    dom.resultsPanel.hidden = true;
-    setRunState('Ready');
-    dom.stageHint.textContent = getModeDefinition().copy;
-    syncRunControls();
-    updateHUD();
+    const position = stageClickPosition(event);
+    state.pointer.x = position.x;
+    state.pointer.y = position.y;
+    state.pointer.inside = true;
   }
 
   function wireEvents() {
     modeButtons.forEach((button) => {
       button.addEventListener('click', () => {
+        if (state.running) return;
         setMode(button.dataset.mode);
-        if (state.running) {
-          stopRun({ showResults: true, announce: 'Run complete' });
-        }
       });
     });
 
-    presetButtons.forEach((button) => {
-      button.addEventListener('click', () => setPreset(button.dataset.preset));
+    axisButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        state.selectedAxis = button.dataset.axis || 'horizontal';
+        state.showAxisPicker = false;
+        syncRunControls();
+        beginTrackingMovement();
+      });
     });
 
-    if (dom.settingsBtn && dom.settingsPanel) {
-      dom.settingsBtn.addEventListener('click', () => {
-        dom.settingsPanel.hidden = !dom.settingsPanel.hidden;
-        if (!dom.settingsPanel.hidden && dom.settingsCloseBtn) {
-          dom.settingsCloseBtn.focus({ preventScroll: true });
-        }
-      });
-    }
-
-    if (dom.settingsCloseBtn && dom.settingsPanel) {
-      dom.settingsCloseBtn.addEventListener('click', () => {
-        dom.settingsPanel.hidden = true;
-      });
-    }
-
-    const handleStartToggle = () => {
-      if (!state.running || state.ended) {
-        startRun();
-        return;
-      }
-      if (state.paused) {
-        resumeRun();
-      } else {
-        pauseRun();
-      }
-    };
-
-    dom.startBtn.addEventListener('click', handleStartToggle);
-    if (dom.stageStartBtn) {
-      dom.stageStartBtn.addEventListener('click', handleStartToggle);
-    }
-
-    const handleReplay = () => {
-      if (state.running) {
-        stopRun({ showResults: false, announce: 'Ready' });
-      }
+    const startHandler = () => {
+      if (state.running) return;
       startRun();
     };
 
-    dom.replayBtn.addEventListener('click', handleReplay);
-    if (dom.stageReplayBtn) {
-      dom.stageReplayBtn.addEventListener('click', handleReplay);
-    }
+    dom.startBtn.addEventListener('click', startHandler);
+    dom.stageStartBtn.addEventListener('click', startHandler);
+
+    const replayHandler = () => {
+      resetIdleView();
+      startRun();
+    };
+
+    dom.replayBtn.addEventListener('click', replayHandler);
+    dom.stageReplayBtn.addEventListener('click', replayHandler);
 
     dom.quitBtn.addEventListener('click', () => {
-      if (state.running) {
-        stopRun({ showResults: true, announce: 'Run ended' });
-      }
+      resetIdleView();
     });
 
     dom.playAgainBtn.addEventListener('click', () => {
-      dom.resultsPanel.hidden = true;
+      resetIdleView();
       startRun();
     });
 
     dom.changeModeBtn.addEventListener('click', () => {
       dom.resultsPanel.hidden = true;
-      dom.arenaStage.focus({ preventScroll: true });
-    });
-
-    dom.targetSizeInput.addEventListener('input', (event) => {
-      updateSetting('targetSize', Number(event.target.value));
-    });
-
-    dom.spawnSpeedInput.addEventListener('input', (event) => {
-      updateSetting('spawnSpeed', Number(event.target.value));
-    });
-
-    dom.movementSpeedInput.addEventListener('input', (event) => {
-      updateSetting('movementSpeed', Number(event.target.value));
-    });
-
-    dom.durationInput.addEventListener('input', (event) => {
-      updateSetting('duration', Number(event.target.value));
+      setHint('Choose another mode and press Start Run.', { muted: true });
     });
 
     dom.arenaStage.addEventListener('pointerdown', handleStagePointerDown);
     dom.arenaStage.addEventListener('pointermove', updatePointer);
+    dom.arenaStage.addEventListener('pointerenter', updatePointer);
     dom.arenaStage.addEventListener('pointerleave', () => {
       state.pointer.inside = false;
-      if (state.mode === 'tracking' || state.mode === 'dynamic') {
-        state.combo = 0;
-      }
+      state.anchorHeldAt = 0;
     });
-    dom.arenaStage.addEventListener('pointerenter', updatePointer);
 
     window.addEventListener('resize', measureStage);
-    if ('ResizeObserver' in window) {
-      const observer = new ResizeObserver(() => measureStage());
-      observer.observe(dom.arenaStage);
-    }
   }
 
   function init() {
-    syncSettingsUI();
-    renderBests();
-    setMode(state.mode, { preserveSelection: false });
-    if (loadLastMode()) {
-      setMode(loadLastMode());
-    }
-    renderChallenge();
-    resetRun();
-    wireEvents();
     measureStage();
+    wireEvents();
+    setMode(state.mode);
+    renderHud();
+    renderSessionStats();
+    renderBests();
     setRunState('Ready');
-    requestAnimationFrame(tick);
-  }
-
-  function renderChallenge() {
-    const challenge = state.challenge;
-    dom.challengeTitle.textContent = challenge.title;
-    dom.challengeCopy.textContent = challenge.copy;
-    dom.challengeBadge.textContent = challenge.dateLabel;
-    dom.challengeMeta.innerHTML = `
-      <div>
-        <span>Mode</span>
-        <strong>${getModeDefinition(challenge.mode).label}</strong>
-      </div>
-      <div>
-        <span>Target</span>
-        <strong>${challenge.target}</strong>
-      </div>
-      <div>
-        <span>Metric</span>
-        <strong>${challenge.metric}</strong>
-      </div>
-      <div>
-        <span>Reset</span>
-        <strong>Daily</strong>
-      </div>
-    `;
+    setHint('Choose a mode and press Start Run.', { muted: true });
   }
 
   init();

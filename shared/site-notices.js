@@ -1,6 +1,32 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-05-01-aim-training-overhaul',
+      title: 'Aim Training Arena overhaul',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-05-01T23:58:00-04:00',
+      summary: 'Aim Training Arena now uses the requested focused drill set with mode-specific live stats, while the homepage profile shortcut has been moved back into Settings to free up the topbar.',
+      details: [
+        'The homepage no longer keeps a separate Profile button in the header. Instead, the profile shortcut now lives inside the Settings panel again so the main title and All Games button have more room.',
+        'Reaction Time now runs five random red-to-green reps with average, fastest, and slowest reaction tracking; Flick Shot and Micro Flick use a 3-second orange anchor hold before timed target snaps; Tracking and Dynamic Tracking use moving orange-dot drills with tracking-specific live stats; and Precision now runs a 60-second five-target board with instant respawns and accuracy scoring.',
+      ],
+    },
+    {
+      id: 'site-notice-2026-05-01-aim-training-bug-fixes',
+      title: 'Bug fixes',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-05-01T23:59:00-04:00',
+      summary: 'The rebuilt Aim Training Arena got a follow-up bug pass so live runs are harder to break and the reaction drill no longer carries stale timers into later reps.',
+      details: [
+        'Reaction Time now clears old per-rep timers correctly after false starts and successful green clicks, which prevents a stale timeout from incorrectly firing during the next rep.',
+        'Start and mode-selection controls are now locked during an active run so the live state cannot be scrambled mid-session, and the latest profile-shortcut wording in the updates feed now matches the restored Settings-based entry point.',
+      ],
+    },
+    {
       id: 'site-notice-2026-05-01-bug-fixes',
       title: 'Bug fixes',
       category: 'update',
@@ -33,9 +59,9 @@
       audience: 'public',
       severity: 'info',
       publishedAt: '2026-05-01T21:35:00-04:00',
-      summary: 'The homepage topbar now includes a direct Profile shortcut, and the XP curve has been flattened so higher levels feel more reachable while still scaling upward over time.',
+      summary: 'The homepage Settings panel now includes a direct Profile shortcut, and the XP curve has been flattened so higher levels feel more reachable while still scaling upward over time.',
       details: [
-        'Signed-in players can now open account settings from a dedicated Profile button in the main header instead of relying on less obvious entry points.',
+        'Signed-in players can now open account settings from a dedicated Profile shortcut inside the main Settings panel instead of relying on less obvious entry points.',
         'XP-per-level requirements now rise through a gentler progressive ramp, which makes long-term progression feel less punishing and puts Level 999 closer to a realistic grind target.',
       ],
     },

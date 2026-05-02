@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Aim Training Arena - a mode-based aim trainer built for reaction, flicking, tracking, and timing practice." />
+  <meta name="description" content="Aim Training Arena - reaction, flicking, tracking, and precision drills built around mode-specific stats." />
   <title>Aim Training Arena | PlayR</title>
   <link rel="stylesheet" href="game.css" />
   <script src="/shared/ads.js"></script>
@@ -17,17 +17,15 @@
     <header class="hero">
       <div class="hero-copy">
         <p class="eyebrow">AIM TRAINING ARENA</p>
-        <h1>Train the exact aiming skill you want.</h1>
+        <h1>Train the exact aim skill you want.</h1>
         <p class="hero-text">
-          Short runs, clean feedback, and mode-specific drills for reaction, flicking, tracking, precision,
-          switching, and decision making.
+          Focused drills for reaction, flicking, tracking, and precision with mode-specific scoring instead of one generic stat sheet.
         </p>
         <div class="hero-actions">
           <button class="primary-btn" type="button" id="startBtn">Start Run</button>
           <button class="secondary-btn" type="button" id="replayBtn">Instant Replay</button>
-          <button class="secondary-btn" type="button" id="settingsBtn">Settings</button>
         </div>
-        <p class="hero-note"></p>
+        <p class="hero-note" id="heroNote">Pick a mode, then start when you are ready.</p>
       </div>
     </header>
 
@@ -51,7 +49,7 @@
             <div class="mode-group">
               <h3>Flicking</h3>
               <button class="mode-btn" type="button" data-mode="flick">Flick Shot</button>
-              <button class="mode-btn" type="button" data-mode="precision">Micro Flick</button>
+              <button class="mode-btn" type="button" data-mode="micro">Micro Flick</button>
             </div>
 
             <div class="mode-group">
@@ -62,22 +60,12 @@
 
             <div class="mode-group">
               <h3>Precision</h3>
-              <button class="mode-btn" type="button" data-mode="timing">Click Timing</button>
-            </div>
-
-            <div class="mode-group">
-              <h3>Switching</h3>
-              <button class="mode-btn" type="button" data-mode="switching">Target Switching</button>
-            </div>
-
-            <div class="mode-group">
-              <h3>Advanced</h3>
-              <button class="mode-btn" type="button" data-mode="decision">Decision Mode</button>
+              <button class="mode-btn" type="button" data-mode="precision">Precision</button>
             </div>
           </div>
 
           <p class="mode-copy" id="modeCopy">
-            Wait for a target, then click instantly. False starts reset the rhythm.
+            Wait through a random red hold, click on green instantly, and repeat for five reps to measure your average, fastest, and slowest reactions.
           </p>
         </section>
       </aside>
@@ -96,20 +84,20 @@
 
         <div class="hud-grid" aria-live="polite">
           <article class="hud-card">
-            <span>Score</span>
-            <strong id="scoreValue">0</strong>
+            <span id="hudLabel1">Average</span>
+            <strong id="hudValue1">--</strong>
           </article>
           <article class="hud-card">
-            <span>Accuracy</span>
-            <strong id="accuracyValue">100%</strong>
+            <span id="hudLabel2">Best</span>
+            <strong id="hudValue2">--</strong>
           </article>
           <article class="hud-card">
-            <span>Combo</span>
-            <strong id="comboValue">0</strong>
+            <span id="hudLabel3">Worst</span>
+            <strong id="hudValue3">--</strong>
           </article>
           <article class="hud-card">
-            <span>Time left</span>
-            <strong id="timeValue">45.00s</strong>
+            <span id="hudLabel4">Rep</span>
+            <strong id="hudValue4">0 / 5</strong>
           </article>
         </div>
 
@@ -121,13 +109,24 @@
               <p class="eyebrow small">Aim Training Arena</p>
               <h3 id="stageStartTitle">Reaction Time</h3>
               <p class="stage-start-copy" id="stageStartCopy">
-                Wait for a target, then click instantly. False starts reset the rhythm.
+                Wait through a random red hold, click on green instantly, and repeat for five reps to measure your average, fastest, and slowest reactions.
               </p>
               <div class="stage-start-actions">
                 <button class="primary-btn" type="button" id="stageStartBtn">Start Run</button>
                 <button class="secondary-btn" type="button" id="stageReplayBtn">Instant Replay</button>
               </div>
             </section>
+
+            <section class="axis-panel" id="axisPanel" hidden>
+              <p class="eyebrow small">Tracking Setup</p>
+              <h3>Choose an axis</h3>
+              <p class="stage-start-copy">Pick the direction lane for Tracking before the orange dot starts moving.</p>
+              <div class="axis-actions">
+                <button class="secondary-btn" type="button" data-axis="horizontal">Horizontal</button>
+                <button class="secondary-btn" type="button" data-axis="vertical">Vertical</button>
+              </div>
+            </section>
+
             <div class="stage-center-hint" id="stageHint">Choose a mode and press Start Run.</div>
             <div id="targetLayer" class="target-layer"></div>
           </div>
@@ -141,24 +140,7 @@
             </div>
             <span class="pill" id="resultTier">Tier: -</span>
           </div>
-          <div class="results-grid">
-            <article class="result-card">
-              <span>Final score</span>
-              <strong id="resultScore">0</strong>
-            </article>
-            <article class="result-card">
-              <span>Reaction time</span>
-              <strong id="resultReaction">--</strong>
-            </article>
-            <article class="result-card">
-              <span>Accuracy</span>
-              <strong id="resultAccuracy">0%</strong>
-            </article>
-            <article class="result-card">
-              <span>Best streak</span>
-              <strong id="resultStreak">0</strong>
-            </article>
-          </div>
+          <div class="results-grid" id="resultsGrid"></div>
           <div class="result-details" id="resultDetails"></div>
           <div class="results-actions">
             <button class="primary-btn" type="button" id="playAgainBtn">Replay same mode</button>
@@ -170,12 +152,7 @@
       <aside class="rail">
         <section class="panel rail-panel">
           <h3>Run stats</h3>
-          <div class="session-stats">
-            <p><span>Hits</span><strong id="hitsValue">0</strong></p>
-            <p><span>Misses</span><strong id="missesValue">0</strong></p>
-            <p><span>Best streak</span><strong id="streakValue">0</strong></p>
-            <p><span>Avg reaction</span><strong id="reactionValue">--</strong></p>
-          </div>
+          <div class="session-stats" id="sessionStats"></div>
         </section>
 
         <section class="panel rail-panel">
@@ -190,66 +167,6 @@
         </section>
       </aside>
     </main>
-
-    <section class="settings-panel panel" id="settingsPanel" hidden>
-      <div class="section-head">
-        <div>
-          <p class="eyebrow small">Settings</p>
-          <h2>Run tuning and daily challenge</h2>
-        </div>
-        <button class="secondary-btn compact" type="button" id="settingsCloseBtn">Close</button>
-      </div>
-
-      <div class="settings-grid">
-        <section class="settings-card">
-          <h3>Difficulty</h3>
-          <div class="control-stack">
-            <label class="control">
-              <span>Target size</span>
-              <input id="targetSizeInput" type="range" min="18" max="120" step="1" value="54" />
-              <strong id="targetSizeValue">54px</strong>
-            </label>
-
-            <label class="control">
-              <span>Spawn speed</span>
-              <input id="spawnSpeedInput" type="range" min="0.7" max="2.0" step="0.05" value="1.0" />
-              <strong id="spawnSpeedValue">1.00x</strong>
-            </label>
-
-            <label class="control">
-              <span>Movement speed</span>
-              <input id="movementSpeedInput" type="range" min="0.5" max="3.0" step="0.05" value="1.0" />
-              <strong id="movementSpeedValue">1.00x</strong>
-            </label>
-
-            <label class="control">
-              <span>Run duration</span>
-              <input id="durationInput" type="range" min="30" max="60" step="5" value="45" />
-              <strong id="durationValue">45s</strong>
-            </label>
-          </div>
-
-          <div class="preset-row">
-            <button class="chip-btn active" type="button" data-preset="standard">Standard</button>
-            <button class="chip-btn" type="button" data-preset="easy">Easy</button>
-            <button class="chip-btn" type="button" data-preset="hard">Hard</button>
-          </div>
-        </section>
-
-        <section class="settings-card">
-          <div class="section-head compact">
-            <div>
-              <h3 id="challengeTitle">Challenge</h3>
-              <p class="settings-subtle">Daily target</p>
-            </div>
-            <span class="pill" id="challengeBadge">Today</span>
-          </div>
-          <p class="challenge-copy" id="challengeCopy"></p>
-          <div class="challenge-meta" id="challengeMeta"></div>
-        </section>
-      </div>
-    </section>
   </div>
 </body>
 </html>
-
