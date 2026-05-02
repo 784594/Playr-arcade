@@ -8,12 +8,15 @@
   const PRECISION_DURATION_MS = 60000;
   const TRACKING_DIRECTION_MIN_MS = 2000;
   const TRACKING_DIRECTION_MAX_MS = 4200;
+  const TRACKING_NORMAL_SPEED = 132;
+  const TRACKING_DYNAMIC_SPEED = 148;
   const REACTION_WAIT_MIN_MS = 5000;
   const REACTION_WAIT_MAX_MS = 10000;
   const FLICK_REPS = 5;
   const REACTION_REPS = 5;
   const TRACKING_RADIUS = 14;
   const PRECISION_TARGET_COUNT = 5;
+  const PRECISION_MIN_CENTER_SHOTS = 12;
 
   const MODE_DEFS = {
     reaction: {
@@ -41,10 +44,15 @@
       group: 'Tracking',
       copy: 'Hold the anchor for 3 seconds, then track an orange dot that can move in any direction and switch paths after at least 2 seconds.',
     },
+    rapid: {
+      label: 'Rapid Fire',
+      group: 'Precision',
+      copy: 'Hold the orange anchor for 3 seconds, then clear a 60-second board with five small live targets. Score comes from targets shot plus click accuracy.',
+    },
     precision: {
       label: 'Precision',
       group: 'Precision',
-      copy: 'Clear a 60-second board with five small live targets. Each hit respawns immediately, and your result comes from targets shot plus click accuracy.',
+      copy: 'Hold the orange anchor for 3 seconds, then clear a 60-second board with five small live targets. Score comes from average center accuracy across valid target hits.',
     },
   };
 
@@ -106,6 +114,7 @@
     trackingTarget: null,
     trackingDirectionAt: 0,
     anchorHeldAt: 0,
+    holdAction: null,
     currentTarget: null,
     targetTimeoutAt: 0,
     pendingSummary: null,
@@ -198,6 +207,11 @@
 
   function setHint(text, { muted = false } = {}) {
     if (!dom.stageHint) return;
+    if (state.running && !state.showAxisPicker) {
+      dom.stageHint.textContent = '';
+      dom.stageHint.classList.add('is-hidden');
+      return;
+    }
     dom.stageHint.textContent = text;
     dom.stageHint.classList.toggle('is-hidden', !text);
     dom.stageHint.style.color = muted ? '#a4b4cc' : '#eff6ff';
@@ -335,6 +349,7 @@
       trackingTotalMs: 0,
       directionChanges: 0,
       targetsShot: 0,
+      targetHitAccuracy: [],
       trackingAxis: state.selectedAxis,
       phaseEndsAt: 0,
       holdProgress: 0,
@@ -372,6 +387,7 @@
     state.running = false;
     state.showAxisPicker = false;
     state.phase = 'idle';
+    state.holdAction = null;
     state.stats = null;
     state.pendingSummary = null;
     dom.resultsPanel.hidden = true;
@@ -416,6 +432,10 @@
       startTrackingRun(true);
       return;
     }
+    if (state.mode === 'rapid') {
+      startRapidFireRun();
+      return;
+    }
     if (state.mode === 'precision') {
       startPrecisionRun();
     }
@@ -455,8 +475,11 @@
       score = Math.round((accuracyPct * 8) + Math.max(0, 1200 - (avgReaction || 1200)));
     } else if (stats.mode === 'tracking' || stats.mode === 'dynamic') {
       score = Math.round(stats.onTargetMs + (onTargetPct * 30));
-    } else if (stats.mode === 'precision') {
+    } else if (stats.mode === 'rapid') {
       score = Math.round((stats.targetsShot * 100) + (accuracyPct * 10));
+    } else if (stats.mode === 'precision') {
+      const centerAccuracyPct = stats.targetHitAccuracy.length ? average(stats.targetHitAccuracy) * 100 : 0;
+      score = Math.round((centerAccuracyPct * 10) + Math.min(300, stats.targetsShot * 8));
     }
     return {
       mode: stats.mode,
@@ -472,6 +495,8 @@
       falseStarts: stats.falseStarts,
       timeouts: stats.timeouts,
       targetsShot: stats.targetsShot,
+      centerAccuracyPct: stats.targetHitAccuracy.length ? average(stats.targetHitAccuracy) * 100 : 0,
+      centerAccuracySamples: stats.targetHitAccuracy.length,
       onTargetMs: stats.onTargetMs,
       directionChanges: stats.directionChanges,
       axis: stats.trackingAxis,
@@ -498,9 +523,16 @@
       if (summary.onTargetPct >= 52) return 'Solid';
       return 'Warm-up';
     }
-    if (summary.targetsShot >= 65 && summary.accuracyPct >= 80) return 'Elite';
-    if (summary.targetsShot >= 48) return 'Strong';
-    if (summary.targetsShot >= 30) return 'Solid';
+    if (summary.mode === 'rapid') {
+      if (summary.targetsShot >= 65 && summary.accuracyPct >= 80) return 'Elite';
+      if (summary.targetsShot >= 48) return 'Strong';
+      if (summary.targetsShot >= 30) return 'Solid';
+      return 'Warm-up';
+    }
+    if (summary.centerAccuracySamples < PRECISION_MIN_CENTER_SHOTS) return 'Warm-up';
+    if (summary.centerAccuracyPct >= 88) return 'Elite';
+    if (summary.centerAccuracyPct >= 78) return 'Strong';
+    if (summary.centerAccuracyPct >= 68) return 'Solid';
     return 'Warm-up';
   }
 
@@ -519,9 +551,12 @@
     } else if (summary.mode === 'tracking' || summary.mode === 'dynamic') {
       cards.push(['On target', formatSecondsMs(summary.onTargetMs)], ['Percent', formatPercent(summary.onTargetPct)], ['Direction changes', String(summary.directionChanges)], ['Score', String(summary.score)]);
       details.push(['Axis', summary.mode === 'tracking' ? (summary.axis || 'horizontal') : 'Free movement']);
-    } else if (summary.mode === 'precision') {
+    } else if (summary.mode === 'rapid') {
       cards.push(['Targets shot', String(summary.targetsShot)], ['Accuracy', formatPercent(summary.accuracyPct)], ['Clicks', String(summary.clicks)], ['Score', String(summary.score)]);
       details.push(['Misses', String(summary.misses)]);
+    } else if (summary.mode === 'precision') {
+      cards.push(['Center accuracy', formatPercent(summary.centerAccuracyPct)], ['Valid hits', String(summary.centerAccuracySamples)], ['Targets shot', String(summary.targetsShot)], ['Score', String(summary.score)]);
+      details.push(['Minimum hits', String(PRECISION_MIN_CENTER_SHOTS)], ['Misses', String(summary.misses)]);
     }
 
     dom.resultsGrid.innerHTML = cards.map(([label, value]) => `
@@ -558,14 +593,26 @@
     } else if (summary.mode === 'tracking' || summary.mode === 'dynamic') {
       shouldReplace = !current || summary.onTargetMs > (current.primaryValue || 0);
       text = `${formatPercent(summary.onTargetPct)} • ${formatSecondsMs(summary.onTargetMs)}`;
-    } else if (summary.mode === 'precision') {
+    } else if (summary.mode === 'rapid') {
       shouldReplace = !current || summary.targetsShot > (current.primaryValue || 0);
       text = `${summary.targetsShot} shots • ${formatPercent(summary.accuracyPct)}`;
+    } else if (summary.mode === 'precision') {
+      shouldReplace = summary.centerAccuracySamples >= PRECISION_MIN_CENTER_SHOTS
+        && (!current || summary.centerAccuracyPct > (current.primaryValue || 0));
+      text = `${formatPercent(summary.centerAccuracyPct)} • ${summary.centerAccuracySamples} hits`;
     }
 
     if (shouldReplace) {
       state.bests[summary.mode] = {
-        primaryValue: summary.mode === 'reaction' ? (summary.avgReaction || Infinity) : (summary.mode === 'precision' ? summary.targetsShot : summary.mode === 'tracking' || summary.mode === 'dynamic' ? summary.onTargetMs : summary.score),
+        primaryValue: summary.mode === 'reaction'
+          ? (summary.avgReaction || Infinity)
+          : (summary.mode === 'rapid'
+            ? summary.targetsShot
+            : (summary.mode === 'precision'
+              ? summary.centerAccuracyPct
+              : summary.mode === 'tracking' || summary.mode === 'dynamic'
+                ? summary.onTargetMs
+                : summary.score)),
         text,
       };
       saveJson(BESTS_KEY, state.bests);
@@ -640,7 +687,7 @@
       return;
     }
 
-    if (stats.mode === 'precision') {
+    if (stats.mode === 'rapid') {
       const accuracyPct = stats.clicks > 0 ? (stats.hits / stats.clicks) * 100 : 100;
       const timeLeft = Math.max(0, stats.endAt - performance.now());
       dom.hudLabel1.textContent = 'Targets';
@@ -650,6 +697,20 @@
       dom.hudValue1.textContent = String(stats.targetsShot);
       dom.hudValue2.textContent = formatPercent(accuracyPct);
       dom.hudValue3.textContent = String(stats.clicks);
+      dom.hudValue4.textContent = `${round(timeLeft / 1000, 1)}s`;
+      return;
+    }
+
+    if (stats.mode === 'precision') {
+      const centerAccuracyPct = stats.targetHitAccuracy.length ? average(stats.targetHitAccuracy) * 100 : 0;
+      const timeLeft = Math.max(0, stats.endAt - performance.now());
+      dom.hudLabel1.textContent = 'Center Accuracy';
+      dom.hudLabel2.textContent = 'Valid Hits';
+      dom.hudLabel3.textContent = 'Targets';
+      dom.hudLabel4.textContent = 'Time Left';
+      dom.hudValue1.textContent = stats.targetHitAccuracy.length ? formatPercent(centerAccuracyPct) : '--';
+      dom.hudValue2.textContent = String(stats.targetHitAccuracy.length);
+      dom.hudValue3.textContent = String(stats.targetsShot);
       dom.hudValue4.textContent = `${round(timeLeft / 1000, 1)}s`;
     }
   }
@@ -680,10 +741,15 @@
       rows.push(['On target', formatSecondsMs(stats.onTargetMs)]);
       rows.push(['Direction changes', String(stats.directionChanges)]);
       rows.push(['Phase', state.phase]);
-    } else if (stats.mode === 'precision') {
+    } else if (stats.mode === 'rapid') {
       rows.push(['Targets shot', String(stats.targetsShot)]);
       rows.push(['Hits', String(stats.hits)]);
       rows.push(['Clicks', String(stats.clicks)]);
+      rows.push(['Misses', String(stats.misses)]);
+    } else if (stats.mode === 'precision') {
+      rows.push(['Targets shot', String(stats.targetsShot)]);
+      rows.push(['Valid hits', String(stats.targetHitAccuracy.length)]);
+      rows.push(['Center accuracy', stats.targetHitAccuracy.length ? formatPercent(average(stats.targetHitAccuracy) * 100) : '--']);
       rows.push(['Misses', String(stats.misses)]);
     }
 
@@ -697,12 +763,11 @@
 
   function startReactionRun() {
     clearTimeouts();
-    state.phase = 'reaction-wait';
+    state.stats.rep = 0;
+    state.holdAction = 'reaction';
     clearStageModeClasses();
     dom.arenaStage.classList.add('mode-reaction');
-    state.stats.rep = 0;
-    setRunState('Red hold');
-    queueReactionRep(true);
+    startAnchorHoldPhase();
   }
 
   function queueReactionRep(isFirst = false) {
@@ -780,6 +845,7 @@
 
   function startFlickRun() {
     state.stats.rep = 0;
+    state.holdAction = 'shot';
     startAnchorHoldPhase();
   }
 
@@ -789,7 +855,14 @@
     state.anchorHeldAt = 0;
     const anchor = addStageElement(buildAnchorDot());
     state.currentTarget = anchor;
-    setRunState(state.mode === 'tracking' || state.mode === 'dynamic' ? 'Anchor hold' : `Hold ${state.stats.rep + 1}/${FLICK_REPS}`);
+    const holdLabel = state.holdAction === 'reaction'
+      ? 'Arm hold'
+      : state.holdAction === 'tracking'
+        ? 'Anchor hold'
+        : state.holdAction === 'rapid' || state.holdAction === 'precision'
+          ? 'Ready hold'
+          : `Hold ${state.stats.rep + 1}/${FLICK_REPS}`;
+    setRunState(holdLabel);
     setHint('Hold your cursor on the orange dot for 3 seconds to begin.', { muted: false });
     renderHud();
     renderSessionStats();
@@ -856,6 +929,7 @@
   function startTrackingRun(isDynamic) {
     state.mode = isDynamic ? 'dynamic' : 'tracking';
     state.stats.trackingAxis = isDynamic ? 'dynamic' : state.selectedAxis;
+    state.holdAction = 'tracking';
     startAnchorHoldPhase();
   }
 
@@ -884,7 +958,7 @@
 
   function randomizeTrackingDirection(initial = false) {
     if (!state.trackingTarget || !state.stats) return;
-    const speed = state.mode === 'dynamic' ? 250 : 230;
+    const speed = state.mode === 'dynamic' ? TRACKING_DYNAMIC_SPEED : TRACKING_NORMAL_SPEED;
     if (state.mode === 'tracking') {
       const sign = Math.random() < 0.5 ? -1 : 1;
       if (state.stats.trackingAxis === 'vertical') {
@@ -908,10 +982,20 @@
     state.trackingDirectionAt = performance.now() + randomBetween(TRACKING_DIRECTION_MIN_MS, TRACKING_DIRECTION_MAX_MS);
   }
 
+  function startRapidFireRun() {
+    state.holdAction = 'rapid';
+    startAnchorHoldPhase();
+  }
+
   function startPrecisionRun() {
+    state.holdAction = 'precision';
+    startAnchorHoldPhase();
+  }
+
+  function beginPrecisionBoard() {
     state.phase = 'precision-active';
     state.stats.endAt = performance.now() + PRECISION_DURATION_MS;
-    setRunState('Precision live');
+    setRunState(state.mode === 'rapid' ? 'Rapid fire live' : 'Precision live');
     setHint('Click the small targets. Hits respawn instantly for 60 seconds.', { muted: false });
     for (let index = 0; index < PRECISION_TARGET_COUNT; index += 1) {
       spawnPrecisionTarget();
@@ -928,9 +1012,13 @@
 
   function handlePrecisionTargetHit(target) {
     if (!state.running || state.phase !== 'precision-active') return;
+    const targetX = parseFloat(target.style.left) || 0;
+    const targetY = parseFloat(target.style.top) || 0;
+    const accuracy = clamp(1 - pointerDistanceFrom(targetX, targetY) / 14, 0, 1);
     state.stats.hits += 1;
     state.stats.clicks += 1;
     state.stats.targetsShot += 1;
+    state.stats.targetHitAccuracy.push(accuracy);
     target.classList.add('target-hit');
     const index = state.activeElements.indexOf(target);
     if (index >= 0) state.activeElements.splice(index, 1);
@@ -949,6 +1037,7 @@
     if (!within) {
       state.anchorHeldAt = 0;
       state.stats.holdProgress = 0;
+      setRunState('Hold start');
       setHint('Hold your cursor on the orange dot for 3 seconds to begin.', { muted: false });
       return;
     }
@@ -957,14 +1046,27 @@
     }
     state.stats.holdProgress = clamp(now - state.anchorHeldAt, 0, HOLD_MS);
     const remaining = Math.max(0, HOLD_MS - state.stats.holdProgress);
+    setRunState(`Hold ${round(remaining / 1000, 1)}s`);
     setHint(`Hold steady... ${round(remaining / 1000, 1)}s left.`, { muted: false });
     if (now - state.anchorHeldAt >= HOLD_MS) {
-      if (state.mode === 'flick' || state.mode === 'micro') {
+      if (state.holdAction === 'reaction') {
+        startReactionHoldComplete();
+      } else if (state.holdAction === 'shot') {
         beginShotRep();
-      } else {
+      } else if (state.holdAction === 'tracking') {
         beginTrackingMovement();
+      } else if (state.holdAction === 'rapid' || state.holdAction === 'precision') {
+        beginPrecisionBoard();
       }
     }
+  }
+
+  function startReactionHoldComplete() {
+    state.phase = 'reaction-wait';
+    clearStageModeClasses();
+    dom.arenaStage.classList.add('mode-reaction');
+    setRunState('Red hold');
+    queueReactionRep(true);
   }
 
   function updateTracking(now, deltaMs) {
@@ -1084,8 +1186,9 @@
       button.addEventListener('click', () => {
         state.selectedAxis = button.dataset.axis || 'horizontal';
         state.showAxisPicker = false;
+        state.holdAction = 'tracking';
         syncRunControls();
-        beginTrackingMovement();
+        startAnchorHoldPhase();
       });
     });
 
