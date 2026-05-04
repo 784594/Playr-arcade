@@ -28,10 +28,20 @@ const SINGLE_PLAYER_PLACEHOLDERS = [
   { id: 'burrito-bison-clone', name: 'Burrito Bison Clone', controls: 'Mouse' },
   { id: 'aim-training-arena', name: 'Aim Training Arena', controls: 'Mouse' },
   { id: 'f1-academy', name: 'F1 Academy', controls: 'Keyboard + mouse' },
+  { id: 'quota-drop', name: 'Quota Drop', controls: 'Pointer lock + click' },
   { id: 'typing-test', name: 'Typing Test', controls: 'Keyboard' },
   { id: 'slide-puzzle', name: 'Slide Puzzle', controls: 'Mouse' },
   { id: 'absurd-trolley-problem', name: 'The Absurd Trolley Problem!', controls: 'Mouse' },
 ];
+
+const SINGLE_PLAYER_GAME_OVERRIDES = {
+  'quota-drop': {
+    summary: 'A first-person industrial slot roguelike with debt quotas, trap-door failure, and run-long charm upgrades.',
+    metric: 'Quota-clearing survival run',
+    accent: 'warn',
+    status: 'New',
+  },
+};
 
 const MULTIPLAYER_PLACEHOLDERS = [
   { id: 'infinite-craft-multiplayer', name: 'Infinite Craft Multiplayer', controls: 'Mouse - shared room crafting (2P-4P)' },
@@ -3760,6 +3770,7 @@ function hydrateLeaderboardGames() {
 
 function buildSinglePlayerGame(entry, index) {
   const lbSpec = LEADERBOARD_SPECS[entry.id] || null;
+  const override = SINGLE_PLAYER_GAME_OVERRIDES[entry.id] || null;
   const top100 = [];
   
   const resolvedSlug = SINGLE_PLAYER_SLUG_ALIASES[entry.id] || entry.id;
@@ -3776,10 +3787,10 @@ function buildSinglePlayerGame(entry, index) {
     trending: index < 10,
     isNew: index % 4 === 0,
     topPlayers: Boolean(lbSpec),
-    metric: lbSpec ? lbSpec.metric : 'Casual progression mode',
-    status: '',
-    accent: lbSpec ? 'accent' : 'warn',
-    summary: `${entry.name} with ${entry.controls.toLowerCase()} controls.`,
+    metric: override?.metric || (lbSpec ? lbSpec.metric : 'Casual progression mode'),
+    status: override?.status || '',
+    accent: override?.accent || (lbSpec ? 'accent' : 'warn'),
+    summary: override?.summary || `${entry.name} with ${entry.controls.toLowerCase()} controls.`,
     leaderboardLabel: lbSpec ? lbSpec.label : 'No leaderboard',
     leaderboardUnit: lbSpec ? lbSpec.unit : 'n/a',
     leaderboardTop100: top100,

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-05-01",
+  "updatedAt": "2026-05-04",
   "notes": "Global leaderboard metric and direction are game-specific by design.",
   "singlePlayer": [
     {
@@ -199,6 +199,12 @@
       "title": "F1 Academy",
       "controls": "Keyboard + mouse",
       "leaderboard": { "scope": "global", "metric": "academy_score", "direction": "desc", "segments": ["overall", "reaction", "memory", "awareness", "decision", "consistency"] }
+    },
+    {
+      "slug": "quota-drop",
+      "title": "Quota Drop",
+      "controls": "Pointer lock + click",
+      "leaderboard": { "scope": "none", "metric": "n_a", "direction": "n_a", "reason": "Single-player quota survival roguelike" }
     },
     {
       "slug": "slide-puzzle",

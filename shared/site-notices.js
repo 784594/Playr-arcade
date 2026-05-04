@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-05-04-quota-drop-launch',
+      title: 'Quota Drop is live',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-05-04T18:10:00-04:00',
+      summary: 'Quota Drop adds a dark industrial first-person slot roguelike where you clear debt quotas with limited pulls while buying run-long machine charms between spins.',
+      details: [
+        'The new single-player title uses a CSS-only pseudo-3D room with mouse-look pointer lock, a front-facing slot machine, escalating level quotas, and a trap-door fail state when the chamber timer runs out before the debt target is met.',
+        'Runs revolve around three-reel pulls plus an in-between-round charm market, with upgrades such as flat per-spin cash boosts, stronger seven payouts, pair bonuses, wild bonuses, and softer next-level quota jumps, all wrapped in an original industrial bunker presentation rather than a direct parody skin.',
+      ],
+    },
+    {
       id: 'site-notice-2026-05-01-f1-academy-launch',
       title: 'F1 Academy is live',
       category: 'update',
