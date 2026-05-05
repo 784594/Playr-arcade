@@ -50,6 +50,12 @@ const MULTIPLAYER_GAME_OVERRIDES = {
     accent: 'accent',
     status: 'New',
   },
+  'pong': {
+    summary: 'A high-speed paddle duel with beatable AI, hit-angle control, ball trails, and score-reactive paddle sizing.',
+    metric: 'Local rally score race',
+    accent: 'accent',
+    status: 'New',
+  },
 };
 
 const MULTIPLAYER_PLACEHOLDERS = [
@@ -60,7 +66,7 @@ const MULTIPLAYER_PLACEHOLDERS = [
   { id: 'chess', name: 'Chess', controls: 'Mouse - 2D top-down 2P' },
   { id: 'checkers', name: 'Checkers', controls: 'Mouse - 2P/4P team mode' },
   { id: 'tic-tac-toe', name: 'Tic-Tac-Toe', controls: 'Mouse - 2P/4P chaos mode' },
-  { id: 'pong', name: 'Pong', controls: 'Up/Down vs W/S keys 2P' },
+  { id: 'pong', name: 'Vector Volley', controls: 'W/S vs Arrow keys or AI' },
   { id: 'tank-trouble-clone', name: 'A Tank Artillery Game', controls: 'A/D move, W/S aim, hold Space fire' },
   { id: 'slither-io-clone', name: 'Slither.io Clone', controls: 'Mouse - 2D snake arena 2P' },
   { id: 'fireboy-watergirl-clone', name: 'Fireboy & Watergirl Clone', controls: 'Arrow keys & WASD 2P' },

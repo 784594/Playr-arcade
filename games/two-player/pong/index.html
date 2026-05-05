@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="robots" content="noindex" />
-  <meta name="description" content="Pong module scaffold for PlayR." />
-  <title>Pong | PlayR</title>
+  <meta name="description" content="A high-performance paddle duel with responsive canvas action, beatable AI, trail effects, and score-reactive paddle sizing." />
+  <title>Vector Volley | PlayR</title>
   <link rel="stylesheet" href="../../shared/game-shell.css" />
   <link rel="stylesheet" href="game.css" />
   <script src="/shared/ads.js"></script>
@@ -14,60 +13,126 @@
   <script defer src="game.js"></script>
 </head>
 <body>
-  <div class="page" id="gameRoot" data-game-title="Pong" data-metric="elo_rating" data-direction="desc" data-scope="global">
+  <div class="page" id="gameRoot" data-game-title="Vector Volley" data-metric="none" data-direction="desc" data-scope="local">
     <div class="top">
       <a class="back-link" href="/">Back to hub</a>
       <div class="board-meta">
-        <span class="tag">Type: two-player</span>
-        <span class="tag">Controls: Up/Down vs W/S</span>
+        <span class="tag">Type: local paddle duel</span>
+        <span class="tag">Controls: W/S vs Arrow keys or AI</span>
+        <span class="tag">Target: first to 10</span>
       </div>
     </div>
 
     <header class="header">
-      <p class="tag">PlayR Game Module</p>
-      <h1>Pong</h1>
+      <p class="tag">PlayR Vector Module</p>
+      <h1>Vector Volley</h1>
       <div class="meta">
-        <span class="tag">Leaderboard scope: global</span>
-        <span class="tag">Metric: elo_rating</span>
-        <span class="tag">Direction: desc</span>
+        <span class="tag">Perspective: 2D arena</span>
+        <span class="tag">Ball trail: enabled</span>
+        <span class="tag">Twist: score-reactive paddles</span>
       </div>
-      <p id="gameStatus">Loading scaffold...</p>
+      <p class="hero-copy">
+        Clean geometry, sharp rebound control, and a beatable follow-AI on the right side. Hit the edge of the paddle for aggressive angles and survive the speed ramp as every return makes the rally hotter.
+      </p>
     </header>
 
-    <section class="main-grid">
-      <aside class="panel">
-        <h2>Build Checklist</h2>
-        <ul>
-          <li>Implement game state and rule engine.</li>
-          <li>Add full UI flow for inputs and rounds.</li>
-          <li>Wire score submit + fetch for global rankings.</li>
-          <li>Add anti-cheat validations for submissions.</li>
-        </ul>
+    <section class="main-grid volley-grid">
+      <aside class="panel volley-sidebar">
+        <section class="sidebar-card">
+          <h2>Match State</h2>
+          <div class="turn-pill-row">
+            <span class="turn-pill turn-pill-active" id="modePill">Mode: Versus AI</span>
+            <span class="turn-pill" id="phasePill">Press Start</span>
+          </div>
+          <p class="hint" id="statusCopy">
+            Player 1 uses <strong>W / S</strong>. Player 2 can use <strong>Arrow Up / Arrow Down</strong> or the built-in follow AI.
+          </p>
+        </section>
+
+        <section class="sidebar-card">
+          <h2>Live Stats</h2>
+          <ul class="session-list volley-stat-list">
+            <li><span>Ball Speed</span><strong id="speedValue">0.0x</strong></li>
+            <li><span>Rally Hits</span><strong id="rallyValue">0</strong></li>
+            <li><span>AI Delay</span><strong id="aiDelayValue">0ms</strong></li>
+            <li><span>Pulse</span><strong id="pulseValue">Idle</strong></li>
+          </ul>
+        </section>
+
+        <section class="sidebar-card">
+          <h2>Players</h2>
+          <div class="player-card player-card-one" id="playerCard0">
+            <div class="player-card-top">
+              <h3>Player 1</h3>
+              <span class="tag player-tag">W / S</span>
+            </div>
+            <ul class="session-list volley-stat-list">
+              <li><span>Score</span><strong id="scoreValue0">0</strong></li>
+              <li><span>Paddle Height</span><strong id="heightValue0">0</strong></li>
+            </ul>
+          </div>
+
+          <div class="player-card player-card-two" id="playerCard1">
+            <div class="player-card-top">
+              <h3 id="rightPlayerLabel">Vector AI</h3>
+              <span class="tag player-tag" id="rightPlayerTag">Delay follow</span>
+            </div>
+            <ul class="session-list volley-stat-list">
+              <li><span>Score</span><strong id="scoreValue1">0</strong></li>
+              <li><span>Paddle Height</span><strong id="heightValue1">0</strong></li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="sidebar-card">
+          <h2>Controls</h2>
+          <ul class="control-list volley-control-list">
+            <li><span>Player 1</span><strong>W / S</strong></li>
+            <li><span>Player 2</span><strong>Arrow Up / Down</strong></li>
+            <li><span>Pause</span><strong>P</strong></li>
+            <li><span>Restart match</span><strong>R</strong></li>
+            <li><span>Toggle AI</span><strong>T</strong></li>
+          </ul>
+        </section>
       </aside>
 
-      <article class="play-area">
-        <h2>Game Surface</h2>
-      </article>
-    </section>
+      <article class="play-area volley-stage-wrap">
+        <div class="volley-layout">
+          <div class="volley-topline">
+            <div class="board-stats">
+              <span class="tag">Win Target <strong>10</strong></span>
+              <span class="tag">Arena <strong>Responsive</strong></span>
+              <span class="tag">Reflection <strong>Edge-based</strong></span>
+            </div>
+            <div class="board-actions">
+              <button class="board-btn" id="toggleModeBtn" type="button">Switch to 2P</button>
+              <button class="board-btn" id="pauseBtn" type="button">Pause</button>
+              <button class="board-btn board-btn-primary" id="restartBtn" type="button">Restart</button>
+            </div>
+          </div>
 
-    <section class="leaderboard" style="margin-top: 14px;">
-      <h2>Leaderboard Preview</h2>
-      <table class="table" aria-label="Pong leaderboard preview">
-        <thead>
-          <tr>
-            <th>Rank</th>
-            <th>Player</th>
-            <th>elo_rating</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td>#1</td><td>AtlasOne</td><td>--</td></tr>
-          <tr><td>#2</td><td>ArcRunner</td><td>--</td></tr>
-          <tr><td>#3</td><td>NeonFox</td><td>--</td></tr>
-        </tbody>
-      </table>
+          <div class="stage-shell" id="stageShell">
+            <canvas id="volleyCanvas" width="1280" height="720" aria-label="Vector Volley arena" role="img"></canvas>
+            <div class="board-overlay" id="boardOverlay">
+              <div class="overlay-card volley-overlay-card">
+                <p class="tag overlay-kicker" id="overlayKicker">Vector duel</p>
+                <h2 id="overlayTitle">Vector Volley</h2>
+                <p id="overlayText">
+                  Launch the rally, bend the return angle by hitting the paddle off-center, and survive the 10% speed climb after every paddle contact.
+                </p>
+                <div class="overlay-actions">
+                  <button class="board-btn board-btn-primary" id="startButton" type="button">Start Match</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bottom-note">
+            Custom hooks live in the script as <code>ballColor</code> and <code>paddleWidth</code>. The trailing side gets a slightly taller paddle, while the leader gives up some reach.
+          </div>
+        </div>
+      </article>
     </section>
   </div>
 </body>
 </html>
-

@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-05-04-vector-volley-launch',
+      title: 'Vector Volley is live',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-05-04T21:15:00-04:00',
+      summary: 'The old Pong scaffold has been replaced with a local paddle duel featuring beatable AI, edge-based reflection control, speed ramping, ghost trails, and score-reactive paddle sizing.',
+      details: [
+        'Player 1 uses W and S, while the right side can either be controlled with Arrow Up and Arrow Down or handed off to a delayed follow AI that tracks the ball well enough to compete without feeling perfect.',
+        'Every paddle contact now speeds the ball up by 10 percent, off-center hits change the rebound angle more aggressively, the ball leaves a fading trail behind it, and the leading player gives up paddle height while the trailing player gains a little extra reach as the score spreads out.',
+      ],
+    },
+    {
       id: 'site-notice-2026-05-04-tank-artillery-launch',
       title: 'A Tank Artillery Game is live',
       category: 'update',

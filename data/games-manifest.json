@@ -258,9 +258,9 @@
     },
     {
       "slug": "pong",
-      "title": "Pong",
-      "controls": "Up/Down vs W/S",
-      "leaderboard": { "scope": "global", "metric": "elo_rating", "direction": "desc" }
+      "title": "Vector Volley",
+      "controls": "W/S vs Arrow keys or AI",
+      "leaderboard": { "scope": "none", "metric": "n_a", "direction": "n_a", "reason": "Local paddle duel with optional AI" }
     },
     {
       "slug": "tank-trouble-clone",
