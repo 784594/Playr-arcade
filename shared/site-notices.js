@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-05-04-quota-drop-rebuild',
+      title: 'Quota Drop chamber rebuild',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-05-04T23:55:00-04:00',
+      summary: 'Quota Drop now runs inside a denser first-person debt chamber with pointer-lock look control, true boxy room geometry, interactive wall devices, and a harsher deposit-versus-quota loop.',
+      details: [
+        'The page was rebuilt around a black industrial 3D room using CSS primitive boxes, with the Debt Engine now rendered as a six-sided machine, a real wall ATM for banking loose cash into deposited cash, a CRT shop, a back-wall phone, a light switch, and a trap door that rattles harder as rounds run out.',
+        'The slot loop now revolves around cash on hand versus deposited cash: you pull the orange lever to spin, earn shop credits from banking and strong hits, answer random phone events, survive darkness cuts by finding the switch, and get dropped if the round counter hits zero before your deposited total clears the active quota.',
+      ],
+    },
+    {
       id: 'site-notice-2026-05-04-asteroids-hyperspace-cooldown',
       title: 'An Asteroid Game hyperspace cooldown',
       category: 'update',

@@ -3,263 +3,345 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Quota Drop is a dark industrial first-person slot roguelike where you clear debt quotas before the trap door takes you." />
+  <meta name="description" content="Quota Drop is a first-person slot roguelike where you survive debt quotas inside a blacked-out industrial chamber." />
   <title>Quota Drop | PlayR</title>
   <script defer src="/shared/ads.js"></script>
   <script defer src="/shared/site-footer.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
   <style>
     :root {
-      --bg-0: #06070b;
-      --bg-1: #11141b;
-      --bg-2: #1a2029;
-      --steel: #7d8898;
-      --steel-soft: #95a1b2;
-      --rust: #9d5e37;
-      --ember: #ff954b;
-      --gold: #ffd47c;
-      --danger: #ff6d67;
-      --acid: #bcff87;
+      --bg: #000;
+      --panel: rgba(9, 11, 15, 0.78);
+      --panel-strong: rgba(11, 13, 18, 0.94);
       --line: rgba(255, 255, 255, 0.12);
-      --panel: rgba(10, 12, 16, 0.82);
-      --panel-strong: rgba(15, 18, 24, 0.94);
-      --text: #eef2f8;
-      --muted: #a4aebf;
-      --shadow: 0 22px 70px rgba(0, 0, 0, 0.48);
-      --radius-xl: 26px;
-      --radius-lg: 20px;
-      --radius-md: 14px;
-      --radius-sm: 10px;
+      --line-soft: rgba(255, 255, 255, 0.07);
+      --steel: #7f8a98;
+      --steel-dark: #252c35;
+      --hazard: #ffab4f;
+      --hazard-2: #ff7e39;
+      --danger: #ff6868;
+      --green: #92ff87;
+      --blue: #98d3ff;
+      --text: #f2f6fb;
+      --muted: #9aa7bc;
+      --shadow: 0 20px 70px rgba(0, 0, 0, 0.5);
+      --radius-lg: 24px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
     }
 
     * {
       box-sizing: border-box;
     }
 
-    html {
+    html,
+    body {
       min-height: 100%;
-      background:
-        radial-gradient(circle at top, rgba(255, 149, 75, 0.12), transparent 25%),
-        linear-gradient(180deg, #0a0d12, #040507 54%, #05070c);
+      background: #000;
     }
 
     body {
       margin: 0;
-      min-height: 100vh;
       color: var(--text);
       font-family: "Segoe UI", Tahoma, sans-serif;
-      background: transparent;
-      overflow-x: hidden;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 18%, rgba(255, 172, 79, 0.08), transparent 18%),
+        radial-gradient(circle at 50% 85%, rgba(255, 128, 51, 0.04), transparent 24%),
+        #000;
     }
 
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      background:
-        repeating-linear-gradient(
-          90deg,
-          rgba(255, 255, 255, 0.02) 0,
-          rgba(255, 255, 255, 0.02) 1px,
-          transparent 1px,
-          transparent 90px
-        ),
-        radial-gradient(circle at 50% 0%, rgba(255, 164, 79, 0.12), transparent 28%);
-      opacity: 0.45;
+    body.pointer-locked {
+      cursor: none;
     }
 
     a {
       color: inherit;
+      text-decoration: none;
     }
 
     .page {
-      width: min(calc(100% - 26px), 1480px);
-      margin: 0 auto;
-      padding: 20px 0 34px;
+      position: relative;
+      min-height: 100vh;
+    }
+
+    .topbar,
+    .hud,
+    .ledger,
+    .quota-table,
+    .intro,
+    .darkness-alert,
+    .message-panel {
+      position: absolute;
+      z-index: 30;
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
+        var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
     }
 
     .topbar {
+      top: 18px;
+      left: 18px;
+      right: 18px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 12px;
-      flex-wrap: wrap;
-      margin-bottom: 16px;
+      padding: 12px 14px;
+      border-radius: 999px;
     }
 
     .back-link,
-    .pill-button,
-    .shop-card button,
-    .overlay-card button,
-    .machine-button {
-      appearance: none;
-      border: 1px solid rgba(255, 255, 255, 0.12);
+    .ui-button,
+    .phone-option,
+    .shop-screen button {
+      min-height: 40px;
+      padding: 0 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
       color: var(--text);
       background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03)),
-        rgba(14, 17, 23, 0.9);
-      border-radius: 999px;
-      min-height: 44px;
-      padding: 0 18px;
+        linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
+        rgba(13, 16, 21, 0.9);
       cursor: pointer;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+      font: inherit;
       font-weight: 700;
-      letter-spacing: 0.02em;
       transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.26);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.32);
     }
 
     .back-link:hover,
+    .ui-button:hover,
+    .phone-option:hover,
+    .shop-screen button:hover,
     .back-link:focus-visible,
-    .pill-button:hover,
-    .pill-button:focus-visible,
-    .shop-card button:hover,
-    .shop-card button:focus-visible,
-    .overlay-card button:hover,
-    .overlay-card button:focus-visible,
-    .machine-button:hover,
-    .machine-button:focus-visible {
+    .ui-button:focus-visible,
+    .phone-option:focus-visible,
+    .shop-screen button:focus-visible {
       transform: translateY(-1px);
-      border-color: rgba(255, 212, 124, 0.42);
-      box-shadow: 0 16px 36px rgba(255, 149, 75, 0.16);
+      border-color: rgba(255, 171, 79, 0.48);
+      box-shadow: 0 16px 36px rgba(255, 126, 57, 0.18);
     }
 
-    .tag-row {
+    .top-tags {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
       align-items: center;
     }
 
-    .tag {
-      padding: 10px 14px;
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 36px;
+      padding: 0 12px;
       border-radius: 999px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--line-soft);
       color: var(--muted);
+      background: rgba(255, 255, 255, 0.04);
       font-size: 0.92rem;
     }
 
-    .hero {
+    .hud {
+      left: 18px;
+      bottom: 18px;
+      width: min(440px, calc(100vw - 36px));
+      border-radius: var(--radius-lg);
+      padding: 16px;
       display: grid;
-      grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
-      gap: 16px;
-      margin-bottom: 16px;
+      gap: 12px;
     }
 
-    .panel {
-      background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
-        var(--panel);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-xl);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(18px);
-    }
-
-    .hero-copy {
-      padding: 24px 24px 22px;
+    .hud-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
     }
 
     .eyebrow {
-      margin: 0 0 10px;
-      color: var(--gold);
+      margin: 0;
+      font-size: 0.76rem;
+      color: var(--hazard);
       text-transform: uppercase;
       letter-spacing: 0.18em;
-      font-size: 0.78rem;
       font-weight: 800;
     }
 
-    .hero-copy h1 {
-      margin: 0 0 12px;
-      font-size: clamp(2.1rem, 4vw, 3.5rem);
-      line-height: 0.95;
-      letter-spacing: -0.04em;
-    }
-
-    .hero-copy p {
-      margin: 0;
+    .status-text {
+      margin: 8px 0 0;
       color: var(--muted);
-      line-height: 1.72;
-      max-width: 72ch;
+      line-height: 1.5;
+      min-height: 44px;
     }
 
-    .hero-notes {
+    .stat-grid {
       display: grid;
-      gap: 12px;
-      padding: 22px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
     }
 
-    .hero-stat-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .hero-stat {
-      border-radius: var(--radius-md);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+    .stat-card {
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--line-soft);
       background: rgba(255, 255, 255, 0.04);
-      padding: 14px;
     }
 
-    .hero-stat span {
+    .stat-card span {
       display: block;
       color: var(--muted);
-      font-size: 0.82rem;
-      margin-bottom: 7px;
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
     }
 
-    .hero-stat strong {
-      font-size: 1.12rem;
+    .stat-card strong {
+      display: block;
+      margin-top: 6px;
+      font-size: 1.06rem;
+      color: var(--green);
     }
 
-    .game-layout {
+    .prompt-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--line-soft);
+      background: rgba(0, 0, 0, 0.32);
+      min-height: 54px;
+    }
+
+    .prompt-key {
+      min-width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      display: inline-grid;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.06);
+      font-weight: 800;
+    }
+
+    .prompt-copy {
+      flex: 1;
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    .ledger {
+      top: 86px;
+      right: 18px;
+      width: min(330px, calc(100vw - 36px));
+      border-radius: var(--radius-lg);
+      padding: 16px;
       display: grid;
-      grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.9fr);
-      gap: 16px;
-      align-items: start;
+      gap: 12px;
     }
 
-    .stage-panel {
-      position: relative;
+    .ledger ol {
+      margin: 0;
+      padding-left: 18px;
+      display: grid;
+      gap: 8px;
+      color: var(--muted);
+    }
+
+    .quota-table {
+      right: 18px;
+      bottom: 18px;
+      width: min(330px, calc(100vw - 36px));
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .quota-table ul {
+      margin: 0;
+      padding-left: 18px;
+      display: grid;
+      gap: 8px;
+      color: var(--muted);
+    }
+
+    .intro,
+    .message-panel {
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(560px, calc(100vw - 40px));
+      border-radius: 28px;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .intro h1,
+    .message-panel h2 {
+      margin: 10px 0 12px;
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      letter-spacing: -0.05em;
+    }
+
+    .intro p,
+    .message-panel p {
+      margin: 0 0 18px;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .intro-actions,
+    .phone-actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .darkness-alert {
+      left: 50%;
+      top: 92px;
+      transform: translateX(-50%);
+      padding: 12px 16px;
+      border-radius: 999px;
+      color: #fff1c9;
+      display: none;
+    }
+
+    .darkness-alert.is-visible {
+      display: block;
+    }
+
+    .stage {
+      position: fixed;
+      inset: 0;
       overflow: hidden;
-      min-height: 780px;
-      padding: 14px;
-      background:
-        radial-gradient(circle at 50% 25%, rgba(255, 149, 75, 0.1), transparent 26%),
-        linear-gradient(180deg, rgba(32, 37, 44, 0.9), rgba(4, 4, 6, 0.98));
     }
 
-    .stage-frame {
-      position: relative;
-      min-height: 752px;
-      border-radius: calc(var(--radius-xl) - 8px);
-      overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.06);
+    .spotlight {
+      position: absolute;
+      inset: 0;
       background:
-        radial-gradient(circle at 50% 8%, rgba(255, 183, 110, 0.08), transparent 24%),
-        linear-gradient(180deg, rgba(11, 12, 16, 0.98), rgba(1, 1, 2, 0.98));
-    }
-
-    .stage-frame.trapdoor-open {
-      animation: stageShake 0.42s ease-in-out 0s 3;
+        radial-gradient(circle at 50% 34%, rgba(255, 193, 117, 0.14), transparent 11%),
+        radial-gradient(circle at 50% 42%, rgba(255, 158, 74, 0.09), transparent 20%),
+        radial-gradient(circle at 50% 65%, rgba(255, 147, 67, 0.045), transparent 28%);
+      pointer-events: none;
+      mix-blend-mode: screen;
+      opacity: 0.9;
     }
 
     .viewport {
       position: absolute;
       inset: 0;
-      perspective: 1480px;
-      perspective-origin: 50% 55%;
-      overflow: hidden;
-      background:
-        radial-gradient(circle at 50% 14%, rgba(255, 176, 91, 0.09), transparent 22%),
-        linear-gradient(180deg, rgba(10, 11, 14, 0.4), rgba(1, 1, 2, 0.74));
+      perspective: 1550px;
+      perspective-origin: 50% 50%;
       cursor: crosshair;
     }
 
@@ -267,2028 +349,1853 @@
       position: absolute;
       inset: 0;
       transform-style: preserve-3d;
-      transition: transform 0.16s ease-out;
-    }
-
-    .camera.falling {
-      animation: cameraDrop 2.2s cubic-bezier(0.15, 0.88, 0.18, 1) forwards;
     }
 
     .world {
       position: absolute;
       left: 50%;
-      top: 54%;
+      top: 50%;
       width: 0;
       height: 0;
       transform-style: preserve-3d;
-      transform: translateZ(0);
+      transform: translate3d(0, 70px, 0);
     }
 
-    .room-face,
-    .floor-grid,
-    .machine-shell,
-    .light-rig,
-    .pipe,
-    .door,
-    .chain,
-    .hazard-strip,
-    .deco-panel,
-    .cage-beam {
-      position: absolute;
+    .box,
+    .panel3d,
+    .steam,
+    .machine-lever,
+    .machine-sphere,
+    .crosshair,
+    .interact-prompt {
       transform-style: preserve-3d;
+    }
+
+    .plane,
+    .box-face,
+    .panel3d-face {
+      position: absolute;
       backface-visibility: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.05);
     }
 
-    .room-face {
-      width: 1200px;
-      height: 760px;
-      left: -600px;
-      top: -400px;
-      border: 1px solid rgba(255, 255, 255, 0.04);
-      box-shadow: inset 0 0 200px rgba(0, 0, 0, 0.5);
-    }
-
-    .room-face.back {
-      transform: translateZ(-520px);
+    .plane.floor {
+      width: 1400px;
+      height: 1000px;
+      left: -700px;
+      top: -110px;
+      transform: rotateX(90deg) translateZ(220px);
       background:
-        radial-gradient(circle at 50% 18%, rgba(255, 144, 69, 0.12), transparent 18%),
-        linear-gradient(180deg, #242a33 0, #161b21 45%, #11151b 100%);
+        radial-gradient(circle at 50% 44%, rgba(255, 144, 78, 0.11), transparent 18%),
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0, rgba(255, 255, 255, 0.04) 2px, transparent 2px, transparent 56px),
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0, rgba(255, 255, 255, 0.04) 2px, transparent 2px, transparent 56px),
+        linear-gradient(180deg, #0f1218, #06080b 50%, #0a0d11);
+      box-shadow: inset 0 0 180px rgba(0, 0, 0, 0.9);
     }
 
-    .room-face.left {
-      width: 1040px;
-      left: -520px;
-      transform: rotateY(90deg) translateZ(-600px);
+    .plane.ceiling {
+      width: 1400px;
+      height: 1000px;
+      left: -700px;
+      top: -610px;
+      transform: rotateX(-90deg) translateZ(-180px);
       background:
-        linear-gradient(180deg, rgba(53, 60, 72, 0.92), rgba(19, 23, 29, 0.98)),
-        repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0, rgba(255, 255, 255, 0.02) 60px, transparent 60px, transparent 120px);
+        radial-gradient(circle at 50% 50%, rgba(255, 178, 89, 0.07), transparent 12%),
+        linear-gradient(180deg, #161b23, #050607);
     }
 
-    .room-face.right {
-      width: 1040px;
-      left: -520px;
-      transform: rotateY(-90deg) translateZ(-600px);
+    .plane.wall {
+      width: 1400px;
+      height: 700px;
+      left: -700px;
+      top: -350px;
       background:
-        linear-gradient(180deg, rgba(46, 53, 65, 0.92), rgba(16, 20, 26, 0.98)),
-        repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0, rgba(255, 255, 255, 0.02) 58px, transparent 58px, transparent 116px);
+        linear-gradient(180deg, rgba(43, 50, 60, 0.95), rgba(13, 17, 22, 0.98)),
+        repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0, rgba(255, 255, 255, 0.02) 54px, transparent 54px, transparent 108px);
+      box-shadow: inset 0 0 180px rgba(0, 0, 0, 0.7);
     }
 
-    .room-face.ceiling {
-      height: 1040px;
-      top: -520px;
-      transform: rotateX(-90deg) translateZ(-380px);
-      background:
-        radial-gradient(circle at 50% 50%, rgba(255, 164, 86, 0.08), transparent 18%),
-        linear-gradient(180deg, #1a1f26, #090b0d);
+    .plane.wall.back {
+      transform: translateZ(-560px);
     }
 
-    .floor-grid {
-      width: 1200px;
-      height: 1040px;
-      left: -600px;
-      top: -120px;
-      transform: rotateX(90deg) translateZ(180px);
-      background:
-        linear-gradient(180deg, rgba(0, 0, 0, 0.6), transparent 24%),
-        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0, rgba(255, 255, 255, 0.04) 2px, transparent 2px, transparent 62px),
-        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0, rgba(255, 255, 255, 0.04) 2px, transparent 2px, transparent 62px),
-        linear-gradient(180deg, #0d0f14, #1a1f28 55%, #0f1319);
-      box-shadow: inset 0 0 180px rgba(0, 0, 0, 0.76);
+    .plane.wall.left {
+      width: 1120px;
+      left: -560px;
+      transform: rotateY(90deg) translateZ(-700px);
     }
 
-    .floor-grid::after {
-      content: "";
+    .plane.wall.right {
+      width: 1120px;
+      left: -560px;
+      transform: rotateY(-90deg) translateZ(-700px);
+    }
+
+    .box {
+      position: absolute;
+      left: 0;
+      top: 0;
+    }
+
+    .box-face {
+      inset: 0;
+    }
+
+    .targetable {
+      transition: filter 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .targetable.is-targeted {
+      filter: drop-shadow(0 0 18px rgba(255, 174, 90, 0.55));
+    }
+
+    .machine {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 340px;
+      height: 500px;
+      transform: translate3d(-170px, -280px, -170px);
+    }
+
+    .machine .front,
+    .machine .back,
+    .machine .left-face,
+    .machine .right-face,
+    .machine .top-face,
+    .machine .bottom-face {
       position: absolute;
       inset: 0;
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    .machine .front {
       background:
-        radial-gradient(circle at 50% 40%, rgba(255, 135, 67, 0.13), transparent 22%),
-        linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.52));
+        linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.02)),
+        linear-gradient(180deg, #575e68, #272c34 45%, #181d25 100%);
+      transform: translateZ(50px);
+      padding: 24px;
+      display: grid;
+      grid-template-rows: auto auto auto 1fr auto;
+      gap: 14px;
+      box-shadow: inset 0 0 40px rgba(255, 255, 255, 0.03);
+    }
+
+    .machine .back {
+      background: linear-gradient(180deg, #20252d, #0d1117);
+      transform: rotateY(180deg) translateZ(50px);
+    }
+
+    .machine .left-face,
+    .machine .right-face {
+      width: 100px;
+      inset: 0 auto 0 0;
+      background: linear-gradient(180deg, #3c434e, #171b22);
+    }
+
+    .machine .left-face {
+      transform: rotateY(-90deg) translateZ(50px);
+      transform-origin: left center;
+    }
+
+    .machine .right-face {
+      left: auto;
+      right: 0;
+      transform: rotateY(90deg) translateZ(50px);
+      transform-origin: right center;
+    }
+
+    .machine .top-face,
+    .machine .bottom-face {
+      height: 100px;
+      background: linear-gradient(180deg, #5d6672, #21252d);
+    }
+
+    .machine .top-face {
+      transform: rotateX(90deg) translateZ(50px);
+      transform-origin: top center;
+    }
+
+    .machine .bottom-face {
+      top: auto;
+      bottom: 0;
+      transform: rotateX(-90deg) translateZ(50px);
+      transform-origin: bottom center;
+    }
+
+    .machine-badge {
+      padding: 12px 16px;
+      border-radius: 22px;
+      background: linear-gradient(180deg, #ffba5e, #cc7728);
+      color: #2b1402;
+      text-align: center;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.34), 0 12px 24px rgba(255, 146, 61, 0.24);
+    }
+
+    .machine-badge strong {
+      display: block;
+      margin-top: 6px;
+      font-size: 2rem;
+      letter-spacing: -0.04em;
+      color: #fff6e8;
+    }
+
+    .machine-readout {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      padding: 16px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, #0a1413, #07100e);
+      border: 1px solid rgba(146, 255, 135, 0.14);
+      box-shadow: inset 0 0 24px rgba(146, 255, 135, 0.05);
+    }
+
+    .machine-readout .readout {
+      display: grid;
+      gap: 4px;
+    }
+
+    .machine-readout span {
+      color: #a5c6aa;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .machine-readout strong {
+      font-size: 1.8rem;
+      color: var(--green);
+    }
+
+    .reels {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .reel {
+      position: relative;
+      min-height: 180px;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
+        #16181d;
+      overflow: hidden;
+      box-shadow: inset 0 0 36px rgba(0, 0, 0, 0.48);
+    }
+
+    .reel-window {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 16px;
+    }
+
+    .reel-strip {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      transition: transform 2s cubic-bezier(0.14, 0.8, 0.12, 1);
+    }
+
+    .reel-strip.spinning {
+      filter: blur(3px);
+    }
+
+    .reel-symbol {
+      height: 180px;
+      display: grid;
+      place-items: center;
+      gap: 8px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .reel-symbol em {
+      font-style: normal;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .machine-footer {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .machine-footer p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 0.92rem;
+    }
+
+    .machine-lever {
+      position: absolute;
+      left: 100%;
+      top: 150px;
+      width: 30px;
+      height: 240px;
+      transform: translateX(24px);
+      transform-origin: top center;
+      pointer-events: auto;
+    }
+
+    .machine-lever .rod {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      width: 14px;
+      height: 180px;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: linear-gradient(180deg, #c8d0d8, #666f7d);
+      box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.2);
+    }
+
+    .machine-sphere {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      width: 52px;
+      height: 52px;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #ffe4bf, #f6a64f 56%, #9d4f15);
+      box-shadow: 0 0 22px rgba(255, 164, 79, 0.28), inset 0 3px 10px rgba(255, 255, 255, 0.2);
+      cursor: grab;
+    }
+
+    .machine-sphere:active {
+      cursor: grabbing;
+    }
+
+    .machine-glow {
+      position: absolute;
+      inset: 0;
+      border-radius: 20px;
+      pointer-events: none;
+      opacity: 0;
+      background: radial-gradient(circle at 50% 10%, rgba(255, 194, 122, 0.16), transparent 34%);
+    }
+
+    .atm,
+    .shop,
+    .phone-box,
+    .switch-box {
+      position: absolute;
+    }
+
+    .atm {
+      left: 0;
+      top: 50%;
+      width: 160px;
+      height: 220px;
+      transform: translate3d(-560px, -210px, -120px) rotateY(90deg);
+    }
+
+    .shop {
+      left: 0;
+      top: 50%;
+      width: 290px;
+      height: 250px;
+      transform: translate3d(410px, -240px, -120px) rotateY(-90deg);
+    }
+
+    .phone-box {
+      left: 0;
+      top: 50%;
+      width: 120px;
+      height: 200px;
+      transform: translate3d(-290px, -200px, -520px);
+    }
+
+    .switch-box {
+      left: 0;
+      top: 50%;
+      width: 74px;
+      height: 130px;
+      transform: translate3d(300px, -220px, -520px);
+    }
+
+    .panel3d {
+      position: absolute;
+      inset: 0;
+    }
+
+    .panel3d-face {
+      inset: 0;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .panel3d .front {
+      transform: translateZ(24px);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.02)),
+        linear-gradient(180deg, #5a6674, #1c222b);
+      padding: 14px;
+    }
+
+    .panel3d .back {
+      transform: rotateY(180deg) translateZ(24px);
+      background: linear-gradient(180deg, #1b2028, #0c1016);
+    }
+
+    .panel3d .left,
+    .panel3d .right {
+      width: 48px;
+      background: linear-gradient(180deg, #43505e, #171c23);
+    }
+
+    .panel3d .left {
+      transform: rotateY(-90deg) translateZ(24px);
+      transform-origin: left center;
+    }
+
+    .panel3d .right {
+      left: auto;
+      right: 0;
+      transform: rotateY(90deg) translateZ(24px);
+      transform-origin: right center;
+    }
+
+    .panel3d .top,
+    .panel3d .bottom {
+      height: 48px;
+      background: linear-gradient(180deg, #54606e, #1a1f27);
+    }
+
+    .panel3d .top {
+      transform: rotateX(90deg) translateZ(24px);
+      transform-origin: top center;
+    }
+
+    .panel3d .bottom {
+      top: auto;
+      bottom: 0;
+      transform: rotateX(-90deg) translateZ(24px);
+      transform-origin: bottom center;
+    }
+
+    .atm-screen,
+    .switch-face,
+    .phone-face {
+      width: 100%;
+      height: 100%;
+      border-radius: 12px;
+      display: grid;
+      align-content: start;
+      gap: 10px;
+    }
+
+    .atm-screen {
+      background: linear-gradient(180deg, #07151a, #030708);
+      border: 1px solid rgba(152, 211, 255, 0.14);
+      box-shadow: inset 0 0 16px rgba(68, 177, 245, 0.08);
+      padding: 14px;
+    }
+
+    .atm-screen strong {
+      font-size: 1rem;
+      color: var(--blue);
+    }
+
+    .atm-screen small,
+    .shop-screen small,
+    .phone-face small,
+    .switch-face small {
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .shop-screen {
+      width: 100%;
+      height: 100%;
+      border-radius: 12px;
+      padding: 14px;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 10px;
+      background:
+        linear-gradient(180deg, rgba(42, 69, 49, 0.22), rgba(0, 0, 0, 0.18)),
+        #03100e;
+      border: 1px solid rgba(146, 255, 135, 0.15);
+      box-shadow: inset 0 0 20px rgba(146, 255, 135, 0.08);
+    }
+
+    .shop-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .shop-screen button {
+      min-height: 58px;
+      padding: 8px 10px;
+      border-radius: 14px;
+      font-size: 0.82rem;
+      text-align: left;
+      line-height: 1.3;
+    }
+
+    .shop-screen button.is-disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .phone-face {
+      background: linear-gradient(180deg, #10151c, #050709);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 12px;
+    }
+
+    .receiver {
+      width: 54px;
+      height: 140px;
+      border-radius: 999px;
+      margin: 0 auto;
+      background: linear-gradient(180deg, #758291, #313944);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      position: relative;
+    }
+
+    .receiver::before,
+    .receiver::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      width: 76px;
+      height: 24px;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: linear-gradient(180deg, #6e7c8d, #2d353f);
+    }
+
+    .receiver::before {
+      top: -6px;
+    }
+
+    .receiver::after {
+      bottom: -6px;
+    }
+
+    .switch-face {
+      background: linear-gradient(180deg, #1b1f25, #07090c);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 12px;
+      place-items: center;
+      align-content: center;
+    }
+
+    .switch-toggle {
+      width: 26px;
+      height: 72px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, #d8dde6, #4a5666);
+      position: relative;
+    }
+
+    .switch-toggle::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 8px;
+      width: 14px;
+      height: 28px;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: linear-gradient(180deg, #fff6df, #f6b45a);
     }
 
     .trap-door {
       position: absolute;
       left: 50%;
       top: 50%;
-      width: 250px;
-      height: 160px;
+      width: 260px;
+      height: 170px;
+      transform: translate3d(-130px, 40px, -120px) rotateX(90deg);
       transform-style: preserve-3d;
-      transform: translate3d(-50%, -50%, -1px) rotateX(90deg) translateZ(192px);
       pointer-events: none;
-      filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.54));
     }
 
-    .trap-door .panel-half {
+    .trap-grate,
+    .trap-hatch {
       position: absolute;
-      top: 0;
-      width: 50%;
-      height: 100%;
-      transform-origin: center left;
+      inset: 0;
+      border-radius: 18px;
+    }
+
+    .trap-grate {
       background:
-        linear-gradient(180deg, rgba(96, 106, 122, 0.8), rgba(29, 35, 44, 0.95)),
-        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0, rgba(255, 255, 255, 0.04) 12px, transparent 12px, transparent 24px);
-      border: 1px solid rgba(255, 255, 255, 0.06);
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0, rgba(255, 255, 255, 0.08) 8px, transparent 8px, transparent 16px),
+        linear-gradient(180deg, #5d6672, #1d222a);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.6);
     }
 
-    .trap-door .panel-half.right {
-      left: 50%;
-      transform-origin: center right;
+    .trap-hatch {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
     }
 
-    .trap-door .pit {
+    .trap-half {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01)),
+        #3b424d;
+    }
+
+    .trap-half.left {
+      transform-origin: left center;
+    }
+
+    .trap-half.right {
+      transform-origin: right center;
+    }
+
+    .steam-field {
       position: absolute;
-      inset: 8px;
-      background:
-        radial-gradient(circle at 50% 0%, rgba(255, 143, 80, 0.18), transparent 24%),
-        linear-gradient(180deg, #010101, #000 60%, #050505);
-      border-radius: 12px;
-      box-shadow: inset 0 24px 80px rgba(0, 0, 0, 0.88);
+      inset: -10px;
+      pointer-events: none;
+    }
+
+    .steam {
+      position: absolute;
+      bottom: 16px;
+      width: 16px;
+      height: 70px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(200, 216, 232, 0.22), rgba(200, 216, 232, 0));
+      filter: blur(5px);
       opacity: 0;
-      transition: opacity 0.22s ease;
     }
 
-    .stage-frame.trapdoor-open .trap-door .pit {
+    .crosshair {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 24px;
+      height: 24px;
+      transform: translate(-50%, -50%);
+      z-index: 28;
+      pointer-events: none;
+    }
+
+    .crosshair::before,
+    .crosshair::after,
+    .crosshair span::before,
+    .crosshair span::after {
+      content: "";
+      position: absolute;
+      background: rgba(255, 245, 215, 0.85);
+      box-shadow: 0 0 8px rgba(255, 189, 100, 0.3);
+    }
+
+    .crosshair::before {
+      left: 50%;
+      top: 0;
+      width: 2px;
+      height: 8px;
+      transform: translateX(-50%);
+    }
+
+    .crosshair::after {
+      left: 50%;
+      bottom: 0;
+      width: 2px;
+      height: 8px;
+      transform: translateX(-50%);
+    }
+
+    .crosshair span::before {
+      top: 50%;
+      left: 0;
+      width: 8px;
+      height: 2px;
+      transform: translateY(-50%);
+    }
+
+    .crosshair span::after {
+      top: 50%;
+      right: 0;
+      width: 8px;
+      height: 2px;
+      transform: translateY(-50%);
+    }
+
+    .interact-prompt {
+      position: absolute;
+      left: 50%;
+      bottom: 196px;
+      transform: translateX(-50%);
+      z-index: 29;
+      min-width: 210px;
+      max-width: min(90vw, 360px);
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(0, 0, 0, 0.64);
+      color: #fff8e9;
+      text-align: center;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      opacity: 0;
+      transition: opacity 0.16s ease;
+      pointer-events: none;
+    }
+
+    .interact-prompt.is-visible {
       opacity: 1;
     }
 
-    .stage-frame.trapdoor-open .trap-door .panel-half.left {
-      animation: doorLeftOpen 1.3s cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
+    .is-dark .world {
+      filter: brightness(0.1);
     }
 
-    .stage-frame.trapdoor-open .trap-door .panel-half.right {
-      animation: doorRightOpen 1.3s cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
+    .is-dark .spotlight {
+      opacity: 0.18;
     }
 
-    .machine-shell {
-      left: 50%;
-      top: 50%;
-      width: 420px;
-      height: 520px;
-      transform: translate3d(-50%, -50%, -240px);
+    .message-panel[hidden],
+    .intro[hidden] {
+      display: none;
     }
 
-    .machine-body {
-      position: absolute;
-      inset: 0;
-      border-radius: 40px 40px 28px 28px;
-      background:
-        linear-gradient(180deg, rgba(125, 136, 152, 0.94), rgba(57, 63, 73, 0.95) 24%, rgba(22, 26, 31, 0.98) 86%),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.1), transparent 20%, transparent 80%, rgba(255, 255, 255, 0.06));
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      box-shadow:
-        inset 0 2px 0 rgba(255, 255, 255, 0.18),
-        inset 0 -24px 30px rgba(0, 0, 0, 0.44),
-        0 36px 70px rgba(0, 0, 0, 0.5);
-    }
-
-    .machine-crown,
-    .machine-base,
-    .machine-screen,
-    .machine-window,
-    .machine-bank,
-    .machine-plate,
-    .machine-lever,
-    .machine-handle,
-    .machine-bolts,
-    .machine-lights,
-    .machine-shadow {
-      position: absolute;
-    }
-
-    .machine-shadow {
-      inset: auto 44px -28px 44px;
-      height: 46px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(0, 0, 0, 0.8), transparent 72%);
-      filter: blur(8px);
-      opacity: 0.8;
-    }
-
-    .machine-crown {
-      left: 46px;
-      right: 46px;
-      top: 26px;
-      height: 92px;
-      border-radius: 24px;
-      background:
-        linear-gradient(180deg, rgba(255, 171, 78, 0.95), rgba(129, 69, 20, 0.98));
-      border: 1px solid rgba(255, 224, 148, 0.44);
-      box-shadow:
-        inset 0 0 28px rgba(255, 248, 200, 0.18),
-        0 0 30px rgba(255, 149, 75, 0.24);
-      display: grid;
-      place-items: center;
-      text-align: center;
-      padding: 0 18px;
-    }
-
-    .machine-crown strong {
-      display: block;
-      font-size: 1.55rem;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.44);
-    }
-
-    .machine-crown span {
-      color: rgba(22, 14, 5, 0.85);
-      font-size: 0.85rem;
-      font-weight: 900;
-      letter-spacing: 0.26em;
-      text-transform: uppercase;
-    }
-
-    .machine-screen {
-      left: 72px;
-      right: 72px;
-      top: 136px;
-      height: 74px;
-      border-radius: 18px;
-      background:
-        linear-gradient(180deg, rgba(8, 10, 12, 0.95), rgba(17, 24, 31, 0.98));
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      box-shadow: inset 0 0 34px rgba(0, 255, 183, 0.08);
-      padding: 14px 18px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      font-size: 0.82rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: #d2fbdf;
-    }
-
-    .machine-screen strong {
-      display: block;
-      margin-top: 6px;
-      font-size: 1.16rem;
-      color: var(--acid);
-      letter-spacing: 0.04em;
-    }
-
-    .machine-window {
-      left: 54px;
-      right: 54px;
-      top: 228px;
-      height: 142px;
-      border-radius: 22px;
-      padding: 14px;
-      background:
-        linear-gradient(180deg, rgba(19, 25, 30, 0.96), rgba(5, 7, 10, 0.98));
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow:
-        inset 0 0 60px rgba(255, 192, 120, 0.08),
-        0 18px 36px rgba(0, 0, 0, 0.34);
-    }
-
-    .reel-frame {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-      height: 100%;
-    }
-
-    .reel {
-      position: relative;
-      overflow: hidden;
-      border-radius: 16px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 18%),
-        linear-gradient(180deg, #d6dee9, #bcc7d6 18%, #edf4ff 52%, #a3afbe 84%, #dbe4ef);
-      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.14);
-    }
-
-    .reel::before,
-    .reel::after {
-      content: "";
-      position: absolute;
-      left: 0;
-      right: 0;
-      height: 22px;
-      z-index: 2;
-      pointer-events: none;
-    }
-
-    .reel::before {
-      top: 0;
-      background: linear-gradient(180deg, rgba(15, 18, 23, 0.55), transparent);
-    }
-
-    .reel::after {
-      bottom: 0;
-      background: linear-gradient(180deg, transparent, rgba(15, 18, 23, 0.55));
-    }
-
-    .reel-strip {
-      position: absolute;
-      inset: 0;
-      display: grid;
-      grid-auto-rows: 33.333%;
-      transition: transform 1.35s cubic-bezier(0.16, 0.92, 0.12, 1);
-      will-change: transform;
-    }
-
-    .symbol {
-      display: grid;
-      place-items: center;
-      color: #18202d;
-      font-weight: 900;
-      font-size: 2.4rem;
-      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.75);
-      letter-spacing: -0.04em;
-      border-bottom: 1px solid rgba(11, 16, 21, 0.08);
-      user-select: none;
-    }
-
-    .symbol.small {
-      font-size: 1.84rem;
-    }
-
-    .machine-payline {
-      position: absolute;
-      left: 56px;
-      right: 56px;
-      top: 287px;
-      height: 24px;
-      border-top: 2px dashed rgba(255, 111, 103, 0.5);
-      border-bottom: 2px dashed rgba(255, 111, 103, 0.5);
-      pointer-events: none;
-      opacity: 0.75;
-    }
-
-    .machine-bank {
-      left: 56px;
-      right: 56px;
-      bottom: 122px;
-      height: 84px;
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .bank-cell {
-      border-radius: 16px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
-        rgba(7, 10, 14, 0.84);
-      padding: 10px 12px;
-      display: grid;
-      align-content: center;
-      gap: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      font-size: 0.75rem;
-      color: var(--muted);
-    }
-
-    .bank-cell strong {
-      color: var(--text);
-      font-size: 1.04rem;
-      letter-spacing: 0.02em;
-    }
-
-    .machine-plate {
-      left: 74px;
-      right: 74px;
-      bottom: 54px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
-    .machine-button {
-      min-width: 160px;
-      background:
-        linear-gradient(180deg, rgba(255, 185, 90, 0.94), rgba(125, 73, 27, 0.96)),
-        #bb6d29;
-      color: #181006;
-      border-color: rgba(255, 222, 154, 0.55);
-      box-shadow:
-        inset 0 2px 0 rgba(255, 249, 216, 0.34),
-        0 16px 32px rgba(0, 0, 0, 0.28);
-    }
-
-    .machine-button[disabled],
-    .shop-card button[disabled] {
-      opacity: 0.46;
-      cursor: not-allowed;
-      transform: none;
-      box-shadow: none;
-    }
-
-    .machine-plate small {
-      color: var(--muted);
-      font-size: 0.82rem;
-      line-height: 1.5;
-      max-width: 140px;
-      text-align: right;
-    }
-
-    .machine-lights {
-      left: 28px;
-      right: 28px;
-      top: 18px;
-      height: 14px;
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      pointer-events: none;
-    }
-
-    .machine-lights span {
-      flex: 1;
-      border-radius: 999px;
-      background: linear-gradient(180deg, rgba(255, 220, 140, 0.95), rgba(255, 126, 69, 0.6));
-      box-shadow: 0 0 10px rgba(255, 164, 92, 0.54);
-      opacity: 0.8;
-      animation: pulseLight 1.8s ease-in-out infinite;
-    }
-
-    .machine-lights span:nth-child(2n) {
-      animation-delay: 0.2s;
-    }
-
-    .machine-lights span:nth-child(3n) {
-      animation-delay: 0.35s;
-    }
-
-    .machine-lever {
-      right: -36px;
-      top: 190px;
-      width: 18px;
-      height: 190px;
-      border-radius: 999px;
-      background:
-        linear-gradient(180deg, rgba(203, 214, 229, 0.92), rgba(84, 91, 103, 0.95));
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      transform-origin: top center;
-      transition: transform 0.25s ease;
-      box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.24);
-    }
-
-    .machine-shell.spinning .machine-lever {
-      transform: rotate(13deg);
-    }
-
-    .machine-handle {
-      position: absolute;
-      top: 164px;
-      right: -52px;
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      background:
-        radial-gradient(circle at 35% 35%, rgba(255, 237, 187, 0.95), rgba(179, 83, 42, 0.98));
-      border: 1px solid rgba(255, 233, 186, 0.34);
-      box-shadow: 0 0 22px rgba(255, 146, 68, 0.32);
-    }
-
-    .machine-bolts {
-      inset: 12px;
-      pointer-events: none;
-    }
-
-    .machine-bolts span {
-      position: absolute;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: linear-gradient(180deg, rgba(220, 226, 236, 0.92), rgba(82, 91, 107, 0.95));
-      border: 1px solid rgba(255, 255, 255, 0.12);
-    }
-
-    .machine-bolts span:nth-child(1) { left: 0; top: 0; }
-    .machine-bolts span:nth-child(2) { right: 0; top: 0; }
-    .machine-bolts span:nth-child(3) { left: 0; bottom: 0; }
-    .machine-bolts span:nth-child(4) { right: 0; bottom: 0; }
-
-    .light-rig {
-      left: -70px;
-      top: -318px;
-      width: 140px;
-      height: 190px;
-      transform: translateZ(-210px);
-    }
-
-    .light-rig::before {
-      content: "";
-      position: absolute;
-      left: 64px;
-      top: 0;
-      width: 12px;
-      height: 118px;
-      border-radius: 999px;
-      background: linear-gradient(180deg, #555f6c, #20242c);
-    }
-
-    .light-rig::after {
-      content: "";
-      position: absolute;
-      left: 20px;
-      top: 102px;
-      width: 100px;
-      height: 80px;
-      border-radius: 50%;
-      background:
-        radial-gradient(circle at 50% 50%, rgba(255, 204, 120, 0.58), rgba(255, 102, 68, 0.18), transparent 70%);
-      filter: blur(1px);
-    }
-
-    .pipe {
-      width: 60px;
-      height: 320px;
-      top: -252px;
-      background:
-        linear-gradient(90deg, rgba(35, 42, 49, 0.98), rgba(105, 116, 131, 0.95), rgba(44, 49, 58, 0.98));
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 26px;
-      transform: translateZ(-420px);
-      box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.34);
-    }
-
-    .pipe.left { left: -520px; }
-    .pipe.right { left: 460px; }
-
-    .door {
-      width: 220px;
-      height: 420px;
-      left: -110px;
-      top: -220px;
-      transform: translateZ(-519px);
-      border-radius: 28px 28px 10px 10px;
-      background:
-        linear-gradient(180deg, rgba(15, 17, 20, 0.96), rgba(31, 37, 46, 0.98)),
-        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0, rgba(255, 255, 255, 0.03) 18px, transparent 18px, transparent 36px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.44);
-    }
-
-    .door::before {
-      content: "";
-      position: absolute;
-      left: 18px;
-      right: 18px;
-      top: 28px;
-      height: 50px;
-      border-radius: 12px;
-      background:
-        linear-gradient(180deg, rgba(255, 153, 89, 0.2), rgba(255, 120, 71, 0.03)),
-        rgba(255, 255, 255, 0.02);
-      border: 1px solid rgba(255, 174, 111, 0.2);
-    }
-
-    .hazard-strip {
-      width: 300px;
-      height: 32px;
-      left: -150px;
-      top: 214px;
-      transform: translateZ(-322px) rotateX(90deg);
-      background:
-        repeating-linear-gradient(135deg, #15181c 0, #15181c 14px, #d68643 14px, #d68643 28px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .deco-panel {
-      width: 130px;
-      height: 200px;
-      top: -120px;
-      border-radius: 20px;
-      background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.2)),
-        rgba(20, 26, 34, 0.92);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: inset 0 0 26px rgba(0, 0, 0, 0.42);
-      transform: translateZ(-360px);
-    }
-
-    .deco-panel.left { left: -420px; }
-    .deco-panel.right { left: 290px; }
-
-    .deco-panel::before {
-      content: "";
-      position: absolute;
-      left: 18px;
-      right: 18px;
-      top: 18px;
-      bottom: 18px;
-      border-radius: 14px;
-      border: 1px dashed rgba(255, 184, 95, 0.18);
-    }
-
-    .chain {
-      width: 10px;
-      height: 210px;
-      top: -306px;
-      background:
-        repeating-linear-gradient(180deg, #657182 0, #657182 10px, #2b323d 10px, #2b323d 20px);
-      border-radius: 999px;
-      transform: translateZ(-260px);
-      opacity: 0.78;
-    }
-
-    .chain.left { left: -330px; }
-    .chain.right { left: 320px; }
-
-    .cage-beam {
-      width: 980px;
-      height: 18px;
-      left: -490px;
-      top: -300px;
-      transform: translateZ(-320px);
-      border-radius: 999px;
-      background: linear-gradient(90deg, rgba(76, 84, 96, 0.9), rgba(131, 144, 161, 0.9), rgba(56, 63, 73, 0.9));
-      border: 1px solid rgba(255, 255, 255, 0.06);
-    }
-
-    .look-cue {
-      position: absolute;
-      left: 18px;
-      bottom: 18px;
-      padding: 12px 14px;
-      border-radius: 14px;
-      background: rgba(8, 10, 13, 0.72);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      backdrop-filter: blur(12px);
-      max-width: 290px;
-      color: var(--muted);
-      font-size: 0.92rem;
-      line-height: 1.55;
-    }
-
-    .look-cue strong {
-      color: var(--text);
-    }
-
-    .status-overlay {
-      position: absolute;
-      inset: 16px;
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 12px;
-      pointer-events: none;
-    }
-
-    .status-chip {
-      padding: 10px 14px;
-      border-radius: 999px;
-      background: rgba(11, 13, 17, 0.72);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      color: var(--muted);
-      backdrop-filter: blur(12px);
-      font-size: 0.85rem;
-    }
-
-    .status-chip strong {
-      color: var(--text);
-    }
-
-    .pointer-lock-note {
-      text-align: right;
-    }
-
-    .pointer-lock-note .pointer-state {
-      color: var(--gold);
-      display: block;
-      margin-top: 4px;
-      font-size: 0.78rem;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    .overlay {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      background:
-        linear-gradient(180deg, rgba(3, 4, 6, 0.5), rgba(3, 4, 6, 0.82)),
-        radial-gradient(circle at 50% 18%, rgba(255, 148, 76, 0.12), transparent 24%);
-      transition: opacity 0.22s ease, visibility 0.22s ease;
-      z-index: 6;
-    }
-
-    .overlay[hidden] {
-      opacity: 0;
-      visibility: hidden;
-      pointer-events: none;
-    }
-
-    .overlay-card {
-      width: min(100%, 660px);
-      border-radius: 26px;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
-        rgba(10, 12, 16, 0.94);
-      box-shadow: 0 36px 90px rgba(0, 0, 0, 0.48);
-      padding: 26px 26px 24px;
-    }
-
-    .overlay-card h2 {
-      margin: 0 0 10px;
-      font-size: clamp(1.8rem, 4vw, 2.6rem);
-      line-height: 0.98;
-    }
-
-    .overlay-card p {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.7;
-    }
-
-    .overlay-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-      margin: 20px 0;
-    }
-
-    .overlay-stat {
-      border-radius: 16px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(255, 255, 255, 0.04);
-      padding: 14px;
-    }
-
-    .overlay-stat span {
-      display: block;
-      margin-bottom: 5px;
-      color: var(--muted);
-      font-size: 0.82rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    .overlay-stat strong {
-      font-size: 1.14rem;
-    }
-
-    .overlay-actions {
-      margin-top: 20px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-
-    .sidebar {
-      display: grid;
-      gap: 16px;
-    }
-
-    .sidebar-card {
-      padding: 18px;
-      border-radius: var(--radius-xl);
-    }
-
-    .sidebar-card h2,
-    .sidebar-card h3 {
-      margin: 0 0 12px;
-      font-size: 1.12rem;
-    }
-
-    .resource-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .resource-cell {
-      border-radius: var(--radius-md);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(255, 255, 255, 0.04);
-      padding: 12px 13px;
-    }
-
-    .resource-cell span {
-      display: block;
-      color: var(--muted);
-      margin-bottom: 6px;
-      font-size: 0.8rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    .resource-cell strong {
-      font-size: 1.08rem;
-    }
-
-    .resource-cell strong.danger {
-      color: var(--danger);
-    }
-
-    .resource-cell strong.gold {
-      color: var(--gold);
-    }
-
-    .resource-cell strong.acid {
-      color: var(--acid);
-    }
-
-    .section-copy,
-    .log-list,
-    .shop-list,
-    .rules-list {
-      display: grid;
-      gap: 10px;
-    }
-
-    .section-copy p,
-    .rules-list li,
-    .shop-card p,
-    .log-list li {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.65;
-    }
-
-    .rules-list {
-      list-style: none;
-      padding: 0;
-    }
-
-    .rules-list strong,
-    .shop-card strong,
-    .log-list strong {
-      color: var(--text);
-    }
-
-    .machine-status {
-      min-height: 84px;
-      border-radius: var(--radius-md);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
-        rgba(8, 10, 14, 0.8);
-      padding: 14px;
-    }
-
-    .machine-status p {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.65;
-    }
-
-    .machine-status strong {
-      color: var(--text);
-    }
-
-    .shop-list {
-      margin-top: 14px;
-    }
-
-    .shop-card {
-      border-radius: 18px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.015)),
-        rgba(10, 12, 16, 0.78);
-      padding: 14px;
-      display: grid;
-      gap: 10px;
-    }
-
-    .shop-card header {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      align-items: baseline;
-    }
-
-    .shop-card h3 {
-      margin: 0;
-      font-size: 1rem;
-    }
-
-    .shop-price {
-      color: var(--gold);
-      font-weight: 800;
-      font-size: 0.92rem;
-    }
-
-    .shop-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .shop-tags span {
-      padding: 7px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(255, 255, 255, 0.04);
-      color: var(--muted);
-      font-size: 0.76rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    .inventory-list,
-    .log-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-
-    .inventory-item,
-    .log-item {
-      border-radius: 16px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(255, 255, 255, 0.04);
-      padding: 12px 14px;
-    }
-
-    .inventory-item .stack {
-      color: var(--gold);
-      font-size: 0.8rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-left: 8px;
-    }
-
-    .inventory-empty {
-      color: var(--muted);
-    }
-
-    .math-card code {
-      display: block;
-      white-space: pre-wrap;
-      border-radius: 16px;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      padding: 14px;
-      color: #dbe7f7;
-      font-size: 0.85rem;
-      line-height: 1.62;
-    }
-
-    .footer-note {
-      margin-top: 16px;
-      color: var(--muted);
-      text-align: center;
-      line-height: 1.6;
-      font-size: 0.92rem;
-    }
-
-    .flash {
-      animation: flashWin 0.55s ease;
-    }
-
-    @keyframes pulseLight {
-      0%, 100% { opacity: 0.55; transform: scaleX(0.96); }
-      50% { opacity: 1; transform: scaleX(1); }
-    }
-
-    @keyframes flashWin {
-      0% { box-shadow: 0 0 0 rgba(255, 212, 124, 0); }
-      50% { box-shadow: 0 0 0 4px rgba(255, 212, 124, 0.22), 0 0 56px rgba(255, 149, 75, 0.24); }
-      100% { box-shadow: 0 0 0 rgba(255, 212, 124, 0); }
-    }
-
-    @keyframes stageShake {
-      0%, 100% { transform: translateX(0); }
-      25% { transform: translateX(-6px); }
-      75% { transform: translateX(6px); }
-    }
-
-    @keyframes doorLeftOpen {
-      0% { transform: rotateY(0deg); }
-      100% { transform: perspective(800px) rotateY(85deg) translateX(-12px); }
-    }
-
-    @keyframes doorRightOpen {
-      0% { transform: rotateY(0deg); }
-      100% { transform: perspective(800px) rotateY(-85deg) translateX(12px); }
-    }
-
-    @keyframes cameraDrop {
-      0% { transform: rotateX(var(--camera-pitch, 0deg)) rotateY(var(--camera-yaw, 0deg)) translate3d(0, 0, 0) scale(1); }
-      25% { transform: rotateX(calc(var(--camera-pitch, 0deg) + 8deg)) rotateY(calc(var(--camera-yaw, 0deg) + 2deg)) translate3d(0, 10px, 0) scale(1.01); }
-      100% { transform: rotateX(calc(var(--camera-pitch, 0deg) + 68deg)) rotateY(calc(var(--camera-yaw, 0deg) + 4deg)) translate3d(0, 420px, 640px) scale(1.08); }
-    }
-
-    @media (max-width: 1200px) {
-      .hero,
-      .game-layout {
-        grid-template-columns: 1fr;
+    @media (max-width: 960px) {
+      .topbar {
+        border-radius: 24px;
       }
 
-      .stage-panel,
-      .stage-frame {
-        min-height: 690px;
+      .top-tags {
+        width: 100%;
+      }
+
+      .ledger,
+      .quota-table {
+        position: fixed;
+        width: min(300px, calc(100vw - 36px));
       }
     }
 
-    @media (max-width: 740px) {
-      .page {
-        width: min(calc(100% - 16px), 1480px);
-        padding-top: 12px;
+    @media (max-width: 760px) {
+      .hud,
+      .ledger,
+      .quota-table {
+        width: calc(100vw - 20px);
+        left: 10px;
+        right: 10px;
       }
 
-      .hero-copy,
-      .hero-notes,
-      .sidebar-card,
-      .overlay-card {
-        padding: 18px;
+      .hud {
+        bottom: 10px;
       }
 
-      .hero-stat-grid,
-      .resource-grid,
-      .overlay-grid {
-        grid-template-columns: 1fr;
+      .ledger {
+        top: 78px;
       }
 
-      .stage-panel {
-        padding: 8px;
+      .quota-table {
+        display: none;
       }
 
-      .stage-frame {
-        min-height: 620px;
-      }
-
-      .viewport {
-        min-height: 604px;
-      }
-
-      .look-cue {
-        max-width: 220px;
-        font-size: 0.86rem;
-      }
-
-      .machine-shell {
-        transform: translate3d(-50%, -50%, -240px) scale(0.84);
+      .stat-grid {
+        grid-template-columns: 1fr 1fr;
       }
     }
   </style>
 </head>
 <body>
-  <div class="page">
-    <div class="topbar">
+  <div class="page" id="pageRoot">
+    <header class="topbar">
       <a class="back-link" href="/">Back to hub</a>
-      <div class="tag-row">
-        <span class="tag">Type: single-player</span>
-        <span class="tag">Controls: pointer lock + click</span>
-        <span class="tag">Leaderboard: none</span>
+      <div class="top-tags">
+        <span class="chip">Type: single-player</span>
+        <span class="chip">Controls: pointer lock + click + E</span>
+        <span class="chip">Audio: GSAP + Howler</span>
       </div>
+    </header>
+
+    <section class="ledger">
+      <div>
+        <p class="eyebrow">Quota Ledger</p>
+        <h2 style="margin:8px 0 0;">Debt History</h2>
+      </div>
+      <ol id="ledgerList"></ol>
+    </section>
+
+    <section class="quota-table">
+      <div>
+        <p class="eyebrow">Payout Table</p>
+        <h2 style="margin:8px 0 0;">Debt Engine Rules</h2>
+      </div>
+      <ul>
+        <li>Gears: +$10</li>
+        <li>Bars: +$50</li>
+        <li>Diamonds: +$500</li>
+        <li>Skulls: large cash, but lose 1 extra round</li>
+        <li>Emblem: activates the bonus multiplier</li>
+        <li>Blank: no payout</li>
+      </ul>
+    </section>
+
+    <section class="hud">
+      <div class="hud-header">
+        <div>
+          <p class="eyebrow">Debt Engine</p>
+          <h2 style="margin:8px 0 0;">Quota Drop</h2>
+        </div>
+        <button class="ui-button" type="button" id="lockButton">Lock Camera</button>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <span>Cash</span>
+          <strong id="cashValue">$0</strong>
+        </div>
+        <div class="stat-card">
+          <span>Deposited</span>
+          <strong id="depositedValue">$0</strong>
+        </div>
+        <div class="stat-card">
+          <span>Quota</span>
+          <strong id="quotaValue">$500</strong>
+        </div>
+        <div class="stat-card">
+          <span>Rounds</span>
+          <strong id="roundsValue">10</strong>
+        </div>
+        <div class="stat-card">
+          <span>Credits</span>
+          <strong id="creditsValue">0</strong>
+        </div>
+        <div class="stat-card">
+          <span>Multiplier</span>
+          <strong id="multiplierValue">x1</strong>
+        </div>
+      </div>
+      <div class="prompt-row">
+        <div class="prompt-key">E</div>
+        <div class="prompt-copy" id="promptCopy">Look at the machine, ATM, phone, or light switch to interact.</div>
+      </div>
+      <p class="status-text" id="statusText">Pull the orange sphere to spin. Bank cash before the floor judges your debt.</p>
+    </section>
+
+    <div class="darkness-alert" id="darknessAlert">Darkness event active. Find the wall switch.</div>
+
+    <section class="intro" id="introPanel">
+      <p class="eyebrow">High-Stakes Slot Roguelike</p>
+      <h1>Quota Drop</h1>
+      <p>
+        Face the Debt Engine, clear your quota with limited rounds, bank your cash at the ATM, and survive the trap door.
+        Use pointer lock for full 360° look control. Pull the lever down to spin.
+      </p>
+      <div class="intro-actions">
+        <button class="ui-button" type="button" id="startButton">Enter Chamber</button>
+        <button class="ui-button" type="button" id="startLockedButton">Enter + Lock Camera</button>
+      </div>
+    </section>
+
+    <section class="message-panel" id="messagePanel" hidden>
+      <p class="eyebrow" id="messageEyebrow">Line open</p>
+      <h2 id="messageTitle">Wall Phone</h2>
+      <p id="messageText">Someone is calling.</p>
+      <div class="phone-actions" id="messageActions"></div>
+    </section>
+
+    <div class="stage">
+      <div class="spotlight" id="spotlight"></div>
+      <div class="viewport" id="viewport">
+        <div class="camera" id="camera">
+          <div class="world" id="world">
+            <div class="plane floor"></div>
+            <div class="plane ceiling"></div>
+            <div class="plane wall back"></div>
+            <div class="plane wall left"></div>
+            <div class="plane wall right"></div>
+
+            <div class="machine targetable" id="machine">
+              <div class="front">
+                <div class="machine-badge">
+                  Debt Engine
+                  <strong>Quota Drop</strong>
+                </div>
+                <div class="machine-readout">
+                  <div class="readout">
+                    <span>Quota</span>
+                    <strong id="machineQuota">$500</strong>
+                  </div>
+                  <div class="readout">
+                    <span>Rounds Left</span>
+                    <strong id="machineRounds">10</strong>
+                  </div>
+                </div>
+                <div class="reels">
+                  <div class="reel"><div class="reel-strip" id="reel0"></div><div class="reel-window"></div></div>
+                  <div class="reel"><div class="reel-strip" id="reel1"></div><div class="reel-window"></div></div>
+                  <div class="reel"><div class="reel-strip" id="reel2"></div><div class="reel-window"></div></div>
+                </div>
+                <div class="machine-footer">
+                  <p id="spinSummary">Pull the lever down to spin. Bank cash at the ATM before the quota closes.</p>
+                  <div class="stat-card" style="padding:10px 12px; min-width:96px;">
+                    <span>Last Win</span>
+                    <strong id="lastWinValue">$0</strong>
+                  </div>
+                </div>
+                <div class="machine-glow" id="machineGlow"></div>
+              </div>
+              <div class="back"></div>
+              <div class="left-face"></div>
+              <div class="right-face"></div>
+              <div class="top-face"></div>
+              <div class="bottom-face"></div>
+              <div class="machine-lever targetable" id="lever">
+                <div class="rod"></div>
+                <div class="machine-sphere" id="leverKnob"></div>
+              </div>
+            </div>
+
+            <div class="atm targetable" id="atm">
+              <div class="panel3d">
+                <div class="panel3d-face front">
+                  <div class="atm-screen">
+                    <strong>ATM / DEPOSIT LOCKER</strong>
+                    <small>Cash on hand is not safe. Look here and press E to bank it into deposited cash.</small>
+                    <div class="stat-card" style="padding:10px 12px;">
+                      <span>Ready to Bank</span>
+                      <strong id="atmCashPreview">$0</strong>
+                    </div>
+                  </div>
+                </div>
+                <div class="panel3d-face back"></div>
+                <div class="panel3d-face left"></div>
+                <div class="panel3d-face right"></div>
+                <div class="panel3d-face top"></div>
+                <div class="panel3d-face bottom"></div>
+              </div>
+            </div>
+
+            <div class="shop targetable" id="shop">
+              <div class="panel3d">
+                <div class="panel3d-face front">
+                  <div class="shop-screen">
+                    <div>
+                      <strong style="display:block; color:var(--green);">CRT SHOP</strong>
+                      <small>Spend Shop Credits on chamber hacks.</small>
+                    </div>
+                    <div class="stat-card" style="padding:10px 12px;">
+                      <span>Shop Credits</span>
+                      <strong id="shopCreditsInline">0</strong>
+                    </div>
+                    <div class="shop-grid" id="shopGrid"></div>
+                  </div>
+                </div>
+                <div class="panel3d-face back"></div>
+                <div class="panel3d-face left"></div>
+                <div class="panel3d-face right"></div>
+                <div class="panel3d-face top"></div>
+                <div class="panel3d-face bottom"></div>
+              </div>
+            </div>
+
+            <div class="phone-box targetable" id="phone">
+              <div class="panel3d">
+                <div class="panel3d-face front">
+                  <div class="phone-face">
+                    <small>WALL PHONE</small>
+                    <div class="receiver"></div>
+                    <small>Look here and press E to answer. Not every call helps.</small>
+                  </div>
+                </div>
+                <div class="panel3d-face back"></div>
+                <div class="panel3d-face left"></div>
+                <div class="panel3d-face right"></div>
+                <div class="panel3d-face top"></div>
+                <div class="panel3d-face bottom"></div>
+              </div>
+            </div>
+
+            <div class="switch-box targetable" id="lightSwitch">
+              <div class="panel3d">
+                <div class="panel3d-face front">
+                  <div class="switch-face">
+                    <small>LIGHT SWITCH</small>
+                    <div class="switch-toggle"></div>
+                    <small>Press E to restore the room if the chamber cuts power.</small>
+                  </div>
+                </div>
+                <div class="panel3d-face back"></div>
+                <div class="panel3d-face left"></div>
+                <div class="panel3d-face right"></div>
+                <div class="panel3d-face top"></div>
+                <div class="panel3d-face bottom"></div>
+              </div>
+            </div>
+
+            <div class="trap-door targetable" id="trapDoor">
+              <div class="trap-grate"></div>
+              <div class="trap-hatch">
+                <div class="trap-half left" id="trapLeft"></div>
+                <div class="trap-half right" id="trapRight"></div>
+              </div>
+              <div class="steam-field" id="steamField">
+                <div class="steam" style="left:24px;"></div>
+                <div class="steam" style="left:82px;"></div>
+                <div class="steam" style="left:142px;"></div>
+                <div class="steam" style="left:206px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="crosshair"><span></span></div>
+      <div class="interact-prompt" id="interactPrompt"></div>
     </div>
-
-    <section class="hero">
-      <article class="panel hero-copy">
-        <p class="eyebrow">PlayR Industrial Run</p>
-        <h1>Quota Drop</h1>
-        <p>
-          You wake up in a rusted payout chamber with one glowing machine, a debt quota on the screen, and a trap door under your feet.
-          Clear the quota before the round counter runs dry, buy grim little charms between spins, and keep climbing deeper into the facility.
-          It keeps the high-pressure slot-roguelike loop you asked for, but with its own industrial bunker skin and original presentation.
-        </p>
-      </article>
-
-      <aside class="panel hero-notes">
-        <div class="hero-stat-grid">
-          <div class="hero-stat">
-            <span>Core Goal</span>
-            <strong>Meet the quota in time</strong>
-          </div>
-          <div class="hero-stat">
-            <span>Failure</span>
-            <strong>Trap door game over</strong>
-          </div>
-          <div class="hero-stat">
-            <span>View</span>
-            <strong>CSS 3D pseudo-first-person</strong>
-          </div>
-          <div class="hero-stat">
-            <span>Build</span>
-            <strong>Single-file HTML/CSS/JS</strong>
-          </div>
-        </div>
-      </aside>
-    </section>
-
-    <section class="game-layout">
-      <article class="panel stage-panel">
-        <div class="stage-frame" id="stageFrame">
-          <div class="viewport" id="viewport" aria-label="Quota Drop 3D room view">
-            <div class="camera" id="camera">
-              <div class="world">
-                <div class="room-face back"></div>
-                <div class="room-face left"></div>
-                <div class="room-face right"></div>
-                <div class="room-face ceiling"></div>
-                <div class="floor-grid"></div>
-
-                <div class="trap-door" aria-hidden="true">
-                  <div class="pit"></div>
-                  <div class="panel-half left"></div>
-                  <div class="panel-half right"></div>
-                </div>
-
-                <div class="cage-beam"></div>
-                <div class="chain left"></div>
-                <div class="chain right"></div>
-                <div class="pipe left"></div>
-                <div class="pipe right"></div>
-                <div class="deco-panel left"></div>
-                <div class="deco-panel right"></div>
-                <div class="door"></div>
-                <div class="hazard-strip"></div>
-                <div class="light-rig"></div>
-
-                <div class="machine-shell" id="machineShell">
-                  <div class="machine-shadow"></div>
-                  <div class="machine-body"></div>
-                  <div class="machine-lights" aria-hidden="true">
-                    <span></span><span></span><span></span><span></span><span></span><span></span>
-                  </div>
-                  <div class="machine-bolts" aria-hidden="true">
-                    <span></span><span></span><span></span><span></span>
-                  </div>
-                  <div class="machine-crown">
-                    <div>
-                      <span>Debt Engine</span>
-                      <strong>Quota Drop</strong>
-                    </div>
-                  </div>
-                  <div class="machine-screen">
-                    <div>
-                      <span>Quota</span>
-                      <strong id="machineQuota">$500</strong>
-                    </div>
-                    <div>
-                      <span>Rounds Left</span>
-                      <strong id="machineRounds">10</strong>
-                    </div>
-                  </div>
-                  <div class="machine-window">
-                    <div class="reel-frame">
-                      <div class="reel"><div class="reel-strip" id="reelStrip0"></div></div>
-                      <div class="reel"><div class="reel-strip" id="reelStrip1"></div></div>
-                      <div class="reel"><div class="reel-strip" id="reelStrip2"></div></div>
-                    </div>
-                  </div>
-                  <div class="machine-payline"></div>
-                  <div class="machine-bank">
-                    <div class="bank-cell">
-                      <span>Cash</span>
-                      <strong id="machineCash">$0</strong>
-                    </div>
-                    <div class="bank-cell">
-                      <span>Level</span>
-                      <strong id="machineLevel">1</strong>
-                    </div>
-                    <div class="bank-cell">
-                      <span>Last Win</span>
-                      <strong id="machineLastWin">$0</strong>
-                    </div>
-                  </div>
-                  <div class="machine-plate">
-                    <button class="machine-button" id="spinBtn" type="button">Spin Machine</button>
-                    <small id="spinHint">Each spin uses 1 round. Buy charms before you pull again.</small>
-                  </div>
-                  <div class="machine-lever"></div>
-                  <div class="machine-handle"></div>
-                </div>
-              </div>
-            </div>
-
-            <div class="status-overlay">
-              <div class="status-chip">
-                View: <strong id="viewLabel">Front Lock</strong>
-              </div>
-              <div class="status-chip pointer-lock-note">
-                Mouse look uses Pointer Lock
-                <span class="pointer-state" id="pointerState">Click the room to engage</span>
-              </div>
-            </div>
-
-            <div class="look-cue">
-              <strong>Camera:</strong> click the room to lock the pointer, then move the mouse to look around the chamber.
-              Press <strong>Esc</strong> to release the cursor.
-            </div>
-          </div>
-
-          <div class="overlay" id="introOverlay">
-            <div class="overlay-card">
-              <p class="eyebrow">Run Briefing</p>
-              <h2>Clear the debt. Avoid the drop.</h2>
-              <p>
-                The chamber gives you a fixed quota and a limited number of pulls. If your cash total reaches the target before the round clock hits zero,
-                the machine escalates to a harder level. If not, the floor opens.
-              </p>
-              <div class="overlay-grid">
-                <div class="overlay-stat">
-                  <span>Start Quota</span>
-                  <strong id="introQuota">$500</strong>
-                </div>
-                <div class="overlay-stat">
-                  <span>Rounds</span>
-                  <strong id="introRounds">10</strong>
-                </div>
-                <div class="overlay-stat">
-                  <span>Shop</span>
-                  <strong>Persistent charms</strong>
-                </div>
-                <div class="overlay-stat">
-                  <span>Fail State</span>
-                  <strong>Trap door</strong>
-                </div>
-              </div>
-              <div class="overlay-actions">
-                <button type="button" id="startRunBtn">Start Run</button>
-                <button class="pill-button" type="button" id="lockPointerBtn">Lock Camera</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="overlay" id="gameOverOverlay" hidden>
-            <div class="overlay-card">
-              <p class="eyebrow">System Verdict</p>
-              <h2>Quota missed.</h2>
-              <p id="gameOverSummary">
-                The chamber posted its final debt reading and opened the floor.
-              </p>
-              <div class="overlay-grid">
-                <div class="overlay-stat">
-                  <span>Final Cash</span>
-                  <strong id="gameOverCash">$0</strong>
-                </div>
-                <div class="overlay-stat">
-                  <span>Final Quota</span>
-                  <strong id="gameOverQuota">$0</strong>
-                </div>
-                <div class="overlay-stat">
-                  <span>Level Reached</span>
-                  <strong id="gameOverLevel">1</strong>
-                </div>
-                <div class="overlay-stat">
-                  <span>Best Level</span>
-                  <strong id="bestLevelStat">1</strong>
-                </div>
-              </div>
-              <div class="overlay-actions">
-                <button type="button" id="restartRunBtn">Restart Run</button>
-                <button class="pill-button" type="button" id="retryPointerBtn">Lock Camera</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </article>
-
-      <aside class="sidebar">
-        <section class="panel sidebar-card">
-          <h2>Run Ledger</h2>
-          <div class="resource-grid">
-            <div class="resource-cell">
-              <span>Cash</span>
-              <strong id="cashValue">$0</strong>
-            </div>
-            <div class="resource-cell">
-              <span>Quota</span>
-              <strong class="gold" id="quotaValue">$500</strong>
-            </div>
-            <div class="resource-cell">
-              <span>Rounds Left</span>
-              <strong id="roundsValue">10</strong>
-            </div>
-            <div class="resource-cell">
-              <span>Current Level</span>
-              <strong class="acid" id="levelValue">1</strong>
-            </div>
-            <div class="resource-cell">
-              <span>Spin Cost</span>
-              <strong id="spinCostValue">Free</strong>
-            </div>
-            <div class="resource-cell">
-              <span>Last Payout</span>
-              <strong class="danger" id="lastWinValue">$0</strong>
-            </div>
-          </div>
-        </section>
-
-        <section class="panel sidebar-card">
-          <h2>Machine Status</h2>
-          <div class="machine-status">
-            <p id="statusText"><strong>Stand by.</strong> Lock in, buy smart, and start the first pull.</p>
-          </div>
-        </section>
-
-        <section class="panel sidebar-card">
-          <h2>Charm Market</h2>
-          <div class="section-copy">
-            <p>Between pulls you can turn cash into little rule-bending upgrades. These stay active for the full run and can stack.</p>
-          </div>
-          <div class="shop-list" id="shopList"></div>
-        </section>
-
-        <section class="panel sidebar-card">
-          <h2>Owned Charms</h2>
-          <ul class="inventory-list" id="inventoryList">
-            <li class="inventory-empty">No charms purchased yet.</li>
-          </ul>
-        </section>
-
-        <section class="panel sidebar-card">
-          <h2>Recent Events</h2>
-          <ul class="log-list" id="logList"></ul>
-        </section>
-
-        <section class="panel sidebar-card">
-          <h2>How It Plays</h2>
-          <ul class="rules-list">
-            <li><strong>1.</strong> Each pull spends one round from the chamber timer.</li>
-            <li><strong>2.</strong> Cash persists between levels, so a strong streak can front-load later quotas.</li>
-            <li><strong>3.</strong> Meeting the quota at or before zero rounds lifts you into the next level and refreshes the timer.</li>
-            <li><strong>4.</strong> Missing the quota when rounds run out triggers the trap door and ends the run.</li>
-          </ul>
-        </section>
-
-        <section class="panel sidebar-card math-card">
-          <h2>Probability Tuning</h2>
-          <div class="section-copy">
-            <p>The slot math lives in two places inside the script: the reel strips and the payout table. Add more copies of a symbol to make it more common, or change a payout value to tune how lucrative it is.</p>
-          </div>
-          <code>const REEL_STRIPS = [
-  ['gear', 'bar', 'ember', 'gear', 'skull', 'seven', 'bar', 'vault', 'gear', 'ember', 'wild', 'gear'],
-  ...
-];
-
-const PAYOUT_RULES = {
-  seven: { triple: 140, pair: 28, singleBonus: 0 },
-  wild: { triple: 220, pair: 44, singleBonus: 0 },
-  ...
-};</code>
-        </section>
-      </aside>
-    </section>
-
-    <p class="footer-note">
-      Desktop is the intended experience for the pointer-lock camera. The room still renders on smaller screens, but the full first-person feel is strongest with a mouse.
-    </p>
   </div>
 
   <script>
     (() => {
-      const STORAGE_KEY = 'playr-quota-drop-best-run-v1';
-
-      const SYMBOL_META = {
-        gear: { glyph: 'GEAR', className: 'small' },
-        ember: { glyph: 'EMBER', className: 'small' },
-        bar: { glyph: 'BAR', className: '' },
-        skull: { glyph: 'SKULL', className: 'small' },
-        vault: { glyph: 'VAULT', className: 'small' },
-        seven: { glyph: '7', className: '' },
-        wild: { glyph: 'WILD', className: 'small' },
-      };
-
-      /*
-        Slot math lives here.
-        - Each reel uses a simple list of symbol ids.
-        - More copies of a symbol in a reel strip = higher odds of landing it.
-        - The spin picks one random index from each reel independently.
-        - To make the machine more generous, either:
-          1. add more valuable symbols like 'seven' or 'wild' into the strips, or
-          2. raise the payout numbers in PAYOUT_RULES / combo rules below.
-        - To make it harsher, remove strong symbols or lower those payout values.
-      */
-      const REEL_STRIPS = [
-        ['gear', 'bar', 'ember', 'gear', 'skull', 'seven', 'bar', 'vault', 'gear', 'ember', 'wild', 'gear'],
-        ['ember', 'gear', 'bar', 'seven', 'skull', 'gear', 'vault', 'bar', 'ember', 'gear', 'wild', 'gear'],
-        ['gear', 'ember', 'bar', 'vault', 'gear', 'skull', 'seven', 'ember', 'bar', 'gear', 'wild', 'gear'],
-      ];
-
-      const PAYOUT_RULES = {
-        gear: { triple: 30, pair: 8 },
-        ember: { triple: 42, pair: 10 },
-        bar: { triple: 54, pair: 12 },
-        skull: { triple: 70, pair: 16 },
-        vault: { triple: 96, pair: 20 },
-        seven: { triple: 140, pair: 28 },
-        wild: { triple: 220, pair: 44 },
-      };
-
-      const SHOP_ITEMS = [
-        {
-          id: 'lucky-sevens',
-          name: 'Lucky-Seven Relay',
-          price: 90,
-          tags: ['symbol mod', 'stacking'],
-          description: 'All seven-based payouts are multiplied again.',
-          apply(state) {
-            state.effects.sevenMultiplier += 1;
-          },
-          effectLabel(stacks) {
-            return `7 payouts now x${1 + stacks}`;
-          },
-        },
-        {
-          id: 'salvage-bonus',
-          name: 'Salvage Ledger',
-          price: 70,
-          tags: ['flat bonus', 'stacking'],
-          description: 'Adds a flat cash bonus to every pull, win or lose.',
-          apply(state) {
-            state.effects.flatSpinBonus += 10;
-          },
-          effectLabel(stacks) {
-            return `+$${stacks * 10} every spin`;
-          },
-        },
-        {
-          id: 'ember-bonus',
-          name: 'Ember Injector',
-          price: 95,
-          tags: ['symbol mod', 'stacking'],
-          description: 'Ember pairs and triples burn hotter for bigger payouts.',
-          apply(state) {
-            state.effects.emberMultiplier += 0.5;
-          },
-          effectLabel(stacks) {
-            return `Ember payouts x${(1 + stacks * 0.5).toFixed(1)}`;
-          },
-        },
-        {
-          id: 'wild-credit',
-          name: 'Wild Audit Stamp',
-          price: 120,
-          tags: ['wild', 'rare'],
-          description: 'Any spin containing a WILD gains a bonus cash injection.',
-          apply(state) {
-            state.effects.wildBonus += 22;
-          },
-          effectLabel(stacks) {
-            return `WILD presence adds +$${stacks * 22}`;
-          },
-        },
-        {
-          id: 'barge-repeat',
-          name: 'Barge Counterweight',
-          price: 80,
-          tags: ['safety', 'pair boost'],
-          description: 'Any pair payout gains an additional safety bonus.',
-          apply(state) {
-            state.effects.pairBonus += 8;
-          },
-          effectLabel(stacks) {
-            return `Pair wins add +$${stacks * 8}`;
-          },
-        },
-        {
-          id: 'quota-bleed',
-          name: 'Quota Bleeder',
-          price: 130,
-          tags: ['debt mod', 'rare'],
-          description: 'Softens the next level jump by shaving a little off the new quota.',
-          apply(state) {
-            state.effects.nextLevelQuotaReduction += 70;
-          },
-          effectLabel(stacks) {
-            return `Next quota step reduced by $${stacks * 70}`;
-          },
-        },
-        {
-          id: 'grace-round',
-          name: 'Maintenance Writ',
-          price: 145,
-          tags: ['tempo', 'rare'],
-          description: 'Gain one extra round immediately when purchased.',
-          apply(state) {
-            state.roundsRemaining += 1;
-          },
-          effectLabel(stacks) {
-            return `Bought ${stacks} time${stacks === 1 ? '' : 's'}`;
-          },
-        },
-      ];
-
-      const state = {
-        level: 1,
-        cash: 0,
-        quota: 500,
-        roundsRemaining: 10,
-        lastWin: 0,
-        spinning: false,
-        runStarted: false,
-        gameOver: false,
-        pointerLocked: false,
-        yaw: 0,
-        pitch: 0,
-        effects: {
-          sevenMultiplier: 1,
-          flatSpinBonus: 0,
-          emberMultiplier: 1,
-          wildBonus: 0,
-          pairBonus: 0,
-          nextLevelQuotaReduction: 0,
-        },
-        inventory: {},
-        offeredItems: [],
-        log: [],
-        bestLevel: 1,
-      };
-
       const ui = {
+        pageRoot: document.getElementById('pageRoot'),
         viewport: document.getElementById('viewport'),
         camera: document.getElementById('camera'),
-        viewLabel: document.getElementById('viewLabel'),
-        pointerState: document.getElementById('pointerState'),
+        world: document.getElementById('world'),
+        spotlight: document.getElementById('spotlight'),
+        introPanel: document.getElementById('introPanel'),
+        startButton: document.getElementById('startButton'),
+        startLockedButton: document.getElementById('startLockedButton'),
+        lockButton: document.getElementById('lockButton'),
         statusText: document.getElementById('statusText'),
-        spinBtn: document.getElementById('spinBtn'),
-        spinHint: document.getElementById('spinHint'),
-        startRunBtn: document.getElementById('startRunBtn'),
-        restartRunBtn: document.getElementById('restartRunBtn'),
-        lockPointerBtn: document.getElementById('lockPointerBtn'),
-        retryPointerBtn: document.getElementById('retryPointerBtn'),
-        introOverlay: document.getElementById('introOverlay'),
-        gameOverOverlay: document.getElementById('gameOverOverlay'),
-        gameOverSummary: document.getElementById('gameOverSummary'),
-        gameOverCash: document.getElementById('gameOverCash'),
-        gameOverQuota: document.getElementById('gameOverQuota'),
-        gameOverLevel: document.getElementById('gameOverLevel'),
-        bestLevelStat: document.getElementById('bestLevelStat'),
-        introQuota: document.getElementById('introQuota'),
-        introRounds: document.getElementById('introRounds'),
-        stageFrame: document.getElementById('stageFrame'),
-        machineShell: document.getElementById('machineShell'),
-        machineQuota: document.getElementById('machineQuota'),
-        machineRounds: document.getElementById('machineRounds'),
-        machineCash: document.getElementById('machineCash'),
-        machineLevel: document.getElementById('machineLevel'),
-        machineLastWin: document.getElementById('machineLastWin'),
         cashValue: document.getElementById('cashValue'),
+        depositedValue: document.getElementById('depositedValue'),
         quotaValue: document.getElementById('quotaValue'),
         roundsValue: document.getElementById('roundsValue'),
-        levelValue: document.getElementById('levelValue'),
-        spinCostValue: document.getElementById('spinCostValue'),
+        creditsValue: document.getElementById('creditsValue'),
+        multiplierValue: document.getElementById('multiplierValue'),
+        promptCopy: document.getElementById('promptCopy'),
+        ledgerList: document.getElementById('ledgerList'),
+        machineQuota: document.getElementById('machineQuota'),
+        machineRounds: document.getElementById('machineRounds'),
         lastWinValue: document.getElementById('lastWinValue'),
-        shopList: document.getElementById('shopList'),
-        inventoryList: document.getElementById('inventoryList'),
-        logList: document.getElementById('logList'),
+        spinSummary: document.getElementById('spinSummary'),
+        atmCashPreview: document.getElementById('atmCashPreview'),
+        shopCreditsInline: document.getElementById('shopCreditsInline'),
+        shopGrid: document.getElementById('shopGrid'),
+        interactPrompt: document.getElementById('interactPrompt'),
+        darknessAlert: document.getElementById('darknessAlert'),
+        messagePanel: document.getElementById('messagePanel'),
+        messageEyebrow: document.getElementById('messageEyebrow'),
+        messageTitle: document.getElementById('messageTitle'),
+        messageText: document.getElementById('messageText'),
+        messageActions: document.getElementById('messageActions'),
+        reelEls: [
+          document.getElementById('reel0'),
+          document.getElementById('reel1'),
+          document.getElementById('reel2'),
+        ],
+        targetNodes: {
+          machine: document.getElementById('machine'),
+          lever: document.getElementById('lever'),
+          atm: document.getElementById('atm'),
+          shop: document.getElementById('shop'),
+          phone: document.getElementById('phone'),
+          lightSwitch: document.getElementById('lightSwitch'),
+          trapDoor: document.getElementById('trapDoor'),
+        },
+        leverKnob: document.getElementById('leverKnob'),
+        trapLeft: document.getElementById('trapLeft'),
+        trapRight: document.getElementById('trapRight'),
+        steamField: document.getElementById('steamField'),
       };
 
-      const reelStrips = [
-        document.getElementById('reelStrip0'),
-        document.getElementById('reelStrip1'),
-        document.getElementById('reelStrip2'),
+      const SYMBOLS = [
+        { id: 'gear', label: 'Gears', glyph: 'GEAR', payout: 10, weight: 34 },
+        { id: 'bars', label: 'Bars', glyph: 'BARS', payout: 50, weight: 24 },
+        { id: 'diamond', label: 'Diamonds', glyph: 'DIAM', payout: 500, weight: 8 },
+        { id: 'skull', label: 'Skulls', glyph: 'SKULL', payout: 180, weight: 12, roundPenalty: 1 },
+        { id: 'emblem', label: 'Emblem', glyph: 'EMBL', payout: 0, weight: 10, emblem: true },
+        { id: 'blank', label: 'Blank', glyph: 'VOID', payout: 0, weight: 12 },
       ];
 
-      function formatMoney(value) {
-        return `$${Math.max(0, Math.round(value)).toLocaleString()}`;
-      }
+      const PHONE_EVENTS = [
+        {
+          type: 'Debt Collector',
+          text: 'A collector reminds you the chamber is not patient. Deposit now or the floor starts choosing for you.',
+          effect: () => {
+            state.roundsLeft = Math.max(0, state.roundsLeft - 1);
+            setStatus('Debt collector call. You lost a round from the pressure.', 'danger');
+          },
+        },
+        {
+          type: 'Insider',
+          text: 'A whisper leaks machine timing. The next spin receives a hidden cash bonus.',
+          effect: () => {
+            state.flags.insiderBoost = true;
+            setStatus('Insider tip logged. The next pull will hit harder.', 'good');
+          },
+        },
+        {
+          type: 'Distraction',
+          text: 'The line fills with static and nonsense. Your head buzzes. Nothing good comes from it.',
+          effect: () => {
+            state.cash = Math.max(0, state.cash - 20);
+            setStatus('Distraction call. Loose cash slipped away.', 'warn');
+          },
+        },
+        {
+          type: 'Final Warning',
+          text: 'The chamber speaks directly: bank what you have, or trust the pit. The next darkness event is more likely.',
+          effect: () => {
+            state.flags.forceDarknessSoon = true;
+            setStatus('Final warning received. The room is starting to turn on you.', 'warn');
+          },
+        },
+      ];
+
+      const UPGRADES = [
+        { id: 'magnet', name: 'Magnet Charm', cost: 2, description: 'Add +$20 to every spin.', apply: () => { state.upgrades.flatBonus += 20; } },
+        { id: 'golden', name: 'Golden Crank', cost: 4, description: 'Raise all Bars payouts by +$40.', apply: () => { state.upgrades.barsBonus += 40; } },
+        { id: 'brake', name: 'Emergency Brake', cost: 3, description: 'Ignore the next skull round penalty.', apply: () => { state.upgrades.skullGuard += 1; } },
+        { id: 'safety', name: 'Safety Net', cost: 5, description: 'If the quota is missed once, keep 35% of deposited cash.', apply: () => { state.upgrades.safetyNet = true; } },
+        { id: 'oil', name: 'Oil Can', cost: 3, description: 'Increase emblem multiplier gain by +1.', apply: () => { state.upgrades.emblemBoost += 1; } },
+      ];
+
+      const TARGETS = {
+        lever: { yaw: 0, pitch: 0.02, tolerance: 0.17, prompt: 'CLICK / DRAG LEVER' },
+        machine: { yaw: 0, pitch: 0.02, tolerance: 0.22, prompt: 'DEBT ENGINE' },
+        atm: { yaw: -0.93, pitch: -0.01, tolerance: 0.18, prompt: '[E] BANK CASH' },
+        shop: { yaw: 0.92, pitch: -0.02, tolerance: 0.18, prompt: 'CRT SHOP' },
+        phone: { yaw: -0.55, pitch: -0.03, tolerance: 0.15, prompt: '[E] ANSWER PHONE' },
+        lightSwitch: { yaw: 0.55, pitch: -0.03, tolerance: 0.14, prompt: '[E] FLIP SWITCH' },
+        trapDoor: { yaw: 0, pitch: 0.42, tolerance: 0.16, prompt: 'TRAP DOOR' },
+      };
+
+      const state = {
+        started: false,
+        pointerLocked: false,
+        gameOver: false,
+        spinning: false,
+        draggingLever: false,
+        yaw: 0,
+        pitch: 0.02,
+        cash: 0,
+        depositedCash: 0,
+        quota: 500,
+        roundsLeft: 10,
+        shopCredits: 0,
+        lastWin: 0,
+        multiplier: 1,
+        quotaHistory: [500],
+        currentTarget: null,
+        activePhoneEvent: null,
+        darkness: false,
+        darknessTimer: 0,
+        rerollingDarkness: false,
+        flags: {
+          insiderBoost: false,
+          forceDarknessSoon: false,
+        },
+        upgrades: {
+          flatBonus: 0,
+          barsBonus: 0,
+          skullGuard: 0,
+          safetyNet: false,
+          emblemBoost: 0,
+        },
+      };
+
+      let ambience;
+      let lightsOutTone;
+      let winTone;
+      let alarmTone;
+      let phoneTone;
+      let dragAccumulation = 0;
 
       function clamp(value, min, max) {
         return Math.max(min, Math.min(max, value));
       }
 
-      function loadBestRun() {
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          const parsed = raw ? JSON.parse(raw) : null;
-          state.bestLevel = Math.max(1, Number(parsed?.bestLevel) || 1);
-        } catch (error) {
-          state.bestLevel = 1;
-        }
+      function formatMoney(value) {
+        return `$${Math.max(0, Math.round(value)).toLocaleString()}`;
       }
 
-      function saveBestRun() {
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify({ bestLevel: state.bestLevel }));
-        } catch (error) {
-          // Ignore storage write errors.
-        }
-      }
-
-      function pushLog(message) {
-        const stamped = { id: `${Date.now()}-${Math.random()}`, text: message };
-        state.log.unshift(stamped);
-        state.log = state.log.slice(0, 7);
-        renderLog();
-      }
-
-      function renderLog() {
-        ui.logList.innerHTML = '';
-        state.log.forEach((entry) => {
-          const item = document.createElement('li');
-          item.className = 'log-item';
-          item.textContent = entry.text;
-          ui.logList.appendChild(item);
-        });
-      }
-
-      function buildReelMarkup() {
-        reelStrips.forEach((stripEl, reelIndex) => {
-          stripEl.innerHTML = '';
-          const repeated = [];
-          for (let i = 0; i < 6; i += 1) {
-            repeated.push(...REEL_STRIPS[reelIndex]);
+      function buildToneUri({ frequency = 220, duration = 0.25, sampleRate = 22050, volume = 0.45, waveform = 'sine', decay = true }) {
+        const totalSamples = Math.floor(sampleRate * duration);
+        const bytesPerSample = 2;
+        const dataSize = totalSamples * bytesPerSample;
+        const buffer = new ArrayBuffer(44 + dataSize);
+        const view = new DataView(buffer);
+        const writeString = (offset, string) => {
+          for (let index = 0; index < string.length; index += 1) {
+            view.setUint8(offset + index, string.charCodeAt(index));
           }
-          repeated.forEach((symbolId) => {
-            const symbolMeta = SYMBOL_META[symbolId];
-            const node = document.createElement('div');
-            node.className = `symbol ${symbolMeta.className || ''}`.trim();
-            node.textContent = symbolMeta.glyph;
-            stripEl.appendChild(node);
-          });
-        });
-      }
+        };
 
-      function randomChoice(list) {
-        return list[Math.floor(Math.random() * list.length)];
-      }
+        writeString(0, 'RIFF');
+        view.setUint32(4, 36 + dataSize, true);
+        writeString(8, 'WAVE');
+        writeString(12, 'fmt ');
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, 1, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, sampleRate * bytesPerSample, true);
+        view.setUint16(32, bytesPerSample, true);
+        view.setUint16(34, 16, true);
+        writeString(36, 'data');
+        view.setUint32(40, dataSize, true);
 
-      function offerShopItems() {
-        const pool = [...SHOP_ITEMS];
-        const picked = [];
-        while (pool.length && picked.length < 3) {
-          const index = Math.floor(Math.random() * pool.length);
-          picked.push(pool.splice(index, 1)[0]);
-        }
-        state.offeredItems = picked;
-        renderShop();
-      }
-
-      function renderShop() {
-        ui.shopList.innerHTML = '';
-        state.offeredItems.forEach((item) => {
-          const owned = state.inventory[item.id] || 0;
-          const card = document.createElement('article');
-          card.className = 'shop-card';
-          const canAfford = !state.gameOver && !state.spinning && state.cash >= item.price;
-          card.innerHTML = `
-            <header>
-              <h3>${item.name}</h3>
-              <span class="shop-price">${formatMoney(item.price)}</span>
-            </header>
-            <p>${item.description}</p>
-            <div class="shop-tags">${item.tags.map((tag) => `<span>${tag}</span>`).join('')}</div>
-            <p><strong>Owned:</strong> ${owned}</p>
-          `;
-          const button = document.createElement('button');
-          button.type = 'button';
-          button.textContent = canAfford ? 'Buy Charm' : (state.cash < item.price ? 'Need more cash' : 'Locked during spin');
-          button.disabled = !canAfford;
-          button.addEventListener('click', () => buyItem(item.id));
-          card.appendChild(button);
-          ui.shopList.appendChild(card);
-        });
-      }
-
-      function renderInventory() {
-        ui.inventoryList.innerHTML = '';
-        const ownedIds = Object.keys(state.inventory).filter((key) => state.inventory[key] > 0);
-        if (!ownedIds.length) {
-          const empty = document.createElement('li');
-          empty.className = 'inventory-empty';
-          empty.textContent = 'No charms purchased yet.';
-          ui.inventoryList.appendChild(empty);
-          return;
+        for (let sample = 0; sample < totalSamples; sample += 1) {
+          const time = sample / sampleRate;
+          const envelope = decay ? 1 - sample / totalSamples : 1;
+          let wave = 0;
+          if (waveform === 'square') {
+            wave = Math.sign(Math.sin(Math.PI * 2 * frequency * time));
+          } else if (waveform === 'noise') {
+            wave = Math.random() * 2 - 1;
+          } else {
+            wave = Math.sin(Math.PI * 2 * frequency * time);
+          }
+          const value = clamp(wave * envelope * volume, -1, 1);
+          view.setInt16(44 + sample * 2, value * 32767, true);
         }
 
-        ownedIds.forEach((id) => {
-          const item = SHOP_ITEMS.find((entry) => entry.id === id);
-          if (!item) return;
-          const count = state.inventory[id];
-          const li = document.createElement('li');
-          li.className = 'inventory-item';
-          li.innerHTML = `<strong>${item.name}</strong><span class="stack">x${count}</span><p>${item.effectLabel(count)}</p>`;
-          ui.inventoryList.appendChild(li);
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let index = 0; index < bytes.length; index += 1) {
+          binary += String.fromCharCode(bytes[index]);
+        }
+        return `data:audio/wav;base64,${btoa(binary)}`;
+      }
+
+      function initAudio() {
+        if (typeof Howl !== 'function') return;
+        ambience = new Howl({
+          src: [buildToneUri({ frequency: 58, duration: 1.5, volume: 0.16, waveform: 'sine', decay: false })],
+          loop: true,
+          volume: 0.18,
+        });
+        lightsOutTone = new Howl({
+          src: [buildToneUri({ frequency: 120, duration: 0.5, volume: 0.28, waveform: 'square' })],
+          volume: 0.22,
+        });
+        winTone = new Howl({
+          src: [buildToneUri({ frequency: 640, duration: 0.35, volume: 0.34 })],
+          volume: 0.34,
+        });
+        alarmTone = new Howl({
+          src: [buildToneUri({ frequency: 190, duration: 0.45, volume: 0.3, waveform: 'square' })],
+          volume: 0.3,
+        });
+        phoneTone = new Howl({
+          src: [buildToneUri({ frequency: 450, duration: 0.28, volume: 0.24 })],
+          volume: 0.24,
         });
       }
 
-      function getQuotaForLevel(level) {
-        const base = 500 + (level - 1) * 230;
-        const growth = Math.round((level - 1) * (level - 1) * 32);
-        const reduction = Math.max(0, state.effects.nextLevelQuotaReduction);
-        return Math.max(250, base + growth - reduction);
+      function playSound(sound, pan = 0) {
+        if (!sound) return;
+        const id = sound.play();
+        if (typeof sound.stereo === 'function') {
+          sound.stereo(clamp(pan, -1, 1), id);
+        }
       }
 
-      function getRoundsForLevel(level) {
-        return 10 + Math.min(3, Math.floor((level - 1) / 3));
-      }
-
-      function updateCamera() {
-        ui.camera.style.setProperty('--camera-yaw', `${state.yaw}deg`);
-        ui.camera.style.setProperty('--camera-pitch', `${state.pitch}deg`);
-        ui.camera.style.transform = `rotateX(${state.pitch}deg) rotateY(${state.yaw}deg)`;
-        const zone = state.yaw < -18 ? 'Left Sweep' : state.yaw > 18 ? 'Right Sweep' : 'Front Lock';
-        ui.viewLabel.textContent = zone;
-      }
-
-      function requestLock() {
+      function requestPointerLock() {
         ui.viewport.requestPointerLock?.();
       }
 
-      function handlePointerChange() {
-        state.pointerLocked = document.pointerLockElement === ui.viewport;
-        ui.pointerState.textContent = state.pointerLocked ? 'Camera engaged' : 'Click the room to engage';
+      function updateCamera() {
+        const yawDeg = state.yaw * (180 / Math.PI);
+        const pitchDeg = state.pitch * (180 / Math.PI);
+        ui.camera.style.transform = `rotateX(${pitchDeg}deg) rotateY(${yawDeg}deg)`;
+        updateTargeting();
       }
 
-      function handleMouseMove(event) {
-        if (!state.pointerLocked || state.gameOver) return;
-        state.yaw = clamp(state.yaw + event.movementX * 0.09, -42, 42);
-        state.pitch = clamp(state.pitch - event.movementY * 0.08, -18, 16);
-        updateCamera();
-      }
-
-      function buyItem(itemId) {
-        const item = SHOP_ITEMS.find((entry) => entry.id === itemId);
-        if (!item || state.cash < item.price || state.spinning || state.gameOver) return;
-        state.cash -= item.price;
-        state.inventory[item.id] = (state.inventory[item.id] || 0) + 1;
-        item.apply(state);
-        ui.machineShell.classList.add('flash');
-        window.setTimeout(() => ui.machineShell.classList.remove('flash'), 520);
-        pushLog(`${item.name} purchased for ${formatMoney(item.price)}.`);
-        setStatus(`Installed ${item.name}. ${item.effectLabel(state.inventory[item.id])}.`);
-        offerShopItems();
-        renderInventory();
-        renderState();
-      }
-
-      function setStatus(message) {
-        ui.statusText.innerHTML = `<strong>Status:</strong> ${message}`;
-      }
-
-      function evaluateSpin(result) {
-        const counts = result.reduce((map, symbol) => {
-          map[symbol] = (map[symbol] || 0) + 1;
-          return map;
-        }, {});
-
-        const uniqueSymbols = Object.keys(counts);
-        let payout = 0;
-        let summary = 'No line match.';
-
-        if (uniqueSymbols.length === 1) {
-          const symbol = uniqueSymbols[0];
-          payout = PAYOUT_RULES[symbol].triple;
-          summary = `Triple ${symbol.toUpperCase()} hit`;
+      function setStatus(message, tone = 'neutral') {
+        ui.statusText.textContent = message;
+        if (tone === 'danger') {
+          ui.statusText.style.color = '#ffb3b3';
+        } else if (tone === 'good') {
+          ui.statusText.style.color = '#c6ffc1';
+        } else if (tone === 'warn') {
+          ui.statusText.style.color = '#ffe2a8';
         } else {
-          const pairSymbol = uniqueSymbols.find((symbol) => counts[symbol] === 2);
-          if (pairSymbol) {
-            payout = PAYOUT_RULES[pairSymbol].pair;
-            summary = `Pair of ${pairSymbol.toUpperCase()}s`;
-          }
+          ui.statusText.style.color = '';
         }
-
-        if (counts.seven) {
-          payout *= state.effects.sevenMultiplier;
-        }
-
-        if (counts.ember) {
-          const emberFactor = 1 + ((state.effects.emberMultiplier - 1) * counts.ember / 3);
-          payout = Math.round(payout * emberFactor);
-        }
-
-        if (counts.wild) {
-          payout += state.effects.wildBonus;
-        }
-
-        if (uniqueSymbols.length === 2 && payout > 0) {
-          payout += state.effects.pairBonus;
-        }
-
-        payout += state.effects.flatSpinBonus;
-        payout = Math.max(0, Math.round(payout));
-
-        if (payout <= state.effects.flatSpinBonus && uniqueSymbols.length === 3 && state.effects.flatSpinBonus > 0) {
-          summary = 'Flat charm payout only';
-        }
-
-        return { payout, summary };
       }
 
-      function animateReels(indices) {
-        const animations = reelStrips.map((stripEl, reelIndex) => new Promise((resolve) => {
-          const stripLength = REEL_STRIPS[reelIndex].length;
-          const loops = 3 + reelIndex;
-          const targetIndex = indices[reelIndex] + (stripLength * loops);
-          const offsetPercent = targetIndex * 33.333333;
-          stripEl.style.transitionDuration = `${1150 + reelIndex * 260}ms`;
-          stripEl.style.transform = `translateY(-${offsetPercent}%)`;
-          window.setTimeout(resolve, 1250 + reelIndex * 280);
-        }));
-        return Promise.all(animations);
+      function renderLedger() {
+        ui.ledgerList.innerHTML = state.quotaHistory
+          .slice()
+          .reverse()
+          .map((quota, index) => `<li>Debt target ${state.quotaHistory.length - index}: ${formatMoney(quota)}</li>`)
+          .join('');
       }
 
-      function resetReelTransforms(indices) {
-        reelStrips.forEach((stripEl, reelIndex) => {
-          const targetIndex = indices[reelIndex];
-          window.setTimeout(() => {
-            stripEl.style.transitionDuration = '0ms';
-            stripEl.style.transform = `translateY(-${targetIndex * 33.333333}%)`;
-            stripEl.getBoundingClientRect();
-            stripEl.style.transitionDuration = '';
-          }, 10);
+      function renderShop() {
+        ui.shopGrid.innerHTML = '';
+        UPGRADES.forEach((upgrade) => {
+          const button = document.createElement('button');
+          const owned = upgrade.id === 'safety' ? state.upgrades.safetyNet : false;
+          const disabled = state.shopCredits < upgrade.cost || owned || state.gameOver;
+          button.type = 'button';
+          button.className = disabled ? 'is-disabled' : '';
+          button.innerHTML = `<strong>${upgrade.name}</strong><br><small>${upgrade.cost} cr. ${upgrade.description}</small>`;
+          button.disabled = disabled;
+          button.addEventListener('click', () => {
+            if (disabled) return;
+            state.shopCredits -= upgrade.cost;
+            upgrade.apply();
+            setStatus(`${upgrade.name} installed.`, 'good');
+            playSound(winTone, 0.8);
+            renderState();
+          });
+          ui.shopGrid.appendChild(button);
         });
       }
 
-      function performSpin() {
-        if (!state.runStarted || state.spinning || state.gameOver) return;
-        if (state.roundsRemaining <= 0) {
-          checkRoundState();
+      function renderState() {
+        ui.cashValue.textContent = formatMoney(state.cash);
+        ui.depositedValue.textContent = formatMoney(state.depositedCash);
+        ui.quotaValue.textContent = formatMoney(state.quota);
+        ui.roundsValue.textContent = String(state.roundsLeft);
+        ui.creditsValue.textContent = String(state.shopCredits);
+        ui.multiplierValue.textContent = `x${state.multiplier}`;
+        ui.machineQuota.textContent = formatMoney(state.quota);
+        ui.machineRounds.textContent = String(state.roundsLeft);
+        ui.lastWinValue.textContent = formatMoney(state.lastWin);
+        ui.atmCashPreview.textContent = formatMoney(state.cash);
+        ui.shopCreditsInline.textContent = String(state.shopCredits);
+        ui.spinSummary.textContent = state.gameOver
+          ? 'The pit made its decision.'
+          : `Deposited ${formatMoney(state.depositedCash)} of ${formatMoney(state.quota)}. Pulls remaining: ${state.roundsLeft}.`;
+        renderLedger();
+        renderShop();
+      }
+
+      function populateReels() {
+        ui.reelEls.forEach((reelEl) => {
+          reelEl.innerHTML = '';
+          for (let repeat = 0; repeat < 10; repeat += 1) {
+            SYMBOLS.forEach((symbol) => {
+              const cell = document.createElement('div');
+              cell.className = 'reel-symbol';
+              cell.innerHTML = `<div>${symbol.glyph}</div><em>${symbol.label}</em>`;
+              reelEl.appendChild(cell);
+            });
+          }
+        });
+      }
+
+      function weightedSymbol() {
+        const total = SYMBOLS.reduce((sum, symbol) => sum + symbol.weight, 0);
+        let roll = Math.random() * total;
+        for (const symbol of SYMBOLS) {
+          roll -= symbol.weight;
+          if (roll <= 0) return symbol;
+        }
+        return SYMBOLS[SYMBOLS.length - 1];
+      }
+
+      function triggerShake(intensity = 10, duration = 0.28) {
+        if (typeof gsap !== 'object') return;
+        gsap.fromTo(
+          ui.viewport,
+          { x: -intensity * 0.5, y: intensity * 0.4 },
+          {
+            x: intensity * 0.5,
+            y: -intensity * 0.4,
+            duration: duration / 6,
+            repeat: 5,
+            yoyo: true,
+            ease: 'power1.inOut',
+            clearProps: 'x,y',
+          },
+        );
+      }
+
+      function setDarkness(active) {
+        state.darkness = active;
+        ui.pageRoot.classList.toggle('is-dark', active);
+        ui.darknessAlert.classList.toggle('is-visible', active);
+        if (active) {
+          playSound(lightsOutTone, 0.5);
+          setStatus('Power cut. Find the wall switch.', 'warn');
+        } else {
+          setStatus('Lights restored. Keep the quota moving.', 'good');
+        }
+      }
+
+      function maybeTriggerDarkness() {
+        if (state.darkness || state.gameOver) return;
+        const chance = state.flags.forceDarknessSoon ? 0.8 : 0.18;
+        state.flags.forceDarknessSoon = false;
+        if (Math.random() < chance) {
+          setDarkness(true);
+        }
+      }
+
+      function updateTrapDoorState() {
+        const danger = clamp((10 - state.roundsLeft) / 10, 0, 1);
+        const steam = ui.steamField.querySelectorAll('.steam');
+        steam.forEach((cloud, index) => {
+          cloud.style.opacity = String(danger > 0.2 ? 0.12 + danger * 0.36 : 0);
+          cloud.style.transform = `translateY(${-danger * 18 - index * 3}px) scale(${1 + danger * 0.35})`;
+        });
+
+        if (danger > 0.45 && !state.gameOver) {
+          if (typeof gsap === 'object') {
+            gsap.to([ui.trapLeft, ui.trapRight], {
+              x: () => (Math.random() - 0.5) * (4 + danger * 10),
+              duration: 0.08,
+              repeat: 1,
+              yoyo: true,
+              overwrite: true,
+            });
+          }
+          if (Math.random() < 0.05) {
+            triggerShake(3 + danger * 8, 0.18);
+          }
+        }
+      }
+
+      function openPhoneEvent() {
+        if (state.activePhoneEvent || state.gameOver) return;
+        const event = PHONE_EVENTS[Math.floor(Math.random() * PHONE_EVENTS.length)];
+        state.activePhoneEvent = event;
+        playSound(phoneTone, -0.6);
+        ui.messagePanel.hidden = false;
+        ui.messageEyebrow.textContent = 'Incoming line';
+        ui.messageTitle.textContent = event.type;
+        ui.messageText.textContent = event.text;
+        ui.messageActions.innerHTML = '';
+
+        const answerBtn = document.createElement('button');
+        answerBtn.className = 'phone-option';
+        answerBtn.type = 'button';
+        answerBtn.textContent = 'Answer';
+        answerBtn.addEventListener('click', () => {
+          event.effect();
+          state.activePhoneEvent = null;
+          ui.messagePanel.hidden = true;
+          renderState();
+          updateTrapDoorState();
+        });
+
+        const hangBtn = document.createElement('button');
+        hangBtn.className = 'phone-option';
+        hangBtn.type = 'button';
+        hangBtn.textContent = 'Hang up';
+        hangBtn.addEventListener('click', () => {
+          state.cash = Math.max(0, state.cash - 10);
+          setStatus('You ignored the line. A little cash bled out anyway.', 'warn');
+          state.activePhoneEvent = null;
+          ui.messagePanel.hidden = true;
+          renderState();
+        });
+
+        ui.messageActions.append(answerBtn, hangBtn);
+      }
+
+      function bankCash() {
+        if (state.cash <= 0) {
+          setStatus('The ATM has nothing to bank.', 'warn');
           return;
         }
-
-        state.spinning = true;
-        state.roundsRemaining -= 1;
-        ui.machineShell.classList.add('spinning');
-        setStatus('Reels turning. Hold your breath.');
+        const amount = state.cash;
+        state.depositedCash += amount;
+        state.cash = 0;
+        state.shopCredits += 1;
+        setStatus(`Banked ${formatMoney(amount)}. Deposit secured. +1 shop credit.`, 'good');
+        playSound(winTone, -0.85);
         renderState();
-        offerShopItems();
+      }
 
-        const indices = REEL_STRIPS.map((strip) => Math.floor(Math.random() * strip.length));
-        const result = indices.map((index, reelIndex) => REEL_STRIPS[reelIndex][index]);
-
-        animateReels(indices).then(() => {
-          resetReelTransforms(indices);
-          const evaluation = evaluateSpin(result);
-          state.lastWin = evaluation.payout;
-          state.cash += evaluation.payout;
-          state.spinning = false;
-          ui.machineShell.classList.remove('spinning');
-
-          const symbolsText = result.map((symbol) => SYMBOL_META[symbol].glyph).join(' | ');
-          pushLog(`${symbolsText} -> ${formatMoney(evaluation.payout)}. ${evaluation.summary}.`);
-
-          if (evaluation.payout > 0) {
-            ui.machineShell.classList.add('flash');
-            window.setTimeout(() => ui.machineShell.classList.remove('flash'), 520);
-          }
-
-          if (state.cash >= state.quota) {
-            advanceLevel();
-          } else {
-            setStatus(`${evaluation.summary}. Banked ${formatMoney(evaluation.payout)}. ${state.roundsRemaining} rounds remain.`);
-            renderState();
-            checkRoundState();
-          }
-        });
+      function flipSwitch() {
+        if (!state.darkness) {
+          setStatus('The lights are already on.', 'neutral');
+          return;
+        }
+        setDarkness(false);
       }
 
       function advanceLevel() {
-        const clearedQuota = state.quota;
-        state.level += 1;
-        state.bestLevel = Math.max(state.bestLevel, state.level);
-        saveBestRun();
-        const nextQuota = getQuotaForLevel(state.level);
-        state.quota = nextQuota;
-        state.roundsRemaining = getRoundsForLevel(state.level);
-        state.lastWin = 0;
-        setStatus(`Quota cleared. Facility escalated to Level ${state.level}. New debt target: ${formatMoney(nextQuota)}.`);
-        pushLog(`Level up. Cleared ${formatMoney(clearedQuota)} and advanced to Level ${state.level}.`);
-        offerShopItems();
+        state.depositedCash -= state.quota;
+        state.quota = Math.round((state.quota + 180) * 1.35);
+        state.roundsLeft = 10;
+        state.multiplier = 1;
+        state.quotaHistory.push(state.quota);
+        state.shopCredits += 2;
+        state.flags.forceDarknessSoon = false;
+        setStatus(`Quota cleared. New debt target issued: ${formatMoney(state.quota)}.`, 'good');
         renderState();
       }
 
       function triggerGameOver() {
         state.gameOver = true;
-        state.spinning = false;
-        state.bestLevel = Math.max(state.bestLevel, state.level);
-        saveBestRun();
-        ui.stageFrame.classList.add('trapdoor-open');
-        ui.camera.classList.add('falling');
-        ui.gameOverCash.textContent = formatMoney(state.cash);
-        ui.gameOverQuota.textContent = formatMoney(state.quota);
-        ui.gameOverLevel.textContent = String(state.level);
-        ui.bestLevelStat.textContent = String(state.bestLevel);
-        ui.gameOverSummary.textContent = `You finished with ${formatMoney(state.cash)} against a required ${formatMoney(state.quota)}. The chamber judged the shortfall and opened the floor.`;
-        pushLog(`Quota missed at Level ${state.level}. Trap door triggered.`);
-        setStatus('Quota missed. Trap door engaged.');
-        renderState();
-        window.setTimeout(() => {
-          ui.gameOverOverlay.hidden = false;
-        }, 1200);
+        playSound(alarmTone, 0);
+        triggerShake(16, 0.45);
+        setStatus('Quota missed. Trap door opening.', 'danger');
+        ui.messagePanel.hidden = false;
+        ui.messageEyebrow.textContent = 'Run terminated';
+        ui.messageTitle.textContent = 'Trap Door Open';
+        ui.messageText.textContent = `You deposited ${formatMoney(state.depositedCash)} against a quota of ${formatMoney(state.quota)}. The chamber keeps the difference.`;
+        ui.messageActions.innerHTML = '';
+        const retryBtn = document.createElement('button');
+        retryBtn.className = 'phone-option';
+        retryBtn.type = 'button';
+        retryBtn.textContent = 'Restart Run';
+        retryBtn.addEventListener('click', resetRun);
+        ui.messageActions.appendChild(retryBtn);
+
+        if (typeof gsap === 'object') {
+          gsap.to(ui.trapLeft, { rotateY: -88, duration: 1.15, ease: 'power3.inOut' });
+          gsap.to(ui.trapRight, { rotateY: 88, duration: 1.15, ease: 'power3.inOut' });
+          gsap.to(ui.camera, { y: '+=340', duration: 1.9, ease: 'power2.in' });
+          gsap.to(ui.spotlight, { opacity: 0.05, duration: 1.4 });
+        }
       }
 
-      function checkRoundState() {
-        if (state.cash >= state.quota) {
+      function evaluateSpin(result) {
+        let payout = result.reduce((sum, symbol) => sum + symbol.payout, 0);
+        let summary = `${result.map((symbol) => symbol.label).join(' / ')}`;
+        let roundLoss = 0;
+        let emblemCount = 0;
+
+        result.forEach((symbol) => {
+          if (symbol.id === 'bars') payout += state.upgrades.barsBonus;
+          if (symbol.id === 'skull') roundLoss += symbol.roundPenalty || 0;
+          if (symbol.id === 'emblem') emblemCount += 1;
+        });
+
+        payout += state.upgrades.flatBonus;
+
+        if (result.every((symbol) => symbol.id === result[0].id)) {
+          payout *= 3;
+          summary += ' | Triple hit';
+        } else if (new Set(result.map((symbol) => symbol.id)).size === 2) {
+          payout = Math.round(payout * 1.5);
+          summary += ' | Pair bonus';
+        }
+
+        if (emblemCount > 0) {
+          state.multiplier += emblemCount + state.upgrades.emblemBoost;
+          summary += ` | Multiplier charged to x${state.multiplier}`;
+        }
+
+        if (state.flags.insiderBoost) {
+          payout += 120;
+          state.flags.insiderBoost = false;
+          summary += ' | Insider boost';
+        }
+
+        payout *= state.multiplier;
+
+        if (roundLoss > 0) {
+          if (state.upgrades.skullGuard > 0) {
+            state.upgrades.skullGuard -= 1;
+            summary += ' | Skull penalty blocked';
+          } else {
+            state.roundsLeft = Math.max(0, state.roundsLeft - roundLoss);
+            summary += ` | -${roundLoss} extra round`;
+          }
+        }
+
+        state.lastWin = payout;
+        state.cash += payout;
+        if (payout >= 200) {
+          state.shopCredits += 1;
+          summary += ' | +1 credit';
+        }
+        return { payout, summary };
+      }
+
+      function animateSpin(result) {
+        const loops = 8;
+        ui.reelEls.forEach((reelEl, index) => {
+          const stripIndex = SYMBOLS.findIndex((symbol) => symbol.id === result[index].id);
+          const offset = (loops * SYMBOLS.length + stripIndex) * 180;
+          reelEl.classList.add('spinning');
+          reelEl.style.transform = `translateY(-${offset}px)`;
+          window.setTimeout(() => reelEl.classList.remove('spinning'), 2050);
+        });
+      }
+
+      function performSpin() {
+        if (!state.started || state.spinning || state.gameOver) return;
+        if (state.roundsLeft <= 0) {
+          if (state.depositedCash >= state.quota) {
+            advanceLevel();
+          } else {
+            triggerGameOver();
+          }
           return;
         }
-        if (state.roundsRemaining <= 0 && !state.gameOver && !state.spinning) {
-          triggerGameOver();
+
+        state.spinning = true;
+        state.roundsLeft -= 1;
+        const result = [weightedSymbol(), weightedSymbol(), weightedSymbol()];
+        setStatus('Reels in motion. The chamber is deciding.', 'neutral');
+        triggerShake(4, 0.16);
+        animateSpin(result);
+
+        if (typeof gsap === 'object') {
+          gsap.fromTo(ui.machineGlow, { opacity: 0.05 }, { opacity: 0.4, duration: 0.18, yoyo: true, repeat: 9, ease: 'sine.inOut' });
+        }
+
+        window.setTimeout(() => {
+          const evaluation = evaluateSpin(result);
+          state.spinning = false;
+          setStatus(`${evaluation.summary}. Won ${formatMoney(evaluation.payout)}.`, evaluation.payout > 0 ? 'good' : 'warn');
+          if (evaluation.payout > 0) {
+            playSound(winTone, 0);
+            triggerShake(evaluation.payout >= 500 ? 12 : 7, 0.28);
+          }
+          maybeTriggerDarkness();
+          updateTrapDoorState();
+          renderState();
+          if (state.depositedCash >= state.quota) {
+            advanceLevel();
+          } else if (state.roundsLeft <= 0) {
+            if (state.depositedCash >= state.quota) {
+              advanceLevel();
+            } else if (state.upgrades.safetyNet) {
+              state.upgrades.safetyNet = false;
+              state.depositedCash = Math.round(state.depositedCash * 0.35);
+              state.roundsLeft = 2;
+              setStatus('Safety Net tripped. You kept part of your deposit and bought 2 more rounds.', 'warn');
+              renderState();
+            } else {
+              triggerGameOver();
+            }
+          }
+        }, 2100);
+      }
+
+      function interactWithTarget() {
+        if (!state.started || state.gameOver) return;
+        if (state.activePhoneEvent) return;
+        if (state.currentTarget === 'atm') bankCash();
+        else if (state.currentTarget === 'phone') openPhoneEvent();
+        else if (state.currentTarget === 'lightSwitch') flipSwitch();
+      }
+
+      function updateTargeting() {
+        let bestTarget = null;
+        let bestScore = Infinity;
+
+        Object.entries(TARGETS).forEach(([id, target]) => {
+          const yawDiff = Math.abs(normalizeAngle(state.yaw - target.yaw));
+          const pitchDiff = Math.abs(state.pitch - target.pitch);
+          const score = yawDiff + pitchDiff * 1.3;
+          if (yawDiff <= target.tolerance && pitchDiff <= target.tolerance && score < bestScore) {
+            bestScore = score;
+            bestTarget = id;
+          }
+        });
+
+        state.currentTarget = bestTarget;
+        Object.entries(ui.targetNodes).forEach(([id, node]) => {
+          node.classList.toggle('is-targeted', state.currentTarget === id);
+        });
+
+        if (state.currentTarget) {
+          ui.interactPrompt.textContent = TARGETS[state.currentTarget].prompt;
+          ui.interactPrompt.classList.add('is-visible');
+          if (state.currentTarget === 'atm') {
+            ui.promptCopy.textContent = 'Press E at the ATM to secure your loose cash into deposited cash.';
+          } else if (state.currentTarget === 'phone') {
+            ui.promptCopy.textContent = 'Press E to answer the wall phone. Not every caller is on your side.';
+          } else if (state.currentTarget === 'lightSwitch') {
+            ui.promptCopy.textContent = 'Press E to restore visibility during a darkness event.';
+          } else if (state.currentTarget === 'lever') {
+            ui.promptCopy.textContent = 'Click and drag the orange lever sphere downward to trigger a spin.';
+          } else {
+            ui.promptCopy.textContent = 'Stay moving. Clear quota, deposit often, and avoid trusting the trap door.';
+          }
+        } else {
+          ui.interactPrompt.classList.remove('is-visible');
+          ui.promptCopy.textContent = 'Look at the machine, ATM, phone, or light switch to interact.';
         }
       }
 
-      function renderState() {
-        ui.machineQuota.textContent = formatMoney(state.quota);
-        ui.machineRounds.textContent = String(state.roundsRemaining);
-        ui.machineCash.textContent = formatMoney(state.cash);
-        ui.machineLevel.textContent = String(state.level);
-        ui.machineLastWin.textContent = formatMoney(state.lastWin);
+      function normalizeAngle(value) {
+        let output = value;
+        while (output > Math.PI) output -= Math.PI * 2;
+        while (output < -Math.PI) output += Math.PI * 2;
+        return output;
+      }
 
-        ui.cashValue.textContent = formatMoney(state.cash);
-        ui.quotaValue.textContent = formatMoney(state.quota);
-        ui.roundsValue.textContent = String(state.roundsRemaining);
-        ui.levelValue.textContent = String(state.level);
-        ui.spinCostValue.textContent = '1 round';
-        ui.lastWinValue.textContent = formatMoney(state.lastWin);
+      function handleMouseMove(event) {
+        if (!state.pointerLocked || state.gameOver) return;
+        state.yaw += event.movementX * 0.0026;
+        state.pitch = clamp(state.pitch - event.movementY * 0.0022, -0.62, 0.62);
 
-        ui.introQuota.textContent = formatMoney(state.quota);
-        ui.introRounds.textContent = String(state.roundsRemaining);
+        if (state.draggingLever) {
+          dragAccumulation += event.movementY;
+          if (dragAccumulation > 55) {
+            state.draggingLever = false;
+            dragAccumulation = 0;
+            if (typeof gsap === 'object') {
+              gsap.fromTo(ui.leverKnob, { y: 0 }, { y: 58, duration: 0.14, yoyo: true, repeat: 1, ease: 'power2.out' });
+              gsap.fromTo('#lever', { rotateZ: 0 }, { rotateZ: 18, duration: 0.14, yoyo: true, repeat: 1, ease: 'power2.out' });
+            }
+            performSpin();
+          }
+        }
 
-        ui.spinBtn.disabled = !state.runStarted || state.spinning || state.gameOver;
-        ui.spinBtn.textContent = state.spinning ? 'Spinning...' : 'Spin Machine';
-        ui.spinHint.textContent = state.gameOver
-          ? 'Run over. Restart to enter a fresh chamber.'
-          : state.spinning
-            ? 'The machine is already in motion.'
-            : `Each spin uses 1 round. Quota gap: ${formatMoney(Math.max(0, state.quota - state.cash))}.`;
+        updateCamera();
+      }
 
-        renderShop();
-        renderInventory();
+      function startRun(lockCamera) {
+        state.started = true;
+        state.gameOver = false;
+        ui.introPanel.hidden = true;
+        ui.messagePanel.hidden = true;
+        setStatus(`Run live. Deposit ${formatMoney(state.quota)} before ${state.roundsLeft} rounds vanish.`, 'neutral');
+        if (ambience && !ambience.playing()) ambience.play();
+        if (lockCamera) requestPointerLock();
+        renderState();
       }
 
       function resetRun() {
-        state.level = 1;
-        state.cash = 0;
-        state.quota = 500;
-        state.roundsRemaining = 10;
-        state.lastWin = 0;
-        state.spinning = false;
-        state.runStarted = false;
+        state.started = false;
         state.gameOver = false;
+        state.spinning = false;
+        state.draggingLever = false;
         state.yaw = 0;
-        state.pitch = 0;
-        state.effects = {
-          sevenMultiplier: 1,
-          flatSpinBonus: 0,
-          emberMultiplier: 1,
-          wildBonus: 0,
-          pairBonus: 0,
-          nextLevelQuotaReduction: 0,
-        };
-        state.inventory = {};
-        state.offeredItems = [];
-        state.log = [];
-        ui.stageFrame.classList.remove('trapdoor-open');
-        ui.camera.classList.remove('falling');
-        ui.gameOverOverlay.hidden = true;
+        state.pitch = 0.02;
+        state.cash = 0;
+        state.depositedCash = 0;
+        state.quota = 500;
+        state.roundsLeft = 10;
+        state.shopCredits = 0;
+        state.lastWin = 0;
+        state.multiplier = 1;
+        state.quotaHistory = [500];
+        state.currentTarget = null;
+        state.activePhoneEvent = null;
+        state.darkness = false;
+        state.flags.insiderBoost = false;
+        state.flags.forceDarknessSoon = false;
+        state.upgrades.flatBonus = 0;
+        state.upgrades.barsBonus = 0;
+        state.upgrades.skullGuard = 0;
+        state.upgrades.safetyNet = false;
+        state.upgrades.emblemBoost = 0;
+        ui.introPanel.hidden = false;
+        ui.messagePanel.hidden = true;
+        ui.pageRoot.classList.remove('is-dark');
+        ui.darknessAlert.classList.remove('is-visible');
+        if (typeof gsap === 'object') {
+          gsap.set([ui.trapLeft, ui.trapRight], { clearProps: 'all' });
+          gsap.set(ui.camera, { clearProps: 'all' });
+          gsap.set(ui.spotlight, { clearProps: 'all' });
+        }
         updateCamera();
-        buildReelMarkup();
-        offerShopItems();
-        pushLog('Chamber reset. Debt quota reissued.');
-        setStatus('Chamber reset. Lock the camera and begin the run.');
         renderState();
+        setStatus('Chamber reset. Enter when ready.', 'neutral');
       }
 
-      function startRun() {
-        state.runStarted = true;
-        ui.introOverlay.hidden = true;
-        ui.gameOverOverlay.hidden = true;
-        setStatus(`Run live. Reach ${formatMoney(state.quota)} before the ${state.roundsRemaining}th pull ends.`);
-        pushLog('Run started. The machine accepted your debt.');
-        renderState();
+      function handlePointerChange() {
+        state.pointerLocked = document.pointerLockElement === ui.viewport;
+        document.body.classList.toggle('pointer-locked', state.pointerLocked);
+        if (!state.pointerLocked) {
+          state.draggingLever = false;
+          dragAccumulation = 0;
+        }
       }
 
-      function initEvents() {
-        ui.viewport.addEventListener('click', requestLock);
+      function bindEvents() {
+        ui.viewport.addEventListener('click', () => {
+          if (!state.pointerLocked) {
+            requestPointerLock();
+            return;
+          }
+          if (state.currentTarget === 'lever' && !state.spinning && !state.gameOver) {
+            state.draggingLever = true;
+            dragAccumulation = 0;
+          }
+        });
+
+        document.addEventListener('mouseup', () => {
+          state.draggingLever = false;
+          dragAccumulation = 0;
+        });
+
         document.addEventListener('pointerlockchange', handlePointerChange);
         document.addEventListener('mousemove', handleMouseMove);
-        ui.lockPointerBtn.addEventListener('click', requestLock);
-        ui.retryPointerBtn.addEventListener('click', requestLock);
-        ui.startRunBtn.addEventListener('click', () => {
-          if (!state.runStarted) startRun();
-          requestLock();
-        });
-        ui.restartRunBtn.addEventListener('click', () => {
-          resetRun();
-          startRun();
-          requestLock();
-        });
-        ui.spinBtn.addEventListener('click', performSpin);
-        window.addEventListener('keydown', (event) => {
+        ui.lockButton.addEventListener('click', requestPointerLock);
+        ui.startButton.addEventListener('click', () => startRun(false));
+        ui.startLockedButton.addEventListener('click', () => startRun(true));
+
+        document.addEventListener('keydown', (event) => {
+          if (event.code === 'KeyE') {
+            event.preventDefault();
+            interactWithTarget();
+          }
+          if (event.code === 'KeyQ') {
+            event.preventDefault();
+            requestPointerLock();
+          }
           if (event.code === 'Space') {
             event.preventDefault();
-            if (!state.runStarted) {
-              startRun();
-              requestLock();
-              return;
-            }
-            if (!state.spinning && !state.gameOver) {
+            if (!state.started) {
+              startRun(true);
+            } else if (state.currentTarget === 'lever' && !state.spinning) {
               performSpin();
             }
           }
-          if (event.code === 'KeyL') {
-            requestLock();
+          if (event.code === 'Escape' && state.activePhoneEvent) {
+            state.activePhoneEvent = null;
+            ui.messagePanel.hidden = true;
           }
         });
       }
 
       function init() {
-        loadBestRun();
-        buildReelMarkup();
-        offerShopItems();
-        pushLog('Facility online. One machine available.');
-        pushLog('Pointer lock enabled for first-person camera control.');
-        setStatus('Lock the camera and begin the run.');
+        initAudio();
+        populateReels();
         renderState();
+        bindEvents();
         updateCamera();
-        initEvents();
+        setStatus('Enter the chamber, lock your camera, and survive the debt engine.', 'neutral');
+
+        if (typeof gsap === 'object') {
+          gsap.to(ui.spotlight, {
+            opacity: 0.72,
+            duration: 0.22,
+            yoyo: true,
+            repeat: -1,
+            ease: 'sine.inOut',
+            repeatRefresh: true,
+          });
+
+          ui.steamField.querySelectorAll('.steam').forEach((cloud, index) => {
+            gsap.to(cloud, {
+              y: -30 - index * 6,
+              opacity: 0.28,
+              duration: 1.6 + index * 0.2,
+              repeat: -1,
+              yoyo: true,
+              ease: 'sine.inOut',
+              delay: index * 0.16,
+            });
+          });
+        }
       }
 
       init();
