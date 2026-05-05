@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="robots" content="noindex" />
-  <meta name="description" content="Tank Trouble Clone module scaffold for PlayR." />
-  <title>Tank Trouble Clone | PlayR</title>
+  <meta name="description" content="A side-view two-player artillery tank duel with hilly terrain, wind, gravity, and destructible ground." />
+  <title>A Tank Artillery Game | PlayR</title>
   <link rel="stylesheet" href="../../shared/game-shell.css" />
   <link rel="stylesheet" href="game.css" />
   <script src="/shared/ads.js"></script>
@@ -14,60 +13,128 @@
   <script defer src="game.js"></script>
 </head>
 <body>
-  <div class="page" id="gameRoot" data-game-title="Tank Trouble Clone" data-metric="win_streak" data-direction="desc" data-scope="global">
+  <div class="page" id="gameRoot" data-game-title="A Tank Artillery Game" data-metric="none" data-direction="desc" data-scope="local">
     <div class="top">
       <a class="back-link" href="/">Back to hub</a>
       <div class="board-meta">
-        <span class="tag">Type: two-player</span>
-        <span class="tag">Controls: Keyboard</span>
+        <span class="tag">Type: two-player hotseat</span>
+        <span class="tag">Controls: A/D move, W/S aim, hold Space fire</span>
+        <span class="tag">Style: vector artillery duel</span>
       </div>
     </div>
 
     <header class="header">
-      <p class="tag">PlayR Game Module</p>
-      <h1>Tank Trouble Clone</h1>
+      <p class="tag">PlayR Artillery Module</p>
+      <h1>A Tank Artillery Game</h1>
       <div class="meta">
-        <span class="tag">Leaderboard scope: global</span>
-        <span class="tag">Metric: win_streak</span>
-        <span class="tag">Direction: desc</span>
+        <span class="tag">Perspective: side-view</span>
+        <span class="tag">Terrain: generated + destructible</span>
+        <span class="tag">Turns: local 2-player</span>
       </div>
-      <p id="gameStatus">Loading scaffold...</p>
+      <p class="hero-copy">
+        Drive along the ridge, match the turret to the slope, compensate for wind, and blow chunks out of the landscape until one crew takes the round.
+      </p>
     </header>
 
-    <section class="main-grid">
-      <aside class="panel">
-        <h2>Build Checklist</h2>
-        <ul>
-          <li>Implement game state and rule engine.</li>
-          <li>Add full UI flow for inputs and rounds.</li>
-          <li>Wire score submit + fetch for global rankings.</li>
-          <li>Add anti-cheat validations for submissions.</li>
-        </ul>
+    <section class="main-grid tank-match-grid">
+      <aside class="panel tank-sidebar">
+        <section class="sidebar-card">
+          <h2>Turn Console</h2>
+          <div class="turn-pill-row">
+            <span class="turn-pill turn-pill-active" id="activeTurnPill">Player 1 turn</span>
+            <span class="turn-pill" id="phasePill">Ready to aim</span>
+          </div>
+          <p class="hint" id="statusCopy">
+            Adjust angle with <strong>W/S</strong>, hold <strong>Space</strong> to build shot power, then release to fire.
+          </p>
+        </section>
+
+        <section class="sidebar-card">
+          <h2>Round Stats</h2>
+          <ul class="session-list tank-stat-list">
+            <li><span>Wind</span><strong id="windValue">0.0</strong></li>
+            <li><span>Gravity</span><strong id="gravityValue">0.32</strong></li>
+            <li><span>Power</span><strong id="powerValue">0%</strong></li>
+            <li><span>Projectile Speed</span><strong id="velocityValue">0</strong></li>
+          </ul>
+        </section>
+
+        <section class="sidebar-card">
+          <h2>Players</h2>
+          <div class="player-card player-card-one" id="playerCard0">
+            <div class="player-card-top">
+              <h3>Player 1</h3>
+              <span class="tag player-tag">Left Ridge</span>
+            </div>
+            <ul class="session-list tank-stat-list">
+              <li><span>Hull</span><strong id="healthValue0">100</strong></li>
+              <li><span>Turret</span><strong id="angleValue0">0°</strong></li>
+              <li><span>Rounds Won</span><strong id="scoreValue0">0</strong></li>
+            </ul>
+          </div>
+
+          <div class="player-card player-card-two" id="playerCard1">
+            <div class="player-card-top">
+              <h3>Player 2</h3>
+              <span class="tag player-tag">Right Ridge</span>
+            </div>
+            <ul class="session-list tank-stat-list">
+              <li><span>Hull</span><strong id="healthValue1">100</strong></li>
+              <li><span>Turret</span><strong id="angleValue1">0°</strong></li>
+              <li><span>Rounds Won</span><strong id="scoreValue1">0</strong></li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="sidebar-card">
+          <h2>Controls</h2>
+          <ul class="control-list artillery-control-list">
+            <li><span>Drive</span><strong>A / D</strong></li>
+            <li><span>Aim</span><strong>W / S</strong></li>
+            <li><span>Charge + Fire</span><strong>Hold / release Space</strong></li>
+            <li><span>Restart round</span><strong>R</strong></li>
+            <li><span>New match</span><strong>N</strong></li>
+          </ul>
+        </section>
       </aside>
 
-      <article class="play-area">
-        <h2>Game Surface</h2>
-      </article>
-    </section>
+      <article class="play-area artillery-stage-wrap">
+        <div class="artillery-layout">
+          <div class="artillery-topline">
+            <div class="board-stats">
+              <span class="tag">Round <strong id="roundValue">1</strong></span>
+              <span class="tag">Shot <strong id="shotValue">1</strong></span>
+              <span class="tag">Terrain Seed <strong id="seedValue">--</strong></span>
+            </div>
+            <div class="board-actions">
+              <button class="board-btn" id="restartRoundBtn" type="button">Restart Round</button>
+              <button class="board-btn board-btn-primary" id="newMatchBtn" type="button">New Match</button>
+            </div>
+          </div>
 
-    <section class="leaderboard" style="margin-top: 14px;">
-      <h2>Leaderboard Preview</h2>
-      <table class="table" aria-label="Tank Trouble Clone leaderboard preview">
-        <thead>
-          <tr>
-            <th>Rank</th>
-            <th>Player</th>
-            <th>win_streak</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td>#1</td><td>AtlasOne</td><td>--</td></tr>
-          <tr><td>#2</td><td>ArcRunner</td><td>--</td></tr>
-          <tr><td>#3</td><td>NeonFox</td><td>--</td></tr>
-        </tbody>
-      </table>
+          <div class="stage-shell">
+            <canvas id="artilleryCanvas" width="1200" height="620" aria-label="Artillery battlefield" role="img"></canvas>
+            <div class="board-overlay" id="boardOverlay">
+              <div class="overlay-card artillery-overlay-card">
+                <p class="tag overlay-kicker" id="overlayKicker">Generated battlefield</p>
+                <h2 id="overlayTitle">Ready the artillery.</h2>
+                <p id="overlayText">
+                  Each turn is shared on one keyboard. Move along the hill, aim your turret, hold Space to build launch power, and release to fire into the wind.
+                </p>
+                <div class="overlay-actions">
+                  <button class="board-btn board-btn-primary" id="startButton" type="button">Start Match</button>
+                  <button class="board-btn" id="regenButton" type="button">Regenerate Terrain</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bottom-note">
+            The dotted line previews the current shot using live gravity and wind values. Craters persist for the rest of the round.
+          </div>
+        </div>
+      </article>
     </section>
   </div>
 </body>
 </html>
-

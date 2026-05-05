@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-05-04-tank-artillery-launch',
+      title: 'A Tank Artillery Game is live',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-05-04T20:15:00-04:00',
+      summary: 'The old tank placeholder has been replaced with a local side-view artillery duel featuring generated hills, wind, gravity arcs, and destructible terrain.',
+      details: [
+        'Two players share one keyboard in a hotseat turn system: move with A and D, adjust the turret with W and S, hold Space to build launch power, and release to send a shell across the ridge.',
+        'Each round now generates a new battlefield, tanks rotate to match the slope beneath them, shells carve craters into the ground on impact, and wind changes between turns so the trajectory preview is only a guide rather than a guarantee.',
+      ],
+    },
+    {
       id: 'site-notice-2026-05-04-title-softening-pass',
       title: 'Single-player naming pass',
       category: 'update',

@@ -264,9 +264,9 @@
     },
     {
       "slug": "tank-trouble-clone",
-      "title": "Tank Trouble Clone",
-      "controls": "Keyboard",
-      "leaderboard": { "scope": "global", "metric": "win_streak", "direction": "desc" }
+      "title": "A Tank Artillery Game",
+      "controls": "A/D move, W/S aim, hold Space fire",
+      "leaderboard": { "scope": "none", "metric": "n_a", "direction": "n_a", "reason": "Local turn-based artillery duel" }
     },
     {
       "slug": "slither-io-clone",

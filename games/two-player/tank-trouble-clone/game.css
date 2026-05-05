@@ -1,1 +1,224 @@
-/* Tank Trouble Clone specific styles */
+.tank-match-grid {
+  align-items: start;
+}
+
+.tank-sidebar {
+  display: grid;
+  gap: 14px;
+}
+
+.sidebar-card {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.01)),
+    rgba(7, 11, 20, 0.5);
+}
+
+.hero-copy {
+  margin: 10px 0 0;
+  color: var(--muted);
+  line-height: 1.7;
+  max-width: 76ch;
+}
+
+.turn-pill-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.turn-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 0.82rem;
+}
+
+.turn-pill-active {
+  color: var(--text);
+  border-color: rgba(124, 240, 197, 0.35);
+  background: rgba(124, 240, 197, 0.1);
+}
+
+.tank-stat-list li,
+.artillery-control-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.tank-stat-list strong,
+.artillery-control-list strong {
+  color: var(--text);
+}
+
+.player-card {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.player-card + .player-card {
+  margin-top: 12px;
+}
+
+.player-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.player-card h3 {
+  margin: 0;
+}
+
+.player-card-one {
+  box-shadow: inset 0 0 0 1px rgba(124, 240, 197, 0.08);
+}
+
+.player-card-two {
+  box-shadow: inset 0 0 0 1px rgba(122, 167, 255, 0.08);
+}
+
+.player-card.is-active {
+  border-color: rgba(255, 212, 124, 0.28);
+  background:
+    linear-gradient(180deg, rgba(255, 212, 124, 0.08), rgba(255, 255, 255, 0.02)),
+    rgba(255, 255, 255, 0.03);
+}
+
+.player-tag {
+  white-space: nowrap;
+}
+
+.artillery-stage-wrap {
+  padding: 16px;
+}
+
+.artillery-layout {
+  display: grid;
+  gap: 14px;
+}
+
+.artillery-topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.board-stats,
+.board-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.board-btn {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+}
+
+.board-btn:hover,
+.board-btn:focus-visible {
+  border-color: rgba(124, 240, 197, 0.3);
+}
+
+.board-btn-primary {
+  background: linear-gradient(135deg, rgba(124, 240, 197, 0.28), rgba(122, 167, 255, 0.2));
+}
+
+.stage-shell {
+  position: relative;
+  border-radius: 22px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(15, 25, 41, 0.5), rgba(7, 10, 18, 0.65)),
+    rgba(4, 6, 10, 0.9);
+  box-shadow: inset 0 0 90px rgba(0, 0, 0, 0.24);
+}
+
+#artilleryCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1200 / 620;
+}
+
+.board-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: linear-gradient(180deg, rgba(7, 10, 18, 0.38), rgba(7, 10, 18, 0.8));
+}
+
+.board-overlay[hidden] {
+  display: none;
+}
+
+.artillery-overlay-card {
+  width: min(100%, 540px);
+  text-align: center;
+}
+
+.overlay-kicker {
+  margin-bottom: 8px;
+}
+
+.overlay-card p {
+  color: var(--muted);
+  line-height: 1.68;
+}
+
+.overlay-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.bottom-note {
+  color: var(--muted);
+  line-height: 1.6;
+  font-size: 0.92rem;
+}
+
+@media (max-width: 1100px) {
+  .tank-match-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .artillery-stage-wrap,
+  .sidebar-card {
+    padding: 14px;
+  }
+
+  .artillery-topline {
+    align-items: stretch;
+  }
+}

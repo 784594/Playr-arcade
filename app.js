@@ -43,6 +43,15 @@ const SINGLE_PLAYER_GAME_OVERRIDES = {
   },
 };
 
+const MULTIPLAYER_GAME_OVERRIDES = {
+  'tank-trouble-clone': {
+    summary: 'A local side-view artillery duel with generated hills, wind drift, gravity arcs, and destructible terrain.',
+    metric: 'Local hotseat artillery',
+    accent: 'accent',
+    status: 'New',
+  },
+};
+
 const MULTIPLAYER_PLACEHOLDERS = [
   { id: 'infinite-craft-multiplayer', name: 'Infinite Craft Multiplayer', controls: 'Mouse - shared room crafting (2P-4P)' },
   { id: 'battleship', name: 'Battleship - Neon Fleet', controls: 'Mouse - room-based 2P fleet duel' },
@@ -52,7 +61,7 @@ const MULTIPLAYER_PLACEHOLDERS = [
   { id: 'checkers', name: 'Checkers', controls: 'Mouse - 2P/4P team mode' },
   { id: 'tic-tac-toe', name: 'Tic-Tac-Toe', controls: 'Mouse - 2P/4P chaos mode' },
   { id: 'pong', name: 'Pong', controls: 'Up/Down vs W/S keys 2P' },
-  { id: 'tank-trouble-clone', name: 'Tank Trouble Clone', controls: '2D top-down arena 2P' },
+  { id: 'tank-trouble-clone', name: 'A Tank Artillery Game', controls: 'A/D move, W/S aim, hold Space fire' },
   { id: 'slither-io-clone', name: 'Slither.io Clone', controls: 'Mouse - 2D snake arena 2P' },
   { id: 'fireboy-watergirl-clone', name: 'Fireboy & Watergirl Clone', controls: 'Arrow keys & WASD 2P' },
   { id: 'hangman-2p', name: 'Hangman Multiplayer', controls: 'Keyboard - 5-player room + owner' },
@@ -3801,6 +3810,7 @@ function buildSinglePlayerGame(entry, index) {
 }
 
 function buildTwoPlayerGame(entry, index) {
+  const override = MULTIPLAYER_GAME_OVERRIDES[entry.id] || null;
   const launchUrl = MULTIPLAYER_IMPLEMENTED_IDS.has(entry.id)
     ? `/games/two-player/${entry.id}`
     : null;
@@ -3816,10 +3826,10 @@ function buildTwoPlayerGame(entry, index) {
     trending: index < 6,
     isNew: index % 5 === 0,
     topPlayers: false,
-    metric: 'No leaderboard (anti-alt policy)',
-    status: '',
-    accent: 'warn',
-    summary: `${entry.name} placeholder. Host creates a shareable invite link for one guest.`,
+    metric: override?.metric || 'No leaderboard (anti-alt policy)',
+    status: override?.status || '',
+    accent: override?.accent || 'warn',
+    summary: override?.summary || `${entry.name} placeholder. Host creates a shareable invite link for one guest.`,
     leaderboardLabel: 'No leaderboard',
     leaderboardUnit: 'n/a',
     leaderboardTop100: [],
