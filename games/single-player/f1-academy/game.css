@@ -140,7 +140,7 @@ body.academy-body {
 
 .academy-grid {
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr) 310px;
+  grid-template-columns: 300px minmax(0, 1fr);
   gap: 14px;
   margin-top: 14px;
   align-items: start;
@@ -151,13 +151,11 @@ body.academy-body {
 }
 
 .selector-panel,
-.insight-panel,
 .stage-panel {
   min-height: calc(100vh - 208px);
 }
 
-.selector-panel,
-.insight-panel {
+.selector-panel {
   display: grid;
   align-content: start;
   gap: 14px;
@@ -319,6 +317,11 @@ body.academy-body {
   margin-top: 14px;
 }
 
+.overlay-actions {
+  width: min(100%, 340px);
+  margin: 22px auto 0;
+}
+
 .button.primary {
   color: #07121a;
   font-weight: 800;
@@ -395,6 +398,12 @@ body.academy-body {
   margin: 10px 0 8px;
   font-size: clamp(1.7rem, 3vw, 2.5rem);
   letter-spacing: -0.05em;
+}
+
+.stage-overlay p {
+  max-width: 540px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .stage-surface {
@@ -725,7 +734,7 @@ kbd {
 
 @media (max-width: 1360px) {
   .academy-grid {
-    grid-template-columns: 280px minmax(0, 1fr) 286px;
+    grid-template-columns: 280px minmax(0, 1fr);
   }
 
   .stage-frame {
@@ -743,7 +752,6 @@ kbd {
   }
 
   .selector-panel,
-  .insight-panel,
   .stage-panel {
     min-height: auto;
   }

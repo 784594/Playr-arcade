@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-05-04-f1-academy-ui-cleanup',
+      title: 'F1 Academy UI cleanup',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-05-04T22:35:00-04:00',
+      summary: 'F1 Academy now opens with a cleaner training layout that removes the extra briefing and analysis side panels while putting the start control directly in the center stage.',
+      details: [
+        'The old briefing card has been removed from the left rail, the start and retry controls now live inside the center execution overlay, and the launch copy has been tightened so new sessions are more obvious the moment the page loads.',
+        'The separate Performance Center, snapshot cards, leaderboard table, and trend line rail have also been removed from the page so the layout stays focused on module selection, live execution, immediate feedback, and post-session analysis.',
+      ],
+    },
+    {
       id: 'site-notice-2026-05-04-quota-drop-catalog-fix',
       title: 'Quota Drop catalog fix',
       category: 'update',

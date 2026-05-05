@@ -699,14 +699,16 @@
   function renderBriefing() {
     const meta = selectedCategoryMeta();
     const config = selectedConfig();
-    dom.briefingTitle.textContent = `${meta.label} / ${config.label}`;
-    dom.briefingCopy.textContent = meta.description;
-    dom.briefingMetric.textContent = config.metric;
-    dom.briefingPressure.textContent = config.pressure;
-    dom.briefingRule.textContent = config.leaderboardEligible ? 'Validated competitive run' : 'Training only';
-    dom.briefingLength.textContent = config.sessionLength;
-    dom.briefingStatus.textContent = state.activeSession ? 'Live' : 'Ready';
-    dom.leaderboardEligibilityTag.textContent = config.leaderboardEligible ? 'Eligible for validated boards' : 'Baseline = training only';
+    if (dom.briefingTitle) dom.briefingTitle.textContent = `${meta.label} / ${config.label}`;
+    if (dom.briefingCopy) dom.briefingCopy.textContent = meta.description;
+    if (dom.briefingMetric) dom.briefingMetric.textContent = config.metric;
+    if (dom.briefingPressure) dom.briefingPressure.textContent = config.pressure;
+    if (dom.briefingRule) dom.briefingRule.textContent = config.leaderboardEligible ? 'Validated competitive run' : 'Training only';
+    if (dom.briefingLength) dom.briefingLength.textContent = config.sessionLength;
+    if (dom.briefingStatus) dom.briefingStatus.textContent = state.activeSession ? 'Live' : 'Ready';
+    if (dom.leaderboardEligibilityTag) {
+      dom.leaderboardEligibilityTag.textContent = config.leaderboardEligible ? 'Eligible for validated boards' : 'Baseline = training only';
+    }
     dom.ruleList.innerHTML = config.rules.map((rule) => `<li>${rule}</li>`).join('');
     dom.sessionTitle.textContent = `${meta.label} / ${config.label}`;
   }
@@ -969,6 +971,9 @@
   }
 
   function renderLeaderboard() {
+    if (!dom.boardPrimaryHeader || !dom.boardSecondaryHeader || !dom.leaderboardTitle || !dom.leaderboardMeta || !dom.leaderboardBody) {
+      return;
+    }
     const board = state.selection.board;
     const range = state.selection.range;
     const rows = filterEntriesByRange(sortBoardEntries(board, state.leaderboards[board] || []), range).slice(0, 8);
@@ -977,8 +982,12 @@
     dom.boardSecondaryHeader.textContent = secondary;
     dom.leaderboardTitle.textContent = board === 'overall' ? 'Overall board' : `${CATEGORY_META[board].short} board`;
     dom.leaderboardMeta.textContent = range === 'all' ? 'Validated runs' : `${range === 'weekly' ? '7-day' : '24-hour'} window`;
-    dom.rangeSummaryTag.textContent = range === 'all' ? 'All-time' : range === 'weekly' ? 'Weekly' : 'Daily';
-    dom.sessionRangeTag.textContent = range === 'all' ? 'All-time board' : range === 'weekly' ? 'Weekly board' : 'Daily board';
+    if (dom.rangeSummaryTag) {
+      dom.rangeSummaryTag.textContent = range === 'all' ? 'All-time' : range === 'weekly' ? 'Weekly' : 'Daily';
+    }
+    if (dom.sessionRangeTag) {
+      dom.sessionRangeTag.textContent = range === 'all' ? 'All-time board' : range === 'weekly' ? 'Weekly board' : 'Daily board';
+    }
 
     if (!rows.length) {
       dom.leaderboardBody.innerHTML = '<tr><td colspan="4">No validated runs in this range yet.</td></tr>';
@@ -999,6 +1008,7 @@
   }
 
   function renderHistory() {
+    if (!dom.trendBars || !dom.historyNote) return;
     const recent = state.history.slice(0, 8).reverse();
     dom.trendBars.innerHTML = '';
     if (!recent.length) {
@@ -1022,6 +1032,7 @@
   }
 
   function renderSnapshots() {
+    if (!dom.snapshotComposite || !dom.snapshotValidated || !dom.snapshotTrend || !dom.snapshotFocus) return;
     const composite = normalizedOverallScore();
     const validatedCount = BOARDS.filter((board) => board !== 'overall' && state.records.domains[board]).length;
     const recentValidated = state.history.filter((entry) => entry.validated).slice(0, 6);
@@ -2028,8 +2039,8 @@
   function init() {
     bindEvents();
     hideAllStages();
-    setOverlay('F1 Academy', 'Select a program, review the briefing, and start a structured motorsport-cognition session.', true);
-    setFeedback('Session ready', 'Choose a module, review the briefing, and begin the next evaluation.');
+    setOverlay('F1 Academy', 'Select a program, check the rules, and start a structured motorsport-cognition session.', true);
+    setFeedback('Session ready', 'Choose a module, check the program rules, and begin the next evaluation.');
     renderAll();
   }
 

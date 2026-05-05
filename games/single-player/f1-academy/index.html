@@ -37,7 +37,7 @@
         </div>
         <div class="hero-pill">
           <span>Session flow</span>
-          <strong>Briefing -> execution -> analysis</strong>
+          <strong>Select -> execute -> analysis</strong>
         </div>
         <div class="hero-pill">
           <span>Competitive focus</span>
@@ -97,39 +97,6 @@
           </div>
         </div>
 
-        <section class="briefing-card">
-          <div class="section-row">
-            <div>
-              <p class="eyebrow small">Briefing</p>
-              <h3 id="briefingTitle">Reaction Program</h3>
-            </div>
-            <span class="status-tag" id="briefingStatus">Ready</span>
-          </div>
-          <p class="briefing-copy" id="briefingCopy"></p>
-          <div class="briefing-grid">
-            <div>
-              <span>Primary metric</span>
-              <strong id="briefingMetric">Average reaction time</strong>
-            </div>
-            <div>
-              <span>Pressure factor</span>
-              <strong id="briefingPressure">Variable stimuli</strong>
-            </div>
-            <div>
-              <span>Leaderboard rule</span>
-              <strong id="briefingRule">Validated runs only</strong>
-            </div>
-            <div>
-              <span>Session length</span>
-              <strong id="briefingLength">~45 seconds</strong>
-            </div>
-          </div>
-          <div class="action-stack">
-            <button class="button primary" type="button" id="startBtn">Start Session</button>
-            <button class="button secondary" type="button" id="retryBtn">Retry Session</button>
-          </div>
-        </section>
-
         <section class="notes-card">
           <p class="eyebrow small">Program rules</p>
           <ul class="rule-list" id="ruleList"></ul>
@@ -144,7 +111,6 @@
           </div>
           <div class="stage-top-tags">
             <span class="stage-tag" id="sessionStateTag">Standby</span>
-            <span class="stage-tag" id="sessionRangeTag">All-time board</span>
           </div>
         </div>
 
@@ -172,7 +138,11 @@
             <div class="stage-overlay" id="stageOverlay">
               <p class="eyebrow small">Program standby</p>
               <h3 id="overlayTitle">Reaction Program</h3>
-              <p id="overlayCopy">Use the briefing panel to understand the drill, then launch the session when ready.</p>
+              <p id="overlayCopy">Choose a module, check the rules on the left, and launch the next motorsport-cognition session when ready.</p>
+              <div class="action-stack overlay-actions">
+                <button class="button primary" type="button" id="startBtn">Start Session</button>
+                <button class="button secondary" type="button" id="retryBtn">Retry Session</button>
+              </div>
             </div>
 
             <div class="stage-surface" id="stageSurface">
@@ -221,7 +191,7 @@
               <p class="eyebrow small">Immediate feedback</p>
               <h3 id="feedbackTitle">Session ready</h3>
             </div>
-            <p id="feedbackCopy">Choose a module, review the briefing, and begin the next evaluation.</p>
+            <p id="feedbackCopy">Choose a module, check the program rules, and begin the next evaluation.</p>
           </div>
         </div>
 
@@ -238,78 +208,6 @@
         </section>
       </section>
 
-      <aside class="panel insight-panel">
-        <div class="panel-head compact">
-          <div>
-            <p class="eyebrow small">Performance Center</p>
-            <h2>Analysis + boards</h2>
-          </div>
-          <span class="subtle-tag" id="rangeSummaryTag">All-time</span>
-        </div>
-
-        <div class="range-switch" role="group" aria-label="Leaderboard range">
-          <button class="range-btn active" type="button" data-range="all">All-time</button>
-          <button class="range-btn" type="button" data-range="weekly">Weekly</button>
-          <button class="range-btn" type="button" data-range="daily">Daily</button>
-        </div>
-
-        <div class="board-switch" role="group" aria-label="Leaderboard board">
-          <button class="board-btn active" type="button" data-board="overall">Overall</button>
-          <button class="board-btn" type="button" data-board="reaction">Reaction</button>
-          <button class="board-btn" type="button" data-board="memory">Memory</button>
-          <button class="board-btn" type="button" data-board="awareness">Awareness</button>
-          <button class="board-btn" type="button" data-board="decision">Decision</button>
-          <button class="board-btn" type="button" data-board="consistency">Consistency</button>
-        </div>
-
-        <section class="snapshot-grid" aria-label="Performance snapshot">
-          <article class="snapshot-card">
-            <span>Composite</span>
-            <strong id="snapshotComposite">0</strong>
-          </article>
-          <article class="snapshot-card">
-            <span>Best validated</span>
-            <strong id="snapshotValidated">0</strong>
-          </article>
-          <article class="snapshot-card">
-            <span>Recent trend</span>
-            <strong id="snapshotTrend">Flat</strong>
-          </article>
-          <article class="snapshot-card">
-            <span>Focus area</span>
-            <strong id="snapshotFocus">Reaction</strong>
-          </article>
-        </section>
-
-        <section class="leaderboard-shell">
-          <div class="section-row">
-            <h3 id="leaderboardTitle">Overall board</h3>
-            <span class="subtle-tag" id="leaderboardMeta">Validated runs</span>
-          </div>
-          <div class="table-wrap">
-            <table class="board-table" aria-label="F1 Academy leaderboard">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Driver</th>
-                  <th id="boardPrimaryHeader">Score</th>
-                  <th id="boardSecondaryHeader">Support</th>
-                </tr>
-              </thead>
-              <tbody id="leaderboardBody"></tbody>
-            </table>
-          </div>
-        </section>
-
-        <section class="history-card">
-          <div class="section-row">
-            <h3>Trend line</h3>
-            <span class="subtle-tag">Last 8 sessions</span>
-          </div>
-          <div class="trend-bars" id="trendBars"></div>
-          <p class="history-note" id="historyNote">Long-term feedback highlights whether your recent work is actually making you sharper.</p>
-        </section>
-      </aside>
     </main>
   </div>
 </body>
