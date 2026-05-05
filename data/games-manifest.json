@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-05-04",
+  "updatedAt": "2026-05-05",
   "notes": "Global leaderboard metric and direction are game-specific by design.",
   "singlePlayer": [
     {
@@ -201,10 +201,10 @@
       "leaderboard": { "scope": "global", "metric": "academy_score", "direction": "desc", "segments": ["overall", "reaction", "memory", "awareness", "decision", "consistency"] }
     },
     {
-      "slug": "quota-drop",
-      "title": "Quota Drop",
-      "controls": "Pointer lock + click",
-      "leaderboard": { "scope": "none", "metric": "n_a", "direction": "n_a", "reason": "Single-player quota survival roguelike" }
+      "slug": "cash-out",
+      "title": "Cash Out",
+      "controls": "Mouse",
+      "leaderboard": { "scope": "global", "metric": "cash_earned_in_run", "direction": "desc" }
     },
     {
       "slug": "slide-puzzle",

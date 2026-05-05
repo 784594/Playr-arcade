@@ -3,7 +3,7 @@ const SINGLE_PLAYER_PLACEHOLDERS = [
   { id: '2048', name: 'A Number Merge Game', controls: 'Arrow keys' },
   { id: 'minesweeper', name: 'A Mine-Clearing Game', controls: 'Mouse' },
   { id: 'infinite-craft-clone', name: 'Infinite Craft Clone', controls: 'Mouse' },
-  { id: 'quota-drop', name: 'Quota Drop', controls: 'Pointer lock + click' },
+  { id: 'cash-out', name: 'Cash Out', controls: 'Mouse' },
   { id: 'the-password-game', name: 'A Password Rules Game', controls: 'Keyboard' },
   { id: 'tetris', name: 'A Block Stacking Game', controls: 'Arrow keys' },
   { id: 'dino-run-clone', name: 'Dino Run Clone', controls: 'Space/Arrow' },
@@ -35,12 +35,12 @@ const SINGLE_PLAYER_PLACEHOLDERS = [
 ];
 
 const SINGLE_PLAYER_GAME_OVERRIDES = {
-  'quota-drop': {
-    summary: 'A first-person industrial slot roguelike with debt quotas, trap-door failure, and run-long charm upgrades.',
-    metric: 'Quota-clearing survival run',
-    accent: 'warn',
+  'cash-out': {
+    summary: 'A tension-driven run-based cash game where you push deeper for bigger gains or cash out before the run collapses.',
+    metric: 'Most cash earned in a run',
+    accent: 'accent',
     status: 'New',
-    searchTerms: 'slot roguelike debt quota trap door bunker machine slot machine first person',
+    searchTerms: 'cash run bankroll wealth risk reward cash out depth run-based competitive',
   },
 };
 
@@ -114,6 +114,7 @@ const MULTIPLAYER_IMPLEMENTED_IDS = new Set([
 ]);
 
 const LEADERBOARD_SPECS = {
+  'cash-out': { label: 'Cash haul runs', unit: 'cash', metric: 'Most cash earned in a run', kind: 'score' },
   'minesweeper': { label: 'Fastest times', unit: 'time', metric: 'Fastest time per board size', kind: 'time' },
   'snake': { label: 'Best survival runs', unit: 'apples', metric: 'Fastest win / apples / survival', kind: 'count' },
   'tetris': { label: 'Top score stacks', unit: 'score', metric: 'Highest score / survival / level', kind: 'score' },
@@ -142,7 +143,9 @@ const multiplayerAccessConfig = {
   singleUseInviteLinks: true,
 };
 
-const SINGLE_PLAYER_SLUG_ALIASES = {};
+const SINGLE_PLAYER_SLUG_ALIASES = {
+  'cash-out': 'Cash%20Out',
+};
 
 const COMPLETED_SINGLE_PLAYER_IDS = new Set([
   'snake',
@@ -175,6 +178,7 @@ const COMPLETED_SINGLE_PLAYER_IDS = new Set([
   'tower-builder',
   'aim-training-arena',
   'f1-academy',
+  'cash-out',
   'wordle-inf',
 ]);
 

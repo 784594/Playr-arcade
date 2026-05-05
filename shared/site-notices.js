@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-05-05-cash-out-catalog-swap',
+      title: 'Cash Out catalog swap',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-05-05T09:00:00-04:00',
+      summary: 'Cash Out now occupies the single-player hub slot with a cash-earned leaderboard, replacing Quota Drop in the visible catalog.',
+      details: [
+        'The single-player game list now links to Cash Out instead of Quota Drop, so the hub surfaces the run-based cash game in the same catalog position while keeping the rest of the arcade layout unchanged.',
+        'Cash Out is now marked as a competitive run title with a leaderboard focused on the most cash earned in a run, which matches the game’s built-in risk-reward loop more closely than the old noncompetitive placeholder treatment.',
+      ],
+    },
+    {
       id: 'site-notice-2026-05-04-infinite-craft-start-overlay',
       title: 'Infinite Craft Clone start overlay',
       category: 'update',

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cash Out</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        
+        <!-- HUD - Unified Top Bar -->
+        <div id="hud" class="unified-hud">
+            <!-- Left Stats Panel -->
+            <div class="hud-section hud-left">
+                <div class="stat-item">
+                    <div class="stat-label">HP</div>
+                    <div class="stat-bar">
+                        <div id="hp-bar" class="bar-fill hp"></div>
+                    </div>
+                    <span id="hp-value" class="stat-value">100/100</span>
+                </div>
+                <div class="stat-divider">|</div>
+                <div class="stat-item">
+                    <div class="stat-label">VALUE</div>
+                    <span id="value-value" class="stat-value large">$0</span>
+                </div>
+                <div class="stat-divider">|</div>
+                <div class="stat-item">
+                    <div class="stat-label">DEPTH</div>
+                    <span id="depth-value" class="stat-value">0</span>
+                </div>
+                <div class="stat-divider">|</div>
+                <div class="stat-item">
+                    <div class="stat-label">STREAK</div>
+                    <span id="streak-value" class="stat-value">0</span>
+                </div>
+            </div>
+
+            <!-- Center Pressure Panel -->
+            <div class="hud-section hud-center">
+                <div class="pressure-compact">
+                    <div class="pressure-bar-container">
+                        <div id="pressure-bar" class="pressure-bar"></div>
+                    </div>
+                    <div id="pressure-text" class="pressure-text">LOW</div>
+                </div>
+            </div>
+
+            <!-- Right Action Panel -->
+            <div class="hud-section hud-right">
+                <button id="cash-out-btn" class="btn btn-cash-out">CASH OUT</button>
+                <div class="session-info hidden">
+                    <span class="session-label">SESSION: </span>
+                    <span id="saved-value">$0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Choice Panel -->
+        <div id="choice-panel" class="choice-panel hidden">
+            <div class="choice-overlay"></div>
+            <div class="choice-content">
+                <div class="choice-title" id="choice-title">⚡ DEPTH 2 - CHOOSE YOUR GAMBLE</div>
+                <div id="choice-container" class="choice-container"></div>
+            </div>
+        </div>
+
+        <!-- How to Play Screen -->
+        <div id="how-to-play-screen" class="screen hidden">
+            <div class="screen-content how-to-play-content">
+                <div class="screen-title">HOW TO PLAY</div>
+                <div class="how-to-rules">
+                    <div class="rule-section">
+                        <div class="rule-title">🎯 OBJECTIVE</div>
+                        <div class="rule-text">Go as deep as possible while building your value. Cash out to secure your earnings!</div>
+                    </div>
+                    <div class="rule-section">
+                        <div class="rule-title">⚡ DEPTH</div>
+                        <div class="rule-text">Each level deeper increases the stakes. Pressure builds as you descend—choose wisely.</div>
+                    </div>
+                    <div class="rule-section">
+                        <div class="rule-title">💰 VALUE</div>
+                        <div class="rule-text">Your potential earnings. Gambles can increase or decrease your value. Lose all HP = lose all value!</div>
+                    </div>
+                    <div class="rule-section">
+                        <div class="rule-title">❤️ HP (Health)</div>
+                        <div class="rule-text">You start with 100 HP. Bad gambles can damage you. Reach 0 HP = Game Over.</div>
+                    </div>
+                    <div class="rule-section">
+                        <div class="rule-title">🔥 PRESSURE</div>
+                        <div class="rule-text">Rises as you go deeper. High pressure worsens odds and increases damage taken.</div>
+                    </div>
+                    <div class="rule-section">
+                        <div class="rule-title">🎲 GAMBLES</div>
+                        <div class="rule-text">Each room offers risky choices. Some are safe, some deadly. Calculate the risk vs reward.</div>
+                    </div>
+                    <div class="rule-section">
+                        <div class="rule-title">💸 CASH OUT</div>
+                        <div class="rule-text">Available every 3 depths. Lock in your value and return to surface. Take it when it matters!</div>
+                    </div>
+                    <div class="rule-section">
+                        <div class="rule-title">🛏️ REST SITES</div>
+                        <div class="rule-text">Some rooms offer a chance to recover HP by spending value. Use them to survive longer runs.</div>
+                    </div>
+                    <div class="rule-section">
+                        <div class="rule-title">📊 PROGRESSION</div>
+                        <div class="rule-text">Unlock new gamble types and bonuses. Your best run multiplies rewards for future runs.</div>
+                    </div>
+                </div>
+                <button id="start-btn" class="btn btn-primary">START GAME</button>
+            </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="screen hidden">
+            <div class="screen-content">
+                <div class="screen-title" id="game-over-title">YOU DIED</div>
+                <div class="screen-stats">
+                    <div class="stat-line">
+                        <span>Final Value:</span>
+                        <span id="final-value">$0</span>
+                    </div>
+                    <div class="stat-line">
+                        <span>Depth Reached:</span>
+                        <span id="final-depth">0</span>
+                    </div>
+                    <div class="stat-line">
+                        <span>Cashed Out:</span>
+                        <span id="final-cashed">$0</span>
+                    </div>
+                </div>
+                <button id="restart-btn" class="btn btn-primary">PLAY AGAIN</button>
+            </div>
+        </div>
+
+        <!-- Notification -->
+        <div id="notification" class="notification hidden"></div>
+    </div>
+
+    <script src="meta.js"></script>
+    <script src="systems.js"></script>
+    <script src="rooms.js"></script>
+    <script src="ui.js"></script>
+    <script src="engine.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
