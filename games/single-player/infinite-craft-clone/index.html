@@ -18,6 +18,21 @@
       <a class="back-link" href="/">← Back to hub</a>
     </div>
 
+    <div class="loading-overlay" id="startOverlay" aria-live="polite">
+      <div class="loading-card">
+        <p class="admin-kicker">Infinite Craft Clone</p>
+        <h2>Start Game</h2>
+        <p id="loadingCopy">Load the core workspace first. Recipe chunks stay off the page until you actually combine items.</p>
+        <div class="loading-bar-shell" aria-hidden="true">
+          <div class="loading-bar-fill" id="loadingBarFill"></div>
+        </div>
+        <p class="loading-percent" id="loadingPercent">0%</p>
+        <div class="loading-actions">
+          <button id="startGameBtn" class="toolbar-btn loading-start-btn" type="button">Start Game</button>
+        </div>
+      </div>
+    </div>
+
     <section class="craft-layout" aria-label="Infinite Craft Clone play area">
       <aside class="panel owner-tools-panel" id="ownerToolsPanel" hidden>
         <div class="owner-tools-header">
@@ -57,7 +72,12 @@
 
       <article class="play-area craft-surface-panel">
         <div class="craft-counter" id="uniqueCounter" aria-live="polite">Unique Crafted: 0</div>
-        <div id="workspace" class="craft-workspace" aria-label="Crafting workspace"></div>
+        <div class="achievement-toast" id="achievementToast" hidden></div>
+        <div id="workspace" class="craft-workspace" aria-label="Crafting workspace">
+          <div class="board-backdrop" id="workspaceBackdrop" aria-hidden="true"></div>
+          <div class="workspace-nodes-layer" id="workspaceNodesLayer" aria-hidden="true"></div>
+          <div class="workspace-overlay-layer" id="workspaceOverlay" aria-hidden="true"></div>
+        </div>
       </article>
 
       <aside class="panel inventory-panel" id="inventoryPanel">

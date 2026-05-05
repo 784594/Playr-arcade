@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-05-04-infinite-craft-start-overlay',
+      title: 'Infinite Craft Clone start overlay',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-05-04T23:59:00-04:00',
+      summary: 'Infinite Craft Clone now opens behind a dedicated start screen with progress feedback while the base workspace gets prepared before recipe chunks are needed.',
+      details: [
+        'The page now introduces a centered start card with loading copy, a progress bar, and a percent readout so the opening state feels more intentional than dropping straight onto the board.',
+        'The workspace shell was also split into separate backdrop, node, and overlay layers, which gives the play surface cleaner structure for staged visuals and interaction handling.',
+      ],
+    },
+    {
       id: 'site-notice-2026-05-04-quota-drop-rebuild',
       title: 'Quota Drop chamber rebuild',
       category: 'update',
