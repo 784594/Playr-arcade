@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-05-04-quota-drop-catalog-fix',
+      title: 'Quota Drop catalog fix',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-05-04T21:45:00-04:00',
+      summary: 'Quota Drop now surfaces earlier in the home game grid and is easier to find through the library search.',
+      details: [
+        'The single-player ordering was adjusted so Quota Drop is not buried behind the first six-card cutoff on the homepage and 1P tab.',
+        'Its search metadata was also expanded so broader slot-roguelike style queries can find the game more reliably instead of only matching the exact Quota Drop title.',
+      ],
+    },
+    {
       id: 'site-notice-2026-05-04-vector-volley-launch',
       title: 'Vector Volley is live',
       category: 'update',

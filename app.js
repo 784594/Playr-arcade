@@ -3,6 +3,7 @@ const SINGLE_PLAYER_PLACEHOLDERS = [
   { id: '2048', name: 'A Number Merge Game', controls: 'Arrow keys' },
   { id: 'minesweeper', name: 'A Mine-Clearing Game', controls: 'Mouse' },
   { id: 'infinite-craft-clone', name: 'Infinite Craft Clone', controls: 'Mouse' },
+  { id: 'quota-drop', name: 'Quota Drop', controls: 'Pointer lock + click' },
   { id: 'the-password-game', name: 'A Password Rules Game', controls: 'Keyboard' },
   { id: 'tetris', name: 'A Block Stacking Game', controls: 'Arrow keys' },
   { id: 'dino-run-clone', name: 'Dino Run Clone', controls: 'Space/Arrow' },
@@ -28,7 +29,6 @@ const SINGLE_PLAYER_PLACEHOLDERS = [
   { id: 'burrito-bison-clone', name: 'Burrito Bison Clone', controls: 'Mouse' },
   { id: 'aim-training-arena', name: 'Aim Training Arena', controls: 'Mouse' },
   { id: 'f1-academy', name: 'F1 Academy', controls: 'Keyboard + mouse' },
-  { id: 'quota-drop', name: 'Quota Drop', controls: 'Pointer lock + click' },
   { id: 'typing-test', name: 'Typing Test', controls: 'Keyboard' },
   { id: 'slide-puzzle', name: 'Slide Puzzle', controls: 'Mouse' },
   { id: 'absurd-trolley-problem', name: 'The Absurd Trolley Problem!', controls: 'Mouse' },
@@ -40,6 +40,7 @@ const SINGLE_PLAYER_GAME_OVERRIDES = {
     metric: 'Quota-clearing survival run',
     accent: 'warn',
     status: 'New',
+    searchTerms: 'slot roguelike debt quota trap door bunker machine slot machine first person',
   },
 };
 
@@ -3806,6 +3807,7 @@ function buildSinglePlayerGame(entry, index) {
     status: override?.status || '',
     accent: override?.accent || (lbSpec ? 'accent' : 'warn'),
     summary: override?.summary || `${entry.name} with ${entry.controls.toLowerCase()} controls.`,
+    searchTerms: override?.searchTerms || '',
     leaderboardLabel: lbSpec ? lbSpec.label : 'No leaderboard',
     leaderboardUnit: lbSpec ? lbSpec.unit : 'n/a',
     leaderboardTop100: top100,
@@ -3836,6 +3838,7 @@ function buildTwoPlayerGame(entry, index) {
     status: override?.status || '',
     accent: override?.accent || 'warn',
     summary: override?.summary || `${entry.name} placeholder. Host creates a shareable invite link for one guest.`,
+    searchTerms: override?.searchTerms || '',
     leaderboardLabel: 'No leaderboard',
     leaderboardUnit: 'n/a',
     leaderboardTop100: [],
@@ -6067,7 +6070,7 @@ function getFilteredGames() {
   const query = uiState.librarySearchQuery.trim().toLowerCase();
   if (query && uiState.activeLibraryTab !== 'leaderboard') {
     filtered = filtered.filter((game) => {
-      const haystack = `${game.name} ${game.controls} ${game.summary} ${game.metric} ${game.leaderboardLabel}`.toLowerCase();
+      const haystack = `${game.name} ${game.controls} ${game.summary} ${game.metric} ${game.leaderboardLabel} ${game.searchTerms || ''}`.toLowerCase();
       return haystack.includes(query);
     });
   }
