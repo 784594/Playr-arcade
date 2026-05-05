@@ -23,11 +23,15 @@
 	const MAX_BULLETS = 5;
 	const SHIP_RADIUS = 8;
 	const SHIP_THRUST = 165;
-	const SHIP_TURN_SPEED = 3.8;
+	const SHIP_REVERSE_THRUST = 110;
+	const SHIP_TURN_SPEED_MIN = 2.7;
+	const SHIP_TURN_SPEED_MAX = 6.4;
+	const SHIP_TURN_ACCEL = 8.5;
 	const BULLET_SPEED = 280;
 	const BULLET_LIFETIME = 1.1;
 	const RESPAWN_INVULN = 1.7;
 	const FIRE_DELAY = 0.18;
+	const HYPERSPACE_COOLDOWN = 4.5;
 	const WAVE_CLEAR_DELAY = 0.85;
 	const ASTEROID_SCORES = {
 		large: 20,
@@ -59,6 +63,7 @@
 		stars: createStars(108),
 		lastFrame: 0,
 		fireCooldown: 0,
+		hyperspaceCooldown: 0,
 		invulnerable: 0,
 		waveClearTimer: 0,
 		statusTimer: 0,
@@ -67,6 +72,7 @@
 			left: false,
 			right: false,
 			thrust: false,
+			reverse: false,
 			fire: false,
 		},
 	};
@@ -95,6 +101,8 @@
 			vy: 0,
 			angle: -Math.PI / 2,
 			alive: true,
+			turnMomentum: 0,
+			turnDirection: 0,
 		};
 	}
 
@@ -118,6 +126,7 @@
 		state.asteroids = [];
 		state.particles = [];
 		state.fireCooldown = 0;
+		state.hyperspaceCooldown = 0;
 		state.invulnerable = RESPAWN_INVULN;
 		state.waveClearTimer = 0;
 		state.statusTimer = 0;
@@ -368,12 +377,17 @@
 
 	function hyperspace() {
 		if (state.phase !== 'active') return;
+		if (state.hyperspaceCooldown > 0) {
+			setStatus(`Hyperspace recharging: ${state.hyperspaceCooldown.toFixed(1)}s`, 'warn');
+			return;
+		}
 
 		state.ship.x = rand(24, WIDTH - 24);
 		state.ship.y = rand(24, HEIGHT - 24);
 		state.ship.vx = rand(-40, 40);
 		state.ship.vy = rand(-40, 40);
 		state.invulnerable = RESPAWN_INVULN * 0.75;
+		state.hyperspaceCooldown = HYPERSPACE_COOLDOWN;
 		spawnParticleBurst(state.ship.x, state.ship.y, '#7cf0c5', 12, 55, 1);
 		setStatus('Hyperspace jump complete.', 'neutral');
 	}
@@ -416,12 +430,32 @@
 	}
 
 	function handleShipMovement(dt) {
-		if (state.input.left) state.ship.angle -= SHIP_TURN_SPEED * dt;
-		if (state.input.right) state.ship.angle += SHIP_TURN_SPEED * dt;
+		const turnDirection = (state.input.right ? 1 : 0) - (state.input.left ? 1 : 0);
+
+		if (turnDirection !== 0) {
+			if (state.ship.turnDirection !== turnDirection) {
+				state.ship.turnMomentum = SHIP_TURN_SPEED_MIN;
+				state.ship.turnDirection = turnDirection;
+			} else {
+				state.ship.turnMomentum = Math.min(
+					SHIP_TURN_SPEED_MAX,
+					state.ship.turnMomentum + SHIP_TURN_ACCEL * dt,
+				);
+			}
+			state.ship.angle += turnDirection * state.ship.turnMomentum * dt;
+		} else {
+			state.ship.turnDirection = 0;
+			state.ship.turnMomentum = 0;
+		}
 
 		if (state.input.thrust) {
 			state.ship.vx += Math.cos(state.ship.angle) * SHIP_THRUST * dt;
 			state.ship.vy += Math.sin(state.ship.angle) * SHIP_THRUST * dt;
+		}
+
+		if (state.input.reverse) {
+			state.ship.vx -= Math.cos(state.ship.angle) * SHIP_REVERSE_THRUST * dt;
+			state.ship.vy -= Math.sin(state.ship.angle) * SHIP_REVERSE_THRUST * dt;
 		}
 
 		state.ship.vx *= Math.pow(0.992, dt * 60);
@@ -434,9 +468,15 @@
 		for (let index = state.bullets.length - 1; index >= 0; index -= 1) {
 			const bullet = state.bullets[index];
 			bullet.life -= dt;
-			bullet.x = wrap(bullet.x + bullet.vx * dt, WIDTH);
-			bullet.y = wrap(bullet.y + bullet.vy * dt, HEIGHT);
-			if (bullet.life <= 0) {
+			bullet.x += bullet.vx * dt;
+			bullet.y += bullet.vy * dt;
+			if (
+				bullet.life <= 0
+				|| bullet.x < -4
+				|| bullet.x > WIDTH + 4
+				|| bullet.y < -4
+				|| bullet.y > HEIGHT + 4
+			) {
 				state.bullets.splice(index, 1);
 			}
 		}
@@ -534,6 +574,7 @@
 		if (state.phase !== 'active') return;
 
 		state.fireCooldown = Math.max(0, state.fireCooldown - dt);
+		state.hyperspaceCooldown = Math.max(0, state.hyperspaceCooldown - dt);
 		state.invulnerable = Math.max(0, state.invulnerable - dt);
 
 		handleShipMovement(dt);
@@ -727,16 +768,18 @@
 			'arrowleft',
 			'arrowright',
 			'arrowup',
+			'arrowdown',
 			' ',
 			'spacebar',
 			'space',
 			'enter',
-			'shift',
+			'q',
 			'p',
 			'escape',
 			'a',
 			'd',
 			'w',
+			's',
 		].includes(key)) {
 			event.preventDefault();
 		}
@@ -750,13 +793,14 @@
 		if (key === 'arrowleft' || key === 'a') state.input.left = true;
 		if (key === 'arrowright' || key === 'd') state.input.right = true;
 		if (key === 'arrowup' || key === 'w') state.input.thrust = true;
+		if (key === 'arrowdown' || key === 's') state.input.reverse = true;
 
 		if (key === ' ' || key === 'spacebar' || key === 'space' || key === 'enter') {
 			state.input.fire = true;
 			if (state.phase === 'idle' || state.phase === 'gameover') startGame();
 		}
 
-		if (key === 'shift') {
+		if (key === 'q') {
 			if (state.phase === 'active') hyperspace();
 		}
 
@@ -771,6 +815,7 @@
 		if (key === 'arrowleft' || key === 'a') state.input.left = false;
 		if (key === 'arrowright' || key === 'd') state.input.right = false;
 		if (key === 'arrowup' || key === 'w') state.input.thrust = false;
+		if (key === 'arrowdown' || key === 's') state.input.reverse = false;
 		if (key === ' ' || key === 'spacebar' || key === 'space' || key === 'enter') state.input.fire = false;
 	}
 

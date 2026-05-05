@@ -1,6 +1,32 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-05-04-asteroids-hyperspace-cooldown',
+      title: 'An Asteroid Game hyperspace cooldown',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-05-04T23:25:00-04:00',
+      summary: 'An Asteroid Game now puts hyperspace on Q and adds a recharge delay so panic-jumping cannot be spammed forever.',
+      details: [
+        'Hyperspace is now bound to Q instead of Shift, making it a more intentional input that is less likely to be mashed accidentally while steering and firing.',
+        'Each jump now starts a cooldown before the next one is allowed, and trying too early surfaces a short recharge warning instead of letting the ship chain-jump through danger indefinitely.',
+      ],
+    },
+    {
+      id: 'site-notice-2026-05-04-asteroids-control-pass',
+      title: 'An Asteroid Game control pass',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-05-04T23:10:00-04:00',
+      summary: 'An Asteroid Game now supports reverse thrust, faster turning the longer you hold a rotation input, and non-wrapping bullets that no longer loop around the arena.',
+      details: [
+        'Ship handling now ramps the rotation rate up while you keep holding left or right, which makes quick corrections stay manageable while longer committed turns feel much snappier than the old fixed spin speed.',
+        'Reverse thrust has been added on Arrow Down or S, and bullets now leave the field instead of teleporting across edges with the asteroids, which makes spacing and shot timing matter more again.',
+      ],
+    },
+    {
       id: 'site-notice-2026-05-04-f1-academy-ui-cleanup',
       title: 'F1 Academy UI cleanup',
       category: 'update',
