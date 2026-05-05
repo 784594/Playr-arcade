@@ -1,6 +1,19 @@
 (function () {
   window.PlayrSiteNotices = [
     {
+      id: 'site-notice-2026-05-04-title-softening-pass',
+      title: 'Single-player naming pass',
+      category: 'update',
+      audience: 'public',
+      severity: 'info',
+      publishedAt: '2026-05-04T19:05:00-04:00',
+      summary: 'Several single-player game labels now use more playful originalized names, and Infinite Craft is now labeled explicitly as Infinite Craft Clone in the hub and page chrome.',
+      details: [
+        'The homepage, module index, manifest metadata, and a set of game-page titles now lean into labels like A Snake Game, A Maze Chase Game, A Cookie Clicking Game, and similar playful descriptors instead of presenting some recognizable title references as-is.',
+        'This pass is mostly about the visible naming layer rather than gameplay changes, so the games still behave the same while the site presentation reads more like PlayR’s own arcade shelf and less like a direct catalog of borrowed title labels.',
+      ],
+    },
+    {
       id: 'site-notice-2026-05-04-quota-drop-launch',
       title: 'Quota Drop is live',
       category: 'update',

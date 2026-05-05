@@ -5,37 +5,37 @@
   "singlePlayer": [
     {
       "slug": "snake",
-      "title": "Snake",
+      "title": "A Snake Game",
       "controls": "Arrow keys",
       "leaderboard": { "scope": "global", "metric": "score", "direction": "desc" }
     },
     {
       "slug": "2048",
-      "title": "2048",
+      "title": "A Number Merge Game",
       "controls": "Arrow keys",
       "leaderboard": { "scope": "global", "metric": "highest_tile", "direction": "desc" }
     },
     {
       "slug": "minesweeper",
-      "title": "Minesweeper",
+      "title": "A Mine-Clearing Game",
       "controls": "Mouse",
       "leaderboard": { "scope": "global", "metric": "time_seconds", "direction": "asc", "segments": ["easy", "medium", "hard"] }
     },
     {
       "slug": "infinite-craft-clone",
-      "title": "Infinite Craft",
+      "title": "Infinite Craft Clone",
       "controls": "Mouse",
       "leaderboard": { "scope": "none", "metric": "n_a", "direction": "n_a", "reason": "Single-player sandbox mode" }
     },
     {
       "slug": "the-password-game",
-      "title": "The Password Game",
+      "title": "A Password Rules Game",
       "controls": "Keyboard",
       "leaderboard": { "scope": "global", "metric": "highest_rule_stage", "direction": "desc" }
     },
     {
       "slug": "tetris",
-      "title": "Tetris",
+      "title": "A Block Stacking Game",
       "controls": "Arrow keys",
       "leaderboard": { "scope": "global", "metric": "score", "direction": "desc" }
     },
@@ -47,7 +47,7 @@
     },
     {
       "slug": "pac-man",
-      "title": "Pac-Man",
+      "title": "A Maze Chase Game",
       "controls": "Arrow keys",
       "leaderboard": { "scope": "global", "metric": "score", "direction": "desc" }
     },
@@ -59,7 +59,7 @@
     },
     {
       "slug": "wordle-inf",
-      "title": "Wordle Infinite",
+      "title": "A Word Guessing Game",
       "controls": "Keyboard"
     },
     {
@@ -76,37 +76,37 @@
     },
     {
       "slug": "breakout",
-      "title": "Breakout",
+      "title": "A Brick Breaker Game",
       "controls": "Mouse",
       "leaderboard": { "scope": "global", "metric": "score", "direction": "desc" }
     },
     {
       "slug": "asteroids",
-      "title": "Asteroids",
+      "title": "An Asteroid Game",
       "controls": "Arrow keys",
       "leaderboard": { "scope": "global", "metric": "score", "direction": "desc" }
     },
     {
       "slug": "frogger",
-      "title": "Frogger",
+      "title": "A Road-Crossing Game",
       "controls": "Arrow keys",
       "leaderboard": { "scope": "global", "metric": "survival_time_seconds", "direction": "desc" }
     },
     {
       "slug": "solitaire",
-      "title": "Solitaire",
+      "title": "A Solitaire-Style Game",
       "controls": "Mouse/Touch",
       "leaderboard": { "scope": "global", "metric": "completion_time_seconds", "direction": "asc" }
     },
     {
       "slug": "space-invaders",
-      "title": "Space Invaders",
+      "title": "A Space Defense Game",
       "controls": "Arrow keys",
       "leaderboard": { "scope": "global", "metric": "score", "direction": "desc" }
     },
     {
       "slug": "simon-says",
-      "title": "Simon Says",
+      "title": "A Memory Command Game",
       "controls": "Mouse",
       "leaderboard": { "scope": "global", "metric": "max_sequence", "direction": "desc" }
     },
@@ -142,7 +142,7 @@
     },
     {
       "slug": "cookie-clicker-clone",
-      "title": "Cookie Clicker Clone",
+      "title": "A Cookie Clicking Game",
       "controls": "Mouse",
       "leaderboard": { "scope": "global", "metric": "cookies_per_second", "direction": "desc" }
     },
@@ -160,7 +160,7 @@
     },
     {
       "slug": "hextris",
-      "title": "Hextris",
+      "title": "A Hex Survival Game",
       "controls": "Arrow keys",
       "leaderboard": { "scope": "global", "metric": "survival_time_seconds", "direction": "desc" }
     },
