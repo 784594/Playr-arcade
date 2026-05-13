@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Last Bet</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game-container"></div>
+  
+  <!-- Dialogue System -->
+  <div id="dialogue-box" class="dialogue-box hidden">
+    <div class="dialogue-content">
+      <div id="dialogue-speaker" class="dialogue-speaker hidden"></div>
+      <p id="dialogue-text"></p>
+      <div id="dialogue-choices" class="dialogue-choices hidden"></div>
+      <button id="dialogue-next" class="hidden" onclick="window.gameInstance?.dialogueSystem?.next?.()">Next</button>
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div id="hud-top-left">
+      <div id="money">Cash: $0</div>
+      <div id="chips">Chips: 0</div>
+    </div>
+    <div id="hud-top-right">
+      <div id="warnings">
+        <div class="warning-dot" id="w0"></div>
+        <div class="warning-dot" id="w1"></div>
+        <div class="warning-dot" id="w2"></div>
+      </div>
+      <div id="quota">Quota: $0 / $100,000</div>
+      <div id="clock">9:00 PM</div>
+    </div>
+    <div id="hud-bottom-left">
+      <div id="interaction-hint"></div>
+    </div>
+    <div id="hud-hotbar">
+      <div class="hotbar-slot" data-slot="1">1</div>
+      <div class="hotbar-slot" data-slot="2">2</div>
+      <div class="hotbar-slot" data-slot="3">3</div>
+      <div class="hotbar-slot" data-slot="4">4</div>
+      <div class="hotbar-slot" data-slot="5">5</div>
+    </div>
+  </div>
+
+  <div id="message-toast" class="message-toast hidden"></div>
+
+  <!-- Game Panel -->
+  <div id="game-panel" class="panel hidden">
+    <div class="panel-content">
+      <h2 id="panel-title">Game</h2>
+      <div id="panel-body"></div>
+    </div>
+  </div>
+
+  <div id="ending-panel" class="panel hidden">
+    <div class="panel-content death-content ending-content">
+      <h1>YOU GOT OUT</h1>
+      <p id="ending-reason" style="margin: 16px 0;"></p>
+      <div class="stats-box">
+        <div class="stat-line">
+          <span>Total Cash Banked:</span>
+          <span id="ending-cash">$0</span>
+        </div>
+        <div class="stat-line">
+          <span>Stage Reached:</span>
+          <span id="ending-stage">Final</span>
+        </div>
+      </div>
+      <button onclick="location.reload()">Run It Back</button>
+    </div>
+  </div>
+
+  <!-- Death Panel -->
+  <div id="death-panel" class="panel hidden">
+    <div class="panel-content death-content">
+      <h1>YOU DIED</h1>
+      <p id="death-reason" style="color: #ff6b6b; margin: 16px 0;"></p>
+      <div class="stats-box">
+        <div class="stat-line">
+          <span>Rounds Played:</span>
+          <span id="stat-rounds">0</span>
+        </div>
+        <div class="stat-line">
+          <span>Total Cash Banked:</span>
+          <span id="stat-cash">$0</span>
+        </div>
+        <div class="stat-line">
+          <span>Stage Reached:</span>
+          <span id="stat-cycle">1</span>
+        </div>
+      </div>
+      <button onclick="location.reload()">Play Again</button>
+    </div>
+  </div>
+
+  <!-- Fade Overlay -->
+  <div id="fade-overlay" class="fade-overlay"></div>
+  <div id="crosshair" aria-hidden="true"></div>
+
+  <script src="DialogueSystem.js"></script>
+  <script src="GameManager.js"></script>
+  <script src="PlayerController.js"></script>
+  <script src="BathroomEnvironment.js"></script>
+  <script src="CasinoEnvironment.js"></script>
+  <script src="NPCSystem.js"></script>
+  <script src="GameSystems.js"></script>
+  <script src="CheatSystem.js"></script>
+  <script src="DetectionSystem.js"></script>
+  <script src="DealerSystem.js"></script>
+  <script src="UIManager.js"></script>
+  <script src="AudioManager.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

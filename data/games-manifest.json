@@ -34,6 +34,18 @@
       "leaderboard": { "scope": "global", "metric": "highest_rule_stage", "direction": "desc" }
     },
     {
+      "slug": "how-strong-is-my-password",
+      "title": "How Strong Is My Password?",
+      "controls": "Keyboard / Mouse",
+      "leaderboard": { "scope": "none", "metric": "n_a", "direction": "n_a", "reason": "Informational estimator - no leaderboard" }
+    },
+    {
+      "slug": "last-bet",
+      "title": "Last Bet",
+      "controls": "WASD / Mouse look",
+      "leaderboard": { "scope": "none", "metric": "n_a", "direction": "n_a", "reason": "Single-player narrative survival - no leaderboard" }
+    },
+    {
       "slug": "tetris",
       "title": "A Block Stacking Game",
       "controls": "Arrow keys",
